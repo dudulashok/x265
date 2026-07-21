@@ -278,6 +278,9 @@ namespace X265_NS {
         H0("   --[no-]hevc-aq                Mode for HEVC Adaptive Quantization. Default %s\n", OPT(param->rc.hevcAq));
         H0("   --aq-strength <float>         Reduces blocking and blurring in flat and textured areas (0 to 3.0). Default %.2f\n", param->rc.aqStrength);
         H0("   --qp-adaptation-range <float> Delta QP range by QP adaptation based on a psycho-visual model (1.0 to 6.0). Default %.2f\n", param->rc.qpAdaptationRange);
+        H0("   --hdr-luma-qp <float>         Strength of JVET HDR luma-adaptive QP model for 10-bit BT.2020/PQ (needs AQ). 0 disables. Default %.2f\n", param->rc.hdrLumaQpStrength);
+        H0("   --[no-]hdr-scaling-list       Built-in HDR-tuned PQ scaling lists (16->48 luma ramp, 16->40 chroma). Decoder-safe SPS/PPS feature. Default disabled\n");
+        H0("   --[no-]hdr-pq                 Convenience flag: set BT.2020/PQ VUI, repeat-headers, SAO=on, cbqpoffs=-2/crqpoffs=-2. Default disabled\n");
         H0("   --[no-]aq-motion              Block level QP adaptation based on the relative motion between the block and the frame. Default %s\n", OPT(param->bAQMotion));
         H1("   --[no-]sbrc                   Enables the segment based rate control. Default %s\n", OPT(param->bEnableSBRC));
         H0("   --qg-size <int>               Specifies the size of the quantization group (64, 32, 16, 8). Default %d\n", param->rc.qgSize);

@@ -1858,6 +1858,26 @@ typedef struct x265_param
         /* Unique shared memory name. Required if the shared memory mode enabled. NULL by default */
         char sharedMemName[X265_MAX_STRING_SIZE];
 
+        /* Strength of the JVET HDR luma-adaptive QP model (VTM HDR CTC, PQ).
+         * When > 0 and AQ is enabled, a per-quantization-group QP offset is
+         * added as offset = strength * -clip3(-3, 6, 0.015*Yavg - 7.5), where
+         * Yavg is the average 10-bit luma code value of the group. This gives
+         * more bits to bright regions and fewer to shadows, matching the
+         * reference PQ luma-based QP adaptation. A continuous, tunable form of
+         * the fixed staircase used by hdr10-opt. Assumes 10-bit BT.2020/PQ
+         * input. 0 disables (default). Typical useful range 0.5 - 1.5. */
+        double    hdrLumaQpStrength;
+
+        /* When enabled, populate the HEVC quantization scaling lists (SPS/PPS
+         * scaling_list_data) with coefficients tuned for 10-bit PQ / BT.2020
+         * HDR content. A gentle convex ramp (16→48 luma, 16→40 chroma) keeps
+         * low/mid spatial-frequency precision (reducing banding in smooth PQ
+         * gradients) while relaxing only the highest frequencies. 4x4 lists
+         * are left flat (neutral). This is equivalent to passing
+         * --scaling-list hdr-pq and requires no external file. Decoder-safe:
+         * scaling lists are standard HEVC SPS/PPS syntax. Default 0. */
+        int       bHdrScalingList;
+
     } rc;
 
     /*== Video Usability Information ==*/
@@ -2251,6 +2271,23 @@ typedef struct x265_param
 
     /* Block-level QP optimization for HDR10 content. Default is disabled.*/
     int       bHDR10Opt;
+
+    /* Convenience flag for BT.2020 / SMPTE ST 2084 (PQ) HDR10 encodes.
+     * When set, the encoder automatically applies:
+     *   - VUI colour description: colorPrimaries=9 (BT.2020),
+     *     transferCharacteristics=16 (PQ), matrixCoeffs=9 (BT.2020nc),
+     *     videoFullRange=0 (limited), chromaSampleLoc=2.
+     *   - bRepeatHeaders=1 (SPS/PPS at every keyframe).
+     *   - bEnableSAO=1 (SAO ON; helps PQ banding; kept even if preset
+     *     would disable it).
+     *   - Chroma QP offsets cbQpOffset=-2 / crQpOffset=-2 for BT.2020 WCG
+     *     (overridable afterward with --cbqpoffs / --crqpoffs).
+     * All individual params remain fully overridable after bHdrPq is set.
+     * Does NOT imply bHDR10Opt or hdrLumaQpStrength; add those separately.
+     * Requires --master-display and --max-cll for a complete HDR10 stream.
+     * Default 0. */
+    int       bHdrPq;
+
 
     /* Enables the emitting of HDR10 SEI packets which contains HDR10-specific params.
     * Auto-enabled when max-cll, max-fall, or mastering display info is specified.

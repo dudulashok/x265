@@ -633,6 +633,23 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                             else if (lumaAvg >= 834)
                                 qp_adj -= 6;
                         }
+                        else if (param->rc.hdrLumaQpStrength > 0)
+                        {
+                            /* Continuous JVET HDR luma-adaptive QP model (VTM HDR
+                             * common test conditions, PQ sequences). Reference:
+                             *   dQP(Y) = clip3(-3, 6, 0.015*Y - 7.5)
+                             * with Y the average 10-bit luma code value of the QG.
+                             * The applied QP offset is -dQP (x265 convention:
+                             * positive offset => higher QP => fewer bits), which
+                             * spends more bits on bright regions and fewer on
+                             * shadows. This is the continuous, strength-scalable
+                             * form of the fixed hdr10-opt staircase above. */
+                            uint32_t sum = lumaSumCu(curFrame, blockX, blockY, param->rc.qgSize);
+                            double lumaAvg = (double)sum / (loopIncr * loopIncr);
+                            double dqp = 0.015 * lumaAvg - 7.5;
+                            dqp = X265_MIN(6.0, X265_MAX(-3.0, dqp));
+                            qp_adj += param->rc.hdrLumaQpStrength * (-dqp);
+                        }
                         if (quantOffsets != NULL)
                             qp_adj += quantOffsets[blockXY];
                         curFrame->m_lowres.qpAqOffset[blockXY] = qp_adj;

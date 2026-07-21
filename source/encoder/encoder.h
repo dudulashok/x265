@@ -394,6 +394,10 @@ protected:
     void initVPS(VPS *vps);
     void initSPS(SPS *sps);
     void initPPS(PPS *pps);
+
+    /* Populate m_scalingList with built-in HDR PQ coefficients.
+     * Called when bHdrScalingList or --scaling-list hdr-pq is set. */
+    void populateHdrScalingList();
 };
 }
 

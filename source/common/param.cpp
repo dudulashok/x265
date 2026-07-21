@@ -312,6 +312,8 @@ void x265_param_default(x265_param* param)
     param->rc.qgSize = 32;
     param->rc.aqStrength = 1.0;
     param->rc.qpAdaptationRange = 1.0;
+    param->rc.hdrLumaQpStrength = 0.0;
+    param->rc.bHdrScalingList   = 0;
     param->rc.cuTree = 1;
     param->rc.rfConstantMax = 0;
     param->rc.rfConstantMin = 0;
@@ -377,6 +379,7 @@ void x265_param_default(x265_param* param)
     param->bAQMotion = 0;
     param->bHDROpt = 0; /*DEPRECATED*/
     param->bHDR10Opt = 0;
+    param->bHdrPq    = 0;
     param->analysisReuseLevel = 0;  /*DEPRECATED*/
     param->analysisSaveReuseLevel = 0;
     param->analysisLoadReuseLevel = 0;
@@ -1393,6 +1396,7 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("hdr10") p->bEmitHDR10SEI = atobool(value);
         OPT("hdr-opt") p->bHDR10Opt = atobool(value); /*DEPRECATED*/
         OPT("hdr10-opt") p->bHDR10Opt = atobool(value);
+        OPT("hdr-pq") p->bHdrPq = atobool(value);
         OPT("limit-sao") p->bLimitSAO = atobool(value);
         OPT("dhdr10-info") snprintf(p->toneMapFile, X265_MAX_STRING_SIZE, "%s", value);
         OPT("dhdr10-opt") p->bDhdr10opt = atobool(value);
@@ -1453,6 +1457,8 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("refine-ctu-distortion") p->ctuDistortionRefine = atoi(value);
         OPT("hevc-aq") p->rc.hevcAq = atobool(value);
         OPT("qp-adaptation-range") p->rc.qpAdaptationRange = atof(value);
+        OPT("hdr-luma-qp") p->rc.hdrLumaQpStrength = atof(value);
+        OPT("hdr-scaling-list") p->rc.bHdrScalingList = atobool(value);
 #ifdef SVT_HEVC
         OPT("svt")
         {
@@ -2506,6 +2512,10 @@ char *x265_param2string(x265_param* p, int padx, int pady)
     BOOL(p->bAQMotion, "aq-motion");
     BOOL(p->bEmitHDR10SEI, "hdr10");
     BOOL(p->bHDR10Opt, "hdr10-opt");
+    if (p->rc.hdrLumaQpStrength > 0)
+        s += sprintf(s, " hdr-luma-qp=%.2f", p->rc.hdrLumaQpStrength);
+    BOOL(p->rc.bHdrScalingList, "hdr-scaling-list");
+    BOOL(p->bHdrPq, "hdr-pq");
     BOOL(p->bDhdr10opt, "dhdr10-opt");
     BOOL(p->bEmitIDRRecoverySEI, "idr-recovery-sei");
     if (strlen(p->analysisSave))
@@ -2822,7 +2832,7 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->decodedPictureHashSEI = src->decodedPictureHashSEI;
     dst->bEnableTemporalSubLayers = src->bEnableTemporalSubLayers;
     dst->bOpenGOP = src->bOpenGOP;
-	dst->craNal = src->craNal;
+    dst->craNal = src->craNal;
     dst->keyframeMax = src->keyframeMax;
     dst->keyframeMin = src->keyframeMin;
     dst->bframes = src->bframes;
@@ -2968,6 +2978,8 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->rc.bEnableConstVbv = src->rc.bEnableConstVbv;
     dst->rc.hevcAq = src->rc.hevcAq;
     dst->rc.qpAdaptationRange = src->rc.qpAdaptationRange;
+    dst->rc.hdrLumaQpStrength = src->rc.hdrLumaQpStrength;
+    dst->rc.bHdrScalingList   = src->rc.bHdrScalingList;
 
     dst->vui.aspectRatioIdc = src->vui.aspectRatioIdc;
     dst->vui.sarWidth = src->vui.sarWidth;
@@ -3016,6 +3028,7 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->bEmitHRDSEI = src->bEmitHRDSEI;
     dst->bHDROpt = src->bHDROpt; /*DEPRECATED*/
     dst->bHDR10Opt = src->bHDR10Opt;
+    dst->bHdrPq    = src->bHdrPq;
     dst->analysisReuseLevel = src->analysisReuseLevel;
     dst->analysisSaveReuseLevel = src->analysisSaveReuseLevel;
     dst->analysisLoadReuseLevel = src->analysisLoadReuseLevel;

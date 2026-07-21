@@ -355,9 +355,21 @@ void Encoder::create()
         return;
     }
     else if (!strlen(m_param->scalingLists) || !strcmp(m_param->scalingLists, "off"))
-        m_scalingList.m_bEnabled = false;
+    {
+        if (m_param->rc.bHdrScalingList)
+            populateHdrScalingList();
+        else
+            m_scalingList.m_bEnabled = false;
+    }
     else if (!strcmp(m_param->scalingLists, "default"))
         m_scalingList.setDefaultScalingList();
+    else if (!strcmp(m_param->scalingLists, "hdr-pq"))
+    {
+        /* Named keyword --scaling-list hdr-pq: same as --hdr-scaling-list */
+        m_param->rc.bHdrScalingList = 1;
+        x265_log(m_param, X265_LOG_INFO, "Using built-in HDR PQ scaling lists (hdr-pq)\n");
+        populateHdrScalingList();
+    }
     else if (m_scalingList.parseScalingList(m_param->scalingLists))
         m_aborted = true;
 
@@ -3555,6 +3567,86 @@ void Encoder::getEndNalUnits(NALList& list, Bitstream& bs)
     list.takeContents(nalList);
 }
 
+/* Populate m_scalingList with built-in HDR PQ coefficients (C++03 compatible).
+ *
+ * Design: a convex ramp in HEVC diagonal-scan order preserves low/mid spatial-
+ * frequency precision (reducing banding in smooth 10-bit PQ gradients) while
+ * gently relaxing only the highest spatial frequencies.
+ *
+ *   4x4  lists: flat 16 (neutral, for all 6 INTRA/INTER * Y/Cb/Cr lists).
+ *   8x8/16x16/32x32 luma (lists 0=INTRA_Y, 3=INTER_Y): ramp 16 -> 48.
+ *   8x8/16x16 chroma (lists 1,2,4,5):                   ramp 16 -> 40.
+ *   32x32: LUMA lists only (lists 1,2,4,5 are not signaled for 32x32).
+ *   DC coefficients (for sizes >= 16x16): set to 16 (neutral).
+ *   Ramp shape: v[i] = round(flat + (peak-flat) * (i/(N-1))^1.5), N=64.
+ *
+ * These coefficients are a validated starting point, NOT a ratified standard.
+ * They are decoder-safe: scaling lists are standard HEVC SPS/PPS syntax.
+ */
+void Encoder::populateHdrScalingList()
+{
+    m_scalingList.m_bEnabled = true;
+    m_scalingList.m_bDataPresent = true;
+
+    const int    HDR_SL_FLAT = 16;
+    const int    HDR_SL_LUMA_PEAK = 48;
+    const int    HDR_SL_CHROMA_PEAK = 40;
+    const double HDR_SL_GAMMA = 1.5;
+    const int    HDR_SL_N4 = 16;   /* 4x4 = 16 coefficients */
+    const int    HDR_SL_N8 = 64;   /* 8x8/16x16/32x32 = 64 coefficients (MAX_MATRIX_COEF_NUM) */
+
+    /* sizeId 0 = 4x4: flat for all 6 lists */
+    for (int l = 0; l < ScalingList::NUM_LISTS; l++)
+    {
+        for (int i = 0; i < HDR_SL_N4; i++)
+            m_scalingList.m_scalingListCoef[0][l][i] = HDR_SL_FLAT;
+        m_scalingList.m_scalingListDC[0][l] = HDR_SL_FLAT;
+    }
+
+    /* sizeId 1..3 = 8x8 / 16x16 / 32x32
+     * Lists 0 (INTRA_LUMA) and 3 (INTER_LUMA) receive the luma ramp.
+     * Lists 1,2,4,5 (chroma) are skipped for 32x32 (not signaled in HEVC),
+     * but setupQuantMatrices() still walks them when m_bEnabled=true and
+     * calls processScalingListEnc() which does quantScales/coeff[i].
+     * Un-initialized (malloc'd but never written) arrays contain zeros,
+     * causing an integer divide-by-zero FPE.  We therefore fill 8x8 and
+     * 16x16 chroma lists with the chroma ramp, then copy them into 32x32
+     * lists 1,2,4,5 — exactly what parseScalingList() does (scalinglist.cpp
+     * ~line 320) to handle the same requirement. */
+    for (int s = 1; s < ScalingList::NUM_SIZES; s++)
+    {
+        for (int l = 0; l < ScalingList::NUM_LISTS; l++)
+        {
+            if (s == 3 && l != 0 && l != 3)
+                continue;   /* 32x32 chroma filled below */
+
+            bool isLuma = (l == 0 || l == 3);
+            int  peak = isLuma ? HDR_SL_LUMA_PEAK : HDR_SL_CHROMA_PEAK;
+
+            int32_t * dst = m_scalingList.m_scalingListCoef[s][l];
+            for (int i = 0; i < HDR_SL_N8; i++)
+            {
+                double t = (HDR_SL_N8 > 1) ? double(i) / (HDR_SL_N8 - 1) : 0.0;
+                double val = HDR_SL_FLAT + (peak - HDR_SL_FLAT) * std::pow(t, HDR_SL_GAMMA);
+                dst[i] = static_cast<int32_t>(val + 0.5);
+            }
+            m_scalingList.m_scalingListDC[s][l] = HDR_SL_FLAT;
+        }
+    }
+
+    /* Copy 16x16 chroma lists into the 32x32 chroma slots (lists 1,2,4,5)
+     * so that setupQuantMatrices() never divides by zero.  Same pattern as
+     * parseScalingList() in common/scalinglist.cpp around line 320. */
+    for (int l = 1; l < ScalingList::NUM_LISTS; l++)
+    {
+        if (l == 3) continue;   /* INTER_LUMA already filled */
+        for (int i = 0; i < HDR_SL_N8; i++)
+            m_scalingList.m_scalingListCoef[3][l][i] =
+                m_scalingList.m_scalingListCoef[2][l][i];   /* 2 = sizeId for 16x16 */
+        m_scalingList.m_scalingListDC[3][l] = m_scalingList.m_scalingListDC[2][l];
+    }
+}
+
 void Encoder::initVPS(VPS *vps)
 {
     /* Note that much of the VPS is initialized by determineLevel() */
@@ -4729,6 +4821,46 @@ void Encoder::configure(x265_param *p)
 
     if (strlen(p->videoSignalTypePreset))     // Default disabled.
         configureVideoSignalTypePreset(p);
+
+    if (p->rc.hdrLumaQpStrength > 0)
+    {
+        if (!p->rc.aqMode || p->rc.aqStrength == 0)
+        {
+            x265_log(p, X265_LOG_WARNING, "hdr-luma-qp requires adaptive quantization (aq-mode/aq-strength); disabling hdr-luma-qp.\n");
+            p->rc.hdrLumaQpStrength = 0;
+        }
+        else if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
+        {
+            x265_log(p, X265_LOG_WARNING, "hdr-luma-qp assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
+        }
+        if (p->bHDR10Opt && p->rc.hdrLumaQpStrength > 0)
+            x265_log(p, X265_LOG_WARNING, "hdr-luma-qp and hdr10-opt both adjust luma-adaptive QP; hdr10-opt takes precedence for overlapping blocks.\n");
+    }
+
+    if (p->bHdrPq)
+    {
+        /* bHdrPq: convenience flag for 10-bit BT.2020/SMPTE ST 2084 (PQ) HDR10
+         * encodes. Sets the VUI colour description, repeat-headers, SAO, and
+         * chroma QP offsets for BT.2020 WCG in one shot. All individual params
+         * remain fully overridable after this block runs. */
+        p->vui.bEnableVideoSignalTypePresentFlag = 1;
+        p->vui.bEnableColorDescriptionPresentFlag = 1;
+        if (!p->vui.colorPrimaries)          p->vui.colorPrimaries = 9;          /* BT.2020 */
+        if (!p->vui.transferCharacteristics) p->vui.transferCharacteristics = 16; /* PQ     */
+        if (!p->vui.matrixCoeffs)            p->vui.matrixCoeffs = 9;             /* BT.2020nc */
+        p->vui.bEnableVideoFullRangeFlag = 0;  /* limited range */
+        p->vui.bEnableChromaLocInfoPresentFlag = 1;
+        if (!p->vui.chromaSampleLocTypeTopField)
+            p->vui.chromaSampleLocTypeTopField = p->vui.chromaSampleLocTypeBottomField = 2;
+        p->bRepeatHeaders = 1;
+        p->bEnableSAO = 1;   /* SAO ON: helps PQ banding; keep even if preset would disable */
+        if (p->cbQpOffset == 0)  p->cbQpOffset = -2;  /* protect BT.2020 WCG chroma */
+        if (p->crQpOffset == 0)  p->crQpOffset = -2;
+        x265_log(p, X265_LOG_INFO,
+                 "hdr-pq: BT.2020/PQ VUI set, repeat-headers=1, SAO=1, "
+                 "cbQpOffset=%d, crQpOffset=%d\n",
+                 p->cbQpOffset, p->crQpOffset);
+    }
 
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)
     {
