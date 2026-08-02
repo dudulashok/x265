@@ -314,6 +314,10 @@ void x265_param_default(x265_param* param)
     param->rc.qpAdaptationRange = 1.0;
     param->rc.hdrLumaQpStrength = 0.0;
     param->rc.bHdrScalingList   = 0;
+    param->rc.hdrChromaQpStrength = 0.0;
+    param->rc.hdrBandingStrength = 0.0;
+    param->rc.hdrSceneQpStrength = 0.0;
+
     param->rc.cuTree = 1;
     param->rc.rfConstantMax = 0;
     param->rc.rfConstantMin = 0;
@@ -1459,6 +1463,10 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("qp-adaptation-range") p->rc.qpAdaptationRange = atof(value);
         OPT("hdr-luma-qp") p->rc.hdrLumaQpStrength = atof(value);
         OPT("hdr-scaling-list") p->rc.bHdrScalingList = atobool(value);
+        OPT("hdr-chroma-qp") p->rc.hdrChromaQpStrength = atof(value);
+        OPT("hdr-banding-protect") p->rc.hdrBandingStrength = atof(value);
+        OPT("hdr-scene-qp") p->rc.hdrSceneQpStrength = atof(value);
+
 #ifdef SVT_HEVC
         OPT("svt")
         {
@@ -2515,6 +2523,12 @@ char *x265_param2string(x265_param* p, int padx, int pady)
     if (p->rc.hdrLumaQpStrength > 0)
         s += sprintf(s, " hdr-luma-qp=%.2f", p->rc.hdrLumaQpStrength);
     BOOL(p->rc.bHdrScalingList, "hdr-scaling-list");
+    if (p->rc.hdrChromaQpStrength > 0)
+        s += sprintf(s, " hdr-chroma-qp=%.2f", p->rc.hdrChromaQpStrength);
+    if (p->rc.hdrBandingStrength > 0)
+        s += sprintf(s, " hdr-banding-protect=%.2f", p->rc.hdrBandingStrength);
+    if (p->rc.hdrSceneQpStrength > 0)
+        s += sprintf(s, " hdr-scene-qp=%.2f", p->rc.hdrSceneQpStrength);
     BOOL(p->bHdrPq, "hdr-pq");
     BOOL(p->bDhdr10opt, "dhdr10-opt");
     BOOL(p->bEmitIDRRecoverySEI, "idr-recovery-sei");
@@ -2980,7 +2994,9 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->rc.qpAdaptationRange = src->rc.qpAdaptationRange;
     dst->rc.hdrLumaQpStrength = src->rc.hdrLumaQpStrength;
     dst->rc.bHdrScalingList   = src->rc.bHdrScalingList;
-
+    dst->rc.hdrChromaQpStrength = src->rc.hdrChromaQpStrength;
+    dst->rc.hdrBandingStrength = src->rc.hdrBandingStrength;
+    dst->rc.hdrSceneQpStrength = src->rc.hdrSceneQpStrength;
     dst->vui.aspectRatioIdc = src->vui.aspectRatioIdc;
     dst->vui.sarWidth = src->vui.sarWidth;
     dst->vui.sarHeight = src->vui.sarHeight;

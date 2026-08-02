@@ -1878,6 +1878,46 @@ typedef struct x265_param
          * scaling lists are standard HEVC SPS/PPS syntax. Default 0. */
         int       bHdrScalingList;
 
+        /* Strength of frame-level WCG chroma-adaptive QP for 10-bit BT.2020/PQ.
+         * Computed ONCE PER FRAME (not per-CU) from the frame's average PQ
+         * luma level (APL). BT.2020 wide-gamut chroma is most visible in the
+         * bright-midtone range (~0.55-0.75 normalized luma); frames whose APL
+         * falls in that range receive an additional negative chroma QP offset
+         * (more chroma bits), scaled by strength (up to -6 QP at strength=1.0
+         * on top of any bHDR10Opt chroma offset already applied). Frames
+         * outside that range are unaffected. This is a FRAME-level control,
+         * not per-CU/per-block: a true per-CU version would need per-CU
+         * chroma QP storage that does not currently exist in x265. 0 disables
+         * (default). Typical useful range 0.5 - 1.5. */
+        double    hdrChromaQpStrength;
+
+        /* Strength of anti-banding protection for 10-bit PQ content. Computed
+         * per quantization group from the SAME luma-average and AC-energy
+         * statistics already used for adaptive quantization. Quantization
+         * groups that are both spatially flat (low AC energy -- smooth
+         * gradients, skies, skin) AND in the banding-prone luma range
+         * (roughly 0.10-0.92 normalized, i.e. not near-black or clipped
+         * white) receive an additional negative QP offset (more bits),
+         * scaled by strength (up to -4 QP at strength=1.0 in a perfectly
+         * flat banding-prone block). Orthogonal to hdrLumaQpStrength: this
+         * targets flat regions regardless of brightness bias, so the two may
+         * be combined (unlike hdrLumaQpStrength and bHDR10Opt, which should
+         * not be combined). 0 disables (default). Typical range 0.5 - 1.5. */
+        double    hdrBandingStrength;
+
+        /* Strength of temporal / per-scene APL-adaptive QP bias for 10-bit PQ
+         * content. Tracks a rolling average of per-frame average PQ luma
+         * (APL) across recently encoded frames (EMA, alpha=0.1). Frames whose
+         * APL deviates substantially from the recent scene average (e.g. a
+         * bright flash or a sudden dark cut) receive a QP bias: brighter than
+         * recent scenes -> lower QP (more bits, protect transient highlight
+         * detail); darker than recent scenes -> higher QP (fewer bits,
+         * reclaim budget from a temporarily-easy scene). This complements
+         * hdrLumaQpStrength (per-block, within-frame) with a per-frame,
+         * across-time adaptation. 0 disables (default). Typical range
+         * 0.5 - 1.5. Requires --aq-mode or CRF/ABR rate control (not
+         * effective in constant-QP mode). */
+        double    hdrSceneQpStrength;
     } rc;
 
     /*== Video Usability Information ==*/

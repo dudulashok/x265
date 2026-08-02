@@ -199,6 +199,7 @@ RateControl::RateControl(x265_param& p, Encoder *top)
     m_partialResidualCost = 0;
     m_rateFactorMaxIncrement = 0;
     m_rateFactorMaxDecrement = 0;
+    m_hdrAplRunningAvg = -1.0;
     m_fps = (double)m_param->fpsNum / m_param->fpsDenom;
     m_startEndOrder.set(0);
     m_bTerminated = false;
@@ -1598,6 +1599,27 @@ int RateControl::rateControlStart(Frame* curFrame, RateControlEntry* rce, Encode
          * the scene-transition mini-gop */
 
         double q = x265_qScale2qp(rateEstimateQscale(curFrame, rce));
+
+        if (m_param->rc.hdrSceneQpStrength > 0 && curFrame->m_lowres.hdrFrameAvgLuma >= 0.0)
+        {
+            /* Temporal / per-scene APL-adaptive QP bias. Frames whose average
+             * PQ luma (APL) deviates substantially from a rolling average of
+             * recent frames get a QP bias: brighter than recent scenes ->
+             * lower QP (protect transient highlight detail, e.g. a flash or
+             * fireworks); darker than recent scenes -> higher QP (shadows are
+             * less bit-critical; reclaim budget from a temporarily-easy dark
+             * scene). This complements hdrLumaQpStrength (per-block, within-
+             * frame) with a per-frame, across-time adaptation. */
+            double apl = curFrame->m_lowres.hdrFrameAvgLuma;
+            if (m_hdrAplRunningAvg < 0.0)
+                m_hdrAplRunningAvg = apl;
+            double delta = apl - m_hdrAplRunningAvg;
+            double deltaNorm = x265_clip3(-1.0, 1.0, delta / 512.0);
+            double bias = -m_param->rc.hdrSceneQpStrength * 2.0 * deltaNorm;
+            q += bias;
+            m_hdrAplRunningAvg = 0.9 * m_hdrAplRunningAvg + 0.1 * apl;
+        }
+
         q = x265_clip3((double)m_param->rc.qpMin, (double)m_param->rc.qpMax, q);
         m_qp = int(q + 0.5);
         q = m_isGrainEnabled ? m_qp : q;

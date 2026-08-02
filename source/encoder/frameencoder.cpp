@@ -706,6 +706,27 @@ void FrameEncoder::compressFrame(int layer)
         slice->m_chromaQpOffset[1] = slice->m_pps->chromaQpOffset[1] + qpCr < -12 ? (qpCr + (-12 - (slice->m_pps->chromaQpOffset[1] + qpCr))) : qpCr;
     }
 
+    if (m_param->rc.hdrChromaQpStrength > 0 && m_frame[layer]->m_lowres.hdrFrameAvgLuma >= 0.0)
+    {
+        /* Frame-level WCG chroma-adaptive QP. BT.2020 wide-gamut chroma is
+         * most visible to the HVS in the bright-midtone range of PQ (roughly
+         * 0.55-0.75 normalized 10-bit luma); frames whose average picture
+         * level (APL) falls in that band receive an additional negative
+         * chroma QP offset (more chroma bits), scaled by strength up to -6 QP
+         * at strength=1.0, on top of any bHDR10Opt chroma offset above. This
+         * is a FRAME-level control (one offset per frame, not per-CU): a true
+         * per-CU version would require per-CU chroma QP storage that does
+         * not currently exist in x265's CU data structures. */
+        double aplNorm = x265_clip3(0.0, 1.0, m_frame[layer]->m_lowres.hdrFrameAvgLuma / 1023.0);
+        const double peak = 0.65, sigma = 0.18;
+        double dist = (aplNorm - peak) / sigma;
+        double protect = exp(-0.5 * dist * dist);   /* gaussian weight, 0..1 */
+        int extraOffset = (int)floor(-m_param->rc.hdrChromaQpStrength * 6.0 * protect + 0.5);
+        extraOffset = x265_clip3(-12, 0, extraOffset);
+        slice->m_chromaQpOffset[0] = x265_clip3(-12, 0, slice->m_chromaQpOffset[0] + extraOffset);
+        slice->m_chromaQpOffset[1] = x265_clip3(-12, 0, slice->m_chromaQpOffset[1] + extraOffset);
+    }
+
     if (m_param->bOptQpPPS && m_param->bRepeatHeaders)
     {
         ScopedLock qpLock(m_top->m_sliceQpLock);

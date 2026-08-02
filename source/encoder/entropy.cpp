@@ -876,7 +876,27 @@ void Entropy::codeScalingList(const ScalingList& scalingList)
             int predList = scalingList.checkPredMode(sizeId, listId);
             WRITE_FLAG(predList < 0, "scaling_list_pred_mode_flag");
             if (predList >= 0)
-                WRITE_UVLC(listId - predList, "scaling_list_pred_matrix_id_delta");
+            {
+                /* BUGFIX: per HEVC spec 7.4.5, scaling_list_pred_matrix_id_delta
+                 * is a STEP COUNT, not a raw matrixId difference: the decoder
+                 * computes refMatrixId = matrixId - delta * (sizeId==3 ? 3 : 1).
+                 * For sizeId==3 (32x32), only matrixId 0 and 3 are ever visited
+                 * (the loop above steps by 3), so predicting matrixId=3 from
+                 * matrixId=0 is ONE step back and must be encoded as delta=1,
+                 * not delta=(listId-predList)=3. The previous code wrote the
+                 * raw difference unconditionally; a conformant decoder (e.g.
+                 * ffmpeg) computes matrix_id_delta * 3 = 9 when it expects a
+                 * value <= matrixId (3), correctly rejects it as invalid, and
+                 * the whole SPS/PPS is dropped ("Invalid delta in scaling list
+                 * data: 9"). Confirmed via ffmpeg round-trip decode: this path
+                 * is hit whenever a 32x32 INTRA and INTER luma list end up
+                 * byte-identical (checkPredMode then predicts listId=3 from
+                 * listId=0), which can happen with any user-supplied scaling
+                 * list file, not just the built-in HDR generator. */
+                int step = (sizeId == 3) ? 3 : 1;
+                WRITE_UVLC((listId - predList) / step, "scaling_list_pred_matrix_id_delta");
+            }
+
             else // DPCM Mode
                 codeScalingList(scalingList, sizeId, listId);
         }

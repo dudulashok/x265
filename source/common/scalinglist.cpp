@@ -175,7 +175,17 @@ ScalingList::~ScalingList()
 /* returns predicted list index if a match is found, else -1 */ 
 int ScalingList::checkPredMode(int size, int list) const
 {
-    for (int predList = list; predList >= 0; predList--)
+    /* BUGFIX: per HEVC spec 7.4.5, for size==3 (32x32) the decoder derives
+     * refMatrixId = matrixId - delta*3, so only predList values reachable by
+     * stepping back in increments of 3 (list, list-3, ...) are actually
+     * expressible in the bitstream -- matching the same step used by the
+     * matrixId iteration itself (see codeScalingList / this same pattern in
+     * entropy.cpp). The previous unconditional predList-- could match
+     * against and return an unreachable predList (e.g. 1 or 2 when list==3),
+     * which the paired fix in Entropy::codeScalingList could not encode
+     * correctly (integer division of a non-multiple-of-3 difference). */
+    int step = (size == 3) ? 3 : 1;
+    for (int predList = list; predList >= 0; predList -= step)
     {
         // check DC value
         if (size < BLOCK_16x16 && m_scalingListDC[size][list] != m_scalingListDC[size][predList])

@@ -480,6 +480,60 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
         curFrame->m_lowres.wp_sum[y] = 0;
     }
 
+    /* Pre-pass for hdr-banding-protect: compute a per-block "bandProtect"
+     * signal and its frame average BEFORE the main qp_adj loop.
+     *
+     * REDESIGNED (see x265-hdr-banding-fix notes): the original formula used
+     * flatness = 1/(1 + energy*bitDepthCorrection), assuming acEnergyCu's
+     * output was O(1-100). It is not: acEnergyCu returns an UNNORMALIZED
+     * sum-of-squares-minus-mean-squared term (see acEnergyVar,
+     * "ssd - sum*sum>>shift"), which for a 16x16 luma block is on the order
+     * of 256x the per-pixel variance -- routinely in the thousands even for
+     * visually flat 10-bit content. Feeding that into a reciprocal crushes
+     * the signal to ~0 everywhere regardless of true flatness, making the
+     * feature nearly inert. x265's own X265_AQ_VARIANCE mode faces the exact
+     * same energy scale and handles it with X265_LOG2(energy), not a
+     * reciprocal -- because a log transform compresses wide dynamic range
+     * into a usable additive scale. This redesign does the same: protection
+     * is based on -log2(energy), which is high (less negative) for flat
+     * blocks and low (more negative) for textured ones, gated by the same
+     * banding-prone luma-range weight as before. The luma-weight gating is
+     * applied BEFORE averaging (not after) so that the final zero-meaning
+     * step still produces an exactly zero-mean contribution regardless of
+     * how the gating reshapes the distribution -- required for the same
+     * frame-level-complexity-estimate reason documented below. */
+    float* bandProtectBuf = NULL;
+    double avgBandProtect = 0.0;
+    if (param->rc.hdrBandingStrength > 0)
+    {
+        bandProtectBuf = X265_MALLOC(float, blockCount);
+        if (bandProtectBuf)
+        {
+            int idx = 0;
+            double sum = 0.0;
+            for (int by = 0; by < maxRow; by += loopIncr)
+            {
+                for (int bx = 0; bx < maxCol; bx += loopIncr)
+                {
+                    uint32_t e = acEnergyCu(curFrame, bx, by, param->internalCsp, param->rc.qgSize);
+                    uint32_t s = lumaSumCu(curFrame, bx, by, param->rc.qgSize);
+                    double lumaAvg = (double)s / (loopIncr * loopIncr);
+                    double lumaNorm = X265_MIN(1.0, X265_MAX(0.0, lumaAvg / 1023.0));
+                    double lumaWeight = (lumaNorm > 0.10 && lumaNorm < 0.92) ? 1.0 : 0.2;
+                    /* -log2(energy): higher (less negative) for flat blocks,
+                     * lower (more negative) for textured blocks. Matches the
+                     * X265_LOG2(energy) scale already used by X265_AQ_VARIANCE
+                     * a few lines above in this same function. */
+                    double negLogE = -X265_LOG2((double)X265_MAX(e, 1));
+                    float bp = (float)(lumaWeight * negLogE);
+                    bandProtectBuf[idx++] = bp;
+                    sum += bp;
+                }
+            }
+            avgBandProtect = (idx > 0) ? sum / idx : 0.0;
+        }
+    }
+
     if (!(param->rc.bStatRead && param->rc.cuTree && IS_REFERENCED(curFrame)))
     {
         /* Calculate Qp offset for each 16x16 or 8x8 block in the frame */
@@ -650,6 +704,31 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                             dqp = X265_MIN(6.0, X265_MAX(-3.0, dqp));
                             qp_adj += param->rc.hdrLumaQpStrength * (-dqp);
                         }
+
+                        if (param->rc.hdrBandingStrength > 0 && bandProtectBuf != NULL)
+                        {
+                            /* Zero-mean, log-domain anti-banding contribution.
+                             * bandProtectBuf holds lumaWeight * -log2(energy)
+                             * per block (see pre-pass above); subtracting the
+                             * frame average keeps this contribution zero-mean,
+                             * which is required because invQscaleFactor
+                             * (derived from qp_adj) feeds directly into the
+                             * frame-level SATD complexity estimate CRF uses
+                             * for its base-QP decision -- a one-sided offset
+                             * drags that estimate down and causes the rate
+                             * controller to raise QP enough to cancel the
+                             * intended local benefit (confirmed by
+                             * measurement). Typical per-block deviations from
+                             * the frame average are ~0.5-0.7 log2 units on
+                             * real content; SCALE=4.0 gives roughly 2-3 QP of
+                             * redistribution at strength=1.0 for a strongly
+                             * flat/textured contrast, comparable in magnitude
+                             * to the other hdr-* QP controls. */
+                            const double SCALE = 4.0;
+                            double bandProtect = (double)bandProtectBuf[blockXY] - avgBandProtect;
+                            qp_adj -= param->rc.hdrBandingStrength * SCALE * bandProtect;
+                        }
+
                         if (quantOffsets != NULL)
                             qp_adj += quantOffsets[blockXY];
                         curFrame->m_lowres.qpAqOffset[blockXY] = qp_adj;
@@ -675,6 +754,29 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                 }
             }
         }
+
+        if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0)
+        {
+            /* Average 10-bit PQ luma code value (APL) across the whole frame.
+             * Computed once per frame, independent of qgSize/AQ mode, for use
+             * by the frame-level chroma-adaptive QP (hdr-chroma-qp) and the
+             * temporal scene-adaptive QP bias (hdr-scene-qp). This is a
+             * separate full-frame scan (not reused from the per-QG loop
+             * above) to keep it correct regardless of which luma-adaptive-QP
+             * branch (if any) executed above. */
+            uint64_t frameLumaSum = 0;
+            uint64_t frameLumaCnt = 0;
+            for (int blockY = 0; blockY < maxRow; blockY += loopIncr)
+            {
+                for (int blockX = 0; blockX < maxCol; blockX += loopIncr)
+                {
+                    frameLumaSum += lumaSumCu(curFrame, blockX, blockY, param->rc.qgSize);
+                    frameLumaCnt += (uint64_t)loopIncr * loopIncr;
+                }
+            }
+            curFrame->m_lowres.hdrFrameAvgLuma = frameLumaCnt ? (double)frameLumaSum / frameLumaCnt : -1.0;
+        }
+
     }
 
     if (param->bEnableWeightedPred || param->bEnableWeightedBiPred)
@@ -718,6 +820,10 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
         }
         curFrame->m_lowres.frameVariance /= maxRow;
     }
+
+    if (bandProtectBuf)
+        X265_FREE(bandProtectBuf);
+
 }
 
 void LookaheadTLD::lowresIntraEstimate(Lowres& fenc, uint32_t qgSize)

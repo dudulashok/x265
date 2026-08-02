@@ -351,6 +351,7 @@ void Lowres::init(PicYuv* origPic, int poc, bool bEnableTemporalFilter)
     frameNum = poc;
     leadingBframes = 0;
     indB = 0;
+    hdrFrameAvgLuma = -1.0;
     memset(costEst, -1, sizeof(costEst));
     memset(weightedCostDelta, 0, sizeof(weightedCostDelta));
 

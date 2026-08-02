@@ -171,6 +171,10 @@ public:
     double m_maxBufferFill;
     bool   m_isFirstMiniGop;
     Predictor m_pred[4];       /* Slice predictors to preidct bits for each Slice type - I,P,Bref and B */
+    /* Rolling average (EMA, alpha=0.1) of per-frame average PQ luma (APL)
+     * across recently encoded frames, used by hdr-scene-qp to detect scene
+     * brightness transitions. -1.0 means not yet initialized. */
+    double m_hdrAplRunningAvg;
     int64_t m_leadingNoBSatd;
     int     m_predType;       /* Type of slice predictors to be used - depends on the slice type */
     double  m_ipOffset;

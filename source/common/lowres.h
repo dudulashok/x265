@@ -182,6 +182,11 @@ struct Lowres : public ReferencePlanes
 
     double ipCostRatio;
 
+    /* Average 10-bit PQ luma code value across the whole frame, computed once
+     * per frame in LookaheadTLD::calcAdaptiveQuantFrame() when hdr-chroma-qp
+     * or hdr-scene-qp is enabled. -1.0 means not computed for this frame. */
+    double hdrFrameAvgLuma;
+
     /* lookahead output data */
     int64_t   costEst[X265_BFRAME_MAX + 2][X265_BFRAME_MAX + 2];
     int64_t   costEstAq[X265_BFRAME_MAX + 2][X265_BFRAME_MAX + 2];
