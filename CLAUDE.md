@@ -272,8 +272,41 @@ file plus that repo are the reference points for continuing development.
       applies in both B-slice and P/I branches of `rateEstimateQscale`).
 - [ ] **Subjective pass on an HDR display** for the two subjective tools before any
       further metric-driven tuning of them.
+- [ ] **wSSE-weighted RDO** (new tool, highest-value of the 2026-08 idea review): apply the
+      JVET luma-dependent weight as a *distortion weight* in the RD cost instead of (or on
+      top of) the `--hdr-luma-qp` QP offset — finer-grained than per-QG QP, spends no
+      QP-delta bits, directly optimizes wPSNR. Plumb as a third modified-cost flavor next
+      to psy-rd / `--ssim-rd` in `RDCost` (`rdcost.h`, `analysis.cpp:326`). Keep the weight
+      consistent between mode-decision lambda and RDOQ lambda, and cover the SATD-based
+      early-out paths. Inherits the JVET dark-content model assumption — pair with the
+      content-adaptive item above. Encoder-side only, fully conformant.
+- [ ] **Measured MaxCLL/MaxFALL → CLL SEI**: x265 already measures per-frame max/avg luma
+      (`picyuv.cpp:515`, `planeClipAndMax`) and aggregates `m_maxCLL`/`m_maxFALL`
+      (`encoder.cpp:3216`) but only for CSV; the SEI (`encoder.cpp:3490`) trusts user input.
+      Close the loop via 2-pass (measure in pass 1, emit in pass 2 — SEI precedes frame 0).
+      Fix the definition too: CTA-861.3 wants max over pixels of max(R,G,B) in *linear
+      light* (nits via PQ EOTF), not max luma code level, which underestimates saturated
+      colors. SEI-only, conformant, display-side benefit.
+- [ ] **VTM HDR lambda tables**: try VTM's PQ-tuned QP-to-lambda and chroma lambda
+      weighting in x265's lambda setup; cheap to test with the existing wPSNR harness.
+      Reimplement the concept, don't port code (BSD→GPLv2 is fine but the commercial
+      dual-license makes copied code a relicensing problem).
 - [ ] **Upstream prep** when results justify it: 4-config CI build check, clang-format on
       the diff, CONTRIBUTING.md CLA flow (mailing list or PR).
+
+### Evaluated and rejected (2026-08 idea review — don't re-derive)
+
+- **JCCR** (VVC joint chroma residual coding): bitstream syntax an HEVC decoder cannot
+  parse; no encoder-side emulation exists. Slice-level cb/cr QP offsets remain the only
+  conformant chroma-allocation knob.
+- **Dependent Quantization** (VVC): the two-quantizer state machine is decoder-normative;
+  HEVC Main10 has one dequantizer. Impossible in a conformant stream. RDOQ
+  (`--rdoq-level`) is the conformant cousin and already exists.
+- **Sign Data Hiding**: already an HEVC tool and already on by default in x265
+  (`bEnableSignHiding`, `param.cpp:250`). Nothing to build.
+- **VMAF-in-the-loop RDO**: frame-level metric with temporal features; cannot decompose
+  to a per-block cost at RDO call rates. (Mode-decision metrics are encoder-side and
+  decoder-safe in general — the objection is cost, not conformance.)
 
 ## Further reading
 
