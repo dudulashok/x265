@@ -508,7 +508,8 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
         !(param->rc.bStatRead && param->rc.cuTree && IS_REFERENCED(curFrame)))
     {
         bandProtectBuf = X265_MALLOC(float, blockCount);
-        if (bandProtectBuf)
+        float* bandWeightBuf = X265_MALLOC(float, blockCount);
+        if (bandProtectBuf && bandWeightBuf)
         {
             int idx = 0;
             double sum = 0.0;
@@ -526,12 +527,36 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                      * X265_LOG2(energy) scale already used by X265_AQ_VARIANCE
                      * a few lines above in this same function. */
                     double negLogE = -X265_LOG2((double)X265_MAX(e, 1));
-                    float bp = (float)(lumaWeight * negLogE);
-                    bandProtectBuf[idx++] = bp;
-                    sum += bp;
+                    bandProtectBuf[idx] = (float)negLogE;
+                    bandWeightBuf[idx] = (float)lumaWeight;
+                    idx++;
+                    sum += negLogE;
                 }
             }
-            avgBandProtect = (idx > 0) ? sum / idx : 0.0;
+            /* BUGFIX: the previous formulation stored lumaWeight * negLogE and
+             * zero-meant that. negLogE is O(-20) for typical 10-bit blocks, so
+             * multiplying the RAW value by a 1.0-vs-0.2 gate made the per-block
+             * deviation from the frame average O(+/-15) -- dominated by which
+             * side of the gate a block fell on, not by its flatness -- and a
+             * fully flat block (energy clamped to 1, e.g. a letterbox bar) sat
+             * a full ~20 log2 units above the mean. Multiplied by SCALE=4 this
+             * produced qpAqOffsets of +/-60..80: some CUs encoded near-
+             * losslessly, others at the QP ceiling (measured: -16 dB PSNR-Y at
+             * MORE bits on real PQ content). Gate the DEVIATION instead: the
+             * flatness contrast (negLogE - frame mean), clamped to +/-1.5 log2
+             * units for outlier robustness, scaled by the luma-range weight,
+             * then re-zero-meant so the frame-level complexity estimate is
+             * still undisturbed. Max adjustment at strength 1.0 is now
+             * SCALE * 1.5 = 6 QP, comparable to the other hdr-* controls. */
+            double avgNegLogE = (idx > 0) ? sum / idx : 0.0;
+            double contribSum = 0.0;
+            for (int i = 0; i < idx; i++)
+            {
+                double dev = x265_clip3(-1.5, 1.5, (double)bandProtectBuf[i] - avgNegLogE);
+                bandProtectBuf[i] = (float)(bandWeightBuf[i] * dev);
+                contribSum += bandProtectBuf[i];
+            }
+            avgBandProtect = (idx > 0) ? contribSum / idx : 0.0;
 
             /* BUGFIX: acEnergyCu() accumulates wp_sum/wp_ssd (weighted
              * prediction statistics) as a side effect of acEnergyVar(). The
@@ -546,6 +571,13 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                 curFrame->m_lowres.wp_sum[y] = 0;
             }
         }
+        else
+        {
+            /* partial allocation: disable the feature for this frame */
+            X265_FREE(bandProtectBuf);
+            bandProtectBuf = NULL;
+        }
+        X265_FREE(bandWeightBuf);
     }
 
     if (!(param->rc.bStatRead && param->rc.cuTree && IS_REFERENCED(curFrame)))
