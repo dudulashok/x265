@@ -303,6 +303,45 @@ file plus that repo are the reference points for continuing development.
       joint-chroma RD bias (zero the weaker chroma residual when Cb/Cr anti-correlate —
       the only conformant shadow of VVC JCCR); per-luma-band RDOQ lambda (HDR-tuned
       `--rdoq-level`, folds into the wSSE weighting item).
+- [ ] **Auto-generated HDR10+ dynamic metadata** (`--dhdr10-auto`): today x265 only
+      *inserts* user-supplied ST 2094-40 JSON (`--dhdr10-info`). Compute the per-scene
+      statistics the SEI carries (maxSCL, average maxRGB, luminance-distribution
+      percentiles, optionally bezier anchors) from the pixels during encode and emit the
+      SEI natively — the largest perceived-quality lever on mid-range HDR displays, which
+      tone-map far better with dynamic metadata. Reuses the `dynamicHDR10/` SEI writer
+      (`ENABLE_HDR10_PLUS`) and shares the linear-light stats pass with the measured-CLL
+      item. SEI-only, conformant.
+- [ ] **Grain-aware HDR pipeline**: estimate grain from the source, lightly denoise, and
+      signal Film Grain Characteristics SEI for display-side re-synthesis (the AV1-proven
+      flow; x265's `--film-grain`/`--aom-film-grain` only pass through hand-authored
+      files today). Noise in PQ near-blacks is extremely expensive to code; large
+      compression win on grainy masters. Non-supporting decoders simply show the denoised
+      video. The grain-estimation stage is the real work; plan separately like MCTF.
+- [ ] **SAO banding-repair bias**: SAO band offsets can flatten a banding contour, but
+      x265's SSE-driven SAO RD barely notices 1-codeword steps that glare on a PQ
+      display. In banding-prone CTUs (classifier already exists in the lookahead for
+      `--hdr-banding-protect`), lower SAO lambda / bias toward band-offset mode so SAO
+      engages there — the post-quantization partner to the QP-side banding tool. Evaluate
+      with the CAMBI item. Small, contained change in the SAO cost path.
+- [ ] **Luma-adaptive deblocking offsets**: blocking is far more visible in PQ darks than
+      brights. x265 exposes only one global beta/tc pair (PPS-level,
+      `encoder.cpp:3910-3913`); HEVC allows per-slice overrides. Drive
+      `slice_beta/tc_offset_div2` per frame from `hdrFrameAvgLuma` (already computed in
+      the lookahead): stronger deblocking for dark scenes, weaker for bright detail.
+      Very cheap to implement and test.
+- [ ] **Linear-light weighted-prediction analysis**: weightp fits gain/offset on PQ code
+      values, but real light fades are linear in nits — PQ non-linearity gives HDR fades
+      poor weights and expensive residuals. Fit weights in linear light via LUT, map
+      back; check weightp denominator precision at 10-bit. Helps the same content class
+      `--hdr-scene-qp` targets.
+- [ ] **PQ-aware scenecut detection**: SDR-tuned SAD thresholds under-fire in dark PQ
+      scenes (tiny code-value deltas, large perceptual change) — misplaced IDRs and
+      missed `hdr-scene-qp` re-baselining. Weight lookahead scenecut costs by the wSSE
+      luma factor, or run `--hist-scenecut` on linear-light histogram bins.
+- [ ] **Per-luma-band adaptive rounding offsets**: bias the quantizer rounding offset per
+      luma band (H.264 JM "adaptive rounding" lineage) — round up more aggressively in
+      shadows to keep the low-amplitude texture PQ makes visible, with no QP/lambda
+      change. Tiny footprint in `Quant`, orthogonal to RDOQ, cheap to sweep.
 - [ ] **Upstream prep** when results justify it: 4-config CI build check, clang-format on
       the diff, CONTRIBUTING.md CLA flow (mailing list or PR).
 
