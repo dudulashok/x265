@@ -5,6 +5,21 @@ included) · Preset medium, CRF {22, 26, 30, 34}, single pass, 4 configs (incl. 
 Metrics: JVET-CTC wPSNR, HDR-VDP-3.0.7 (Q_JOD, 4 frames/encode,
 1920x1080 center crop, 62 ppd). See [README.md](README.md) for setup.
 
+## Rate-quality curves — all metrics, all configurations
+
+![Sol Levante rate-quality curves: wPSNR-Y/Cb/Cr, PSNR-Y and HDR-VDP-3 Q_JOD vs bitrate for anchor, hdr10opt, hdrluma and hdrfull](plots/rd_sol10.png)
+
+![whale rate-quality curves: wPSNR-Y/Cb/Cr, PSNR-Y and HDR-VDP-3 Q_JOD vs bitrate for anchor, hdr10opt, hdrluma and hdrfull](plots/rd_whale10.png)
+
+How to read them: a curve up-and-left of another wins BD-rate. On **whale**,
+hdrluma (aqua) sits on top of the anchor (blue) in wPSNR-Y — the −0.8%
+BD-rate — while both hdr10-opt (orange) and hdrfull (yellow) fall below.
+On **Sol Levante**, hdr10-opt and hdrfull shift right (more bits for the
+same luminance quality) but dominate the chroma panels, where hdrluma also
+beats the anchor throughout. The Q_JOD panels show all four configs within
+a narrow band on Sol Levante (hdr10-opt slightly on top at extra rate).
+Regenerate with `python plot_results.py` (matplotlib, reads `results.json`).
+
 ## Headline BD-rates vs anchor (negative = bits saved at equal quality)
 
 | Clip | Config | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr |
