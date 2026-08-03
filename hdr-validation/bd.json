@@ -1,0 +1,38 @@
+[
+ {
+  "clip": "sol10",
+  "config": "hdrluma",
+  "psnr_y": 15.8,
+  "wpsnr_y": 7.34,
+  "wpsnr_cb": -18.67,
+  "wpsnr_cr": -12.83,
+  "vdp_jod": 4.8
+ },
+ {
+  "clip": "sol10",
+  "config": "hdrfull",
+  "psnr_y": 286.26,
+  "wpsnr_y": 254.68,
+  "wpsnr_cb": -59.27,
+  "wpsnr_cr": -51.46,
+  "vdp_jod": 78.75
+ },
+ {
+  "clip": "whale10",
+  "config": "hdrluma",
+  "psnr_y": 1.36,
+  "wpsnr_y": -0.81,
+  "wpsnr_cb": -21.11,
+  "wpsnr_cr": -11.54,
+  "vdp_jod": 17.15
+ },
+ {
+  "clip": "whale10",
+  "config": "hdrfull",
+  "psnr_y": 6.79,
+  "wpsnr_y": 6.71,
+  "wpsnr_cb": -35.33,
+  "wpsnr_cr": -48.49,
+  "vdp_jod": -26.99
+ }
+]
