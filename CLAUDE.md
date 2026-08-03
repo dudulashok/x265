@@ -222,6 +222,59 @@ name; convert before use).
 (default branch `HDR`). Push further HDR work there (`git push hdrproject HDR`); this
 file plus that repo are the reference points for continuing development.
 
+### What the 2026-08 validation established (start from here, don't re-derive)
+
+- `hdrluma` set (`--hdr-pq --hdr-luma-qp --hdr-scene-qp`) is ~wPSNR-Y-neutral on natural
+  content (−0.8% BD-rate on whale) but **+7.3% on dark anime** (Sol Levante) — the JVET
+  dQP model assumes a brightness distribution that dark/graded content violates. This is
+  the main open luma-efficiency problem.
+- The same set beats the in-tree `--hdr10-opt` on luminance metrics by a wide margin
+  (hdr10-opt: +33.1%/+6.4% wPSNR-Y BD-rate) — the continuous model is the right base.
+- Chroma wPSNR gains are large and cheap (−11..−21% BD-rate from `--hdr-pq`'s −2 offsets
+  alone). There may be headroom in *adaptive* chroma offsets, but slice-level cb/cr offsets
+  are the only HEVC-conformant knob (per-CU chroma QP offsets are a RExt feature).
+- `--hdr-banding-protect` and `--hdr-scaling-list` lower PSNR-family metrics *by design*;
+  they can only be judged with a banding metric (CAMBI) or subjectively. Neither has been.
+- `--hdr-scene-qp` has never been exercised: both test segments are temporally steady.
+- HDR-VDP-3 Q_JOD deltas between configs (< 0.1) are inside sampling noise at 4 frames per
+  encode — deepen the sampling before trusting it for decisions.
+- Per-QG QP offsets flow through `qpAqOffset`/`qpCuTreeOffset`/`invQscaleFactor`
+  (`calcAdaptiveQuantFrame`); anything one-sided there corrupts the CRF complexity
+  estimate — keep contributions zero-mean (see the banding-protect fix, `479426a59`).
+- Only CRF was validated. ABR/VBV paths of `hdr-scene-qp` are plumbed but unmeasured.
+
+### TODO — HDR quality / efficiency investigation
+
+- [ ] **Strength sweeps** for `--hdr-luma-qp` (0.25/0.5/0.75/1.0/1.5) on both clips;
+      pick a BD-rate-optimal default instead of the untested 1.0.
+- [ ] **Content-adaptive luma-dQP**: attenuate or re-center the JVET model when the frame
+      APL histogram is dark-dominant (fixes the Sol Levante +7.3% regression without
+      giving up the whale win). The lookahead already computes `hdrFrameAvgLuma`.
+- [ ] **CAMBI into the harness** (libvmaf ships it) and a gradient-heavy PQ test segment
+      (sunset/sky); then actually tune banding-protect's SCALE/clamp — its current ±6 QP
+      at strength 1.0 costs 4 dB wPSNR-Y and is unjustified until banding is measured.
+- [ ] **Exercise `--hdr-scene-qp`**: acquire or synthesize a transient-rich HDR segment
+      (fireworks, flash cuts); verify the bias interacts sanely with VBV and ABR, and add
+      a `rate-control-tests.txt` descriptor.
+- [ ] **Derive `--hdr-scaling-list` from the PQ CSF** instead of the current arbitrary
+      convex ramp; compare against HM's default intra lists as a baseline.
+- [ ] **Cross-check wPSNR** against HDRTools/VTM's implementation (VTM checkout exists at
+      `C:\VVCSoftware_VTM`); add DeltaE-ITP (BT.2124) as a color-aware metric.
+- [ ] **Deepen HDR-VDP-3**: more sampled frames (16+), full-frame instead of 1080p crop,
+      on a machine/runtime that tolerates it — current deltas are unusable for tuning.
+- [ ] **cu-tree interaction**: verify the HDR per-QG offsets seeded into `qpCuTreeOffset`
+      aren't double-propagated by cu-tree; test `--aq-mode 1` vs `3` with the tools on.
+- [ ] **Corpus expansion**: probe `Regatta_3840x2160_HDR10_420_60p.yuv` (frame size is
+      non-integral for 16-bit 4:2:0 at that resolution — format unknown), pull more
+      Netflix Open Content / CableLabs 4K HDR clips; at least one natural-dark and one
+      graded-bright clip per class.
+- [ ] **ABR + VBV sweep** mirroring the CRF one (the RC paths differ; `hdr-scene-qp`
+      applies in both B-slice and P/I branches of `rateEstimateQscale`).
+- [ ] **Subjective pass on an HDR display** for the two subjective tools before any
+      further metric-driven tuning of them.
+- [ ] **Upstream prep** when results justify it: 4-config CI build check, clang-format on
+      the diff, CONTRIBUTING.md CLA flow (mailing list or PR).
+
 ## Further reading
 
 - `CONTRIBUTING.md` — a signed CLA is mandatory before any patch can be merged; covers both
