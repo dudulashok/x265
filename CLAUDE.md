@@ -345,6 +345,41 @@ file plus that repo are the reference points for continuing development.
 - [ ] **Upstream prep** when results justify it: 4-config CI build check, clang-format on
       the diff, CONTRIBUTING.md CLA flow (mailing list or PR).
 
+### TODO — CNN-assisted HDR tools (encoder-side only; a decoder never runs a network)
+
+Integration constraints that apply to every item below: HEVC Main10 conformance rules out
+anything in-loop — CNNs may only analyze, pre-process, or generate metadata. Inference
+must be deterministic (CPU int8, fixed threading — one session per lookahead TLD,
+intra-op threads = 1) so encodes stay reproducible. Runtime behind a CMake gate
+(`ENABLE_CNN_ANALYSIS`, following the `ENABLE_HDR10_PLUS` optional-component pattern):
+ONNX Runtime CPU EP, or hand-rolled int8 conv kernels on x265's own SIMD primitives
+(dependency-free, TestBench-verifiable against a C reference). Lookahead worker jobs must
+never block — models must be small enough to run inline on lowres (~1-5 ms/frame).
+Training labels come from the `hdr-validation/` harness (CAMBI maps for banding, oracle
+per-block QP sweeps for sensitivity); train offline in Python, export ONNX. New params
+(`--cnn-aq <model>`, `--cnn-aq-strength`) follow the 7-step API checklist.
+
+- [ ] **CNN perceptual sensitivity maps in the lookahead** (highest value, lowest risk):
+      small int8 CNN (<100k params) on the half-res `m_lowres` luma inside
+      `calcAdaptiveQuantFrame()`, emitting per-QG maps — banding-proneness (learned
+      replacement for the `--hdr-banding-protect` variance gate), PQ-aware texture
+      masking / dark-detail visibility (learned form of the JVET dQP model), saliency.
+      Output is an additive `qp_adj` term through the existing
+      `qpAqOffset`/`qpCuTreeOffset`/`invQscaleFactor` plumbing — subject to the same
+      zero-mean constraint as every other AQ contribution.
+- [ ] **Per-frame content classifier driving tool strengths**: tiny model (pooled lowres
+      features) classifying dark-graded vs natural-bright, fades, grain level; modulates
+      `--hdr-luma-qp` / `--hdr-scene-qp` / deblock-offset strengths per frame. The
+      learned version of the content-adaptive re-centering item; consumed in
+      `RateControl` and per-frame parameter decisions.
+- [ ] **CNN-assisted HDR10+ curve generation**: better bezier tone-map anchors than raw
+      percentiles for the `--dhdr10-auto` item's SEI writer. Pure metadata, zero
+      conformance risk; depends on `--dhdr10-auto` existing first.
+- [ ] **CNN pre-filters (denoise/deband) and CU-split prediction** (later tier, plan
+      separately): full-res pre-filtering pairs with MCTF and the grain-aware FGC
+      pipeline; split prediction in `Analysis::compressCTU()` buys speed that converts
+      to quality via slower presets at equal encode time.
+
 ### Evaluated and rejected (2026-08 idea review — don't re-derive)
 
 - **JCCR** (VVC joint chroma residual coding): bitstream syntax an HEVC decoder cannot
