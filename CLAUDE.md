@@ -288,9 +288,21 @@ file plus that repo are the reference points for continuing development.
       light* (nits via PQ EOTF), not max luma code level, which underestimates saturated
       colors. SEI-only, conformant, display-side benefit.
 - [ ] **VTM HDR lambda tables**: try VTM's PQ-tuned QP-to-lambda and chroma lambda
-      weighting in x265's lambda setup; cheap to test with the existing wPSNR harness.
-      Reimplement the concept, don't port code (BSD→GPLv2 is fine but the commercial
-      dual-license makes copied code a relicensing problem).
+      weighting in x265's lambda setup, plus the temporal-layer lambda/QP cascade models
+      (x265's fixed ipratio/pbratio vs VTM's QP-adaptive ones); cheap to test with the
+      existing wPSNR harness. Reimplement the concept, don't port code (BSD→GPLv2 is fine
+      but the commercial dual-license makes copied code a relicensing problem).
+- [ ] **MCTF temporal pre-filter** (`--mctf`, biggest single item — plan separately before
+      starting): port the *concept* of HM/VTM GOP-based motion-compensated temporal
+      filtering (AV1 alt-ref filtering is the same idea) into the frame-input/lookahead
+      path before `calcAdaptiveQuantFrame`. Typically 2-5% BD-rate on noisy sources,
+      encoder-side only, zero syntax impact. Design questions to settle in its own plan:
+      filter strength per temporal layer, ME reuse from lookahead vs dedicated search,
+      HIGH_BIT_DEPTH paths, frame-latency interaction with `--frame-threads`.
+- [ ] **Experiments** (cheap; keep only if they measure well on the harness):
+      joint-chroma RD bias (zero the weaker chroma residual when Cb/Cr anti-correlate —
+      the only conformant shadow of VVC JCCR); per-luma-band RDOQ lambda (HDR-tuned
+      `--rdoq-level`, folds into the wSSE weighting item).
 - [ ] **Upstream prep** when results justify it: 4-config CI build check, clang-format on
       the diff, CONTRIBUTING.md CLA flow (mailing list or PR).
 
