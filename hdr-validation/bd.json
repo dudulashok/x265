@@ -1,6 +1,15 @@
 [
  {
   "clip": "sol10",
+  "config": "hdr10opt",
+  "psnr_y": 42.41,
+  "wpsnr_y": 33.11,
+  "wpsnr_cb": -56.27,
+  "wpsnr_cr": -49.62,
+  "vdp_jod": 6.75
+ },
+ {
+  "clip": "sol10",
   "config": "hdrluma",
   "psnr_y": 15.8,
   "wpsnr_y": 7.34,
@@ -16,6 +25,15 @@
   "wpsnr_cb": -59.27,
   "wpsnr_cr": -51.46,
   "vdp_jod": 78.75
+ },
+ {
+  "clip": "whale10",
+  "config": "hdr10opt",
+  "psnr_y": 8.99,
+  "wpsnr_y": 6.39,
+  "wpsnr_cb": -56.25,
+  "wpsnr_cr": -49.43,
+  "vdp_jod": -3.34
  },
  {
   "clip": "whale10",

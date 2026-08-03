@@ -1,7 +1,7 @@
 # HDR tools validation results — real HDR10 PQ content
 
 Date: 2026-08-03 · Encoder: `HDR` branch @ `479426a59` (banding-protect fix
-included) · Preset medium, CRF {22, 26, 30, 34}, single pass ·
+included) · Preset medium, CRF {22, 26, 30, 34}, single pass, 4 configs (incl. --hdr10-opt baseline) ·
 Metrics: JVET-CTC wPSNR, HDR-VDP-3.0.7 (Q_JOD, 4 frames/encode,
 1920x1080 center crop, 62 ppd). See [README.md](README.md) for setup.
 
@@ -9,10 +9,28 @@ Metrics: JVET-CTC wPSNR, HDR-VDP-3.0.7 (Q_JOD, 4 frames/encode,
 
 | Clip | Config | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr |
 |---|---|---:|---:|---:|---:|
+| Sol Levante | hdr10opt (in-tree) | +42.4% | +33.1% | −56.3% | −49.6% |
 | Sol Levante | hdrluma | +15.8% | +7.3% | **−18.7%** | **−12.8%** |
 | Sol Levante | hdrfull | +286% | +255% | **−59.3%** | **−51.5%** |
+| whale | hdr10opt (in-tree) | +9.0% | +6.4% | −56.3% | −49.4% |
 | whale | hdrluma | +1.4% | **−0.8%** | **−21.1%** | **−11.5%** |
 | whale | hdrfull | +6.8% | +6.7% | **−35.3%** | **−48.5%** |
+
+### vs x265's existing `--hdr10-opt`
+
+`hdr10opt` = the anchor command + `--hdr10-opt` (the in-tree fixed JCTVC
+luma-dQP staircase + slice-level chroma offsets). Compared against it, the
+HDR-branch `hdrluma` set achieves its luminance goal far more cheaply:
+wPSNR-Y BD-rate +7.3% vs +33.1% (Sol Levante) and **−0.8% vs +6.4%**
+(whale). `--hdr10-opt` trades luma for chroma much more aggressively
+(−50..−56% chroma wPSNR BD-rate, similar to the six-tool `hdrfull` stack).
+On HDR-VDP-3, `hdr10opt` posts the highest Q_JOD per CRF on Sol Levante
+(9.31 at CRF22 vs 9.23 hdrluma / 9.18 anchor) but at ~31% more bits; on
+whale its Q_JOD tracks slightly below anchor at each CRF at ~18% fewer
+bits. In short: the continuous `--hdr-luma-qp` model is a strictly milder,
+tunable version of the `--hdr10-opt` trade, and `--hdr-chroma-qp` /
+`--hdr-scaling-list` reproduce the aggressive chroma end of it when
+explicitly requested.
 
 HDR-VDP-3 BD-rates are not tabulated: with 4 sampled frames per encode the
 Q_JOD spread between configs (0.02–0.09 JOD) is within sampling noise and
@@ -83,6 +101,7 @@ kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD
 | Config | CRF22 | CRF26 | CRF30 | CRF34 |
 |---|---|---|---|---|
 | anchor | 33493 \| 43.71 \| 42.71 \| 44.03 \| 45.42 \| 9.18 | 20121 \| 41.27 \| 40.28 \| 41.78 \| 43.92 \| 8.92 | 11466 \| 39.00 \| 38.00 \| 39.70 \| 42.69 \| 8.58 | 6487 \| 37.02 \| 35.99 \| 38.35 \| 41.76 \| 8.20 |
+| hdr10opt | 44035 \| 44.01 \| 43.39 \| 47.56 \| 47.66 \| 9.31 | 28219 \| 41.49 \| 40.86 \| 45.75 \| 46.33 \| 9.10 | 18342 \| 39.19 \| 38.50 \| 44.54 \| 45.41 \| 8.83 | 11834 \| 37.23 \| 36.43 \| 43.31 \| 44.60 \| 8.51 |
 | hdrluma | 37643 \| 43.62 \| 43.00 \| 45.61 \| 46.29 \| 9.23 | 22467 \| 41.14 \| 40.49 \| 43.03 \| 44.57 \| 8.95 | 12985 \| 38.86 \| 38.15 \| 40.91 \| 43.22 \| 8.63 | 7237 \| 36.92 \| 36.10 \| 39.12 \| 42.16 \| 8.24 |
 | hdrfull | 65670 \| 40.22 \| 39.63 \| 50.70 \| 50.14 \| 9.25 | 37600 \| 38.44 \| 37.73 \| 48.49 \| 48.07 \| 8.97 | 21910 \| 36.85 \| 36.01 \| 46.17 \| 46.25 \| 8.62 | 13101 \| 35.48 \| 34.53 \| 43.86 \| 44.79 \| 8.21 |
 
@@ -91,6 +110,7 @@ kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD
 | Config | CRF22 | CRF26 | CRF30 | CRF34 |
 |---|---|---|---|---|
 | anchor | 6159 \| 49.96 \| 51.79 \| 53.11 \| 57.41 \| 8.47 | 3744 \| 47.77 \| 49.45 \| 51.64 \| 55.76 \| 8.35 | 2292 \| 45.41 \| 46.92 \| 50.02 \| 53.93 \| 8.17 | 1435 \| 42.95 \| 44.31 \| 48.66 \| 53.32 \| 7.97 |
+| hdr10opt | 5032 \| 48.69 \| 50.59 \| 54.00 \| 58.34 \| 8.44 | 3071 \| 46.38 \| 48.10 \| 52.96 \| 57.02 \| 8.29 | 1860 \| 43.95 \| 45.47 \| 52.05 \| 55.96 \| 8.10 | 1099 \| 41.52 \| 42.81 \| 50.98 \| 55.19 \| 7.92 |
 | hdrluma | 4699 \| 48.63 \| 50.50 \| 52.97 \| 57.04 \| 8.38 | 2831 \| 46.32 \| 48.01 \| 51.39 \| 55.56 \| 8.20 | 1681 \| 43.89 \| 45.39 \| 49.93 \| 52.95 \| 7.97 | 986 \| 41.40 \| 42.71 \| 48.23 \| 52.21 \| 7.89 |
 | hdrfull | 2451 \| 45.27 \| 46.80 \| 51.27 \| 55.85 \| 8.32 | 1482 \| 42.96 \| 44.28 \| 50.05 \| 54.68 \| 8.11 | 906 \| 40.70 \| 41.77 \| 48.76 \| 53.43 \| 7.96 | 582 \| 38.62 \| 39.44 \| 47.40 \| 52.24 \| 7.76 |
 

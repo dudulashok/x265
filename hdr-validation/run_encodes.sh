@@ -14,15 +14,17 @@ encode() { # $1 clip $2 fps $3 cfg-name $4 crf; rest: extra args
 }
 
 ANCHOR=(--colorprim bt2020 --transfer smpte2084 --colormatrix bt2020nc --range limited)
+HDR10OPT=("${ANCHOR[@]}" --hdr10-opt)
 HDRLUMA=(--hdr-pq --hdr-luma-qp 1.0 --hdr-scene-qp 1.0)
 HDRFULL=("${HDRLUMA[@]}" --hdr-banding-protect 1.0 --hdr-chroma-qp 1.0 --hdr-scaling-list)
 
 for crf in 22 26 30 34; do
     for clipfps in "sol10.yuv 24" "whale10.yuv 60"; do
         set -- $clipfps
-        encode "$1" "$2" anchor  "$crf" "${ANCHOR[@]}"
-        encode "$1" "$2" hdrluma "$crf" "${HDRLUMA[@]}"
-        encode "$1" "$2" hdrfull "$crf" "${HDRFULL[@]}"
+        encode "$1" "$2" anchor   "$crf" "${ANCHOR[@]}"
+        encode "$1" "$2" hdr10opt "$crf" "${HDR10OPT[@]}"
+        encode "$1" "$2" hdrluma  "$crf" "${HDRLUMA[@]}"
+        encode "$1" "$2" hdrfull  "$crf" "${HDRFULL[@]}"
     done
 done
 echo ALL_ENCODES_DONE

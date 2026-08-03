@@ -212,8 +212,15 @@ members / CLI options, all documented in `doc/reST/cli.rst`:
   single-pass only; the APL rolling average re-baselines at scene cuts.
 
 Metric validation (wPSNR per JVET CTC, HDR-VDP-3 via Octave) against real HDR10 PQ content
-lives in `hdr-validation/` on this branch: encode sweep + metric scripts + results. Local
-4K HDR10 source clips are on this machine under `C:\Videos\HDR\`.
+lives in `hdr-validation/` on this branch: encode sweep + metric scripts + results
+(`README.md` has the exact encode and metric commands; `RESULTS.md` the numbers, including
+the `--hdr10-opt` baseline comparison). Local 4K HDR10 source clips are on this machine
+under `C:\Videos\HDR\` (the Sol Levante file holds 16-bit samples despite the "10bit"-style
+name; convert before use).
+
+**The canonical home for this project is https://github.com/dudulashok/x265-hdr**
+(default branch `HDR`). Push further HDR work there (`git push hdrproject HDR`); this
+file plus that repo are the reference points for continuing development.
 
 ## Further reading
 

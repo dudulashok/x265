@@ -18,7 +18,7 @@ for clip in sol10 whale10; do
         [ -f "$(printf 'vdp/ref_%s_%04d.f32' "$clip" "$i")" ] || \
             $PY prep_frames.py yuv "$clip.yuv" 3840 2160 "vdp/ref_$clip" "$idxs" c1920x1080
     done
-    for cfg in anchor hdrluma hdrfull; do
+    for cfg in anchor hdr10opt hdrluma hdrfull; do
         for crf in 22 26 30 34; do
             key="${clip}_${cfg}_crf${crf}"
             [ -f "$key.hevc" ] || continue
@@ -36,7 +36,7 @@ done
 # 2. build pending job list
 : > vdp_jobs.txt
 for clip in sol10 whale10; do
-    for cfg in anchor hdrluma hdrfull; do
+    for cfg in anchor hdr10opt hdrluma hdrfull; do
         for crf in 22 26 30 34; do
             key="${clip}_${cfg}_crf${crf}"
             for i in ${FR[$clip]}; do

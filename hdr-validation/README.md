@@ -21,20 +21,65 @@ The Sol Levante distribution file holds 16-bit samples; the segment is
 converted to 10-bit LSB-aligned with ffmpeg before encoding
 (`yuv420p16le` → `yuv420p10le`).
 
-## Configurations
+## Configurations and exact commands
 
-CRF sweep {22, 26, 30, 34}, `--preset medium`, single pass:
+CRF sweep {22, 26, 30, 34}, `--preset medium`, single pass. The exact
+encode command for every configuration (substitute `$CLIP` = `sol10.yuv`
+or `whale10.yuv`, `$FPS` = 24 or 60, `$CRF` = 22/26/30/34):
 
-- **anchor** — default x265 + VUI signalling only
-  (`--colorprim bt2020 --transfer smpte2084 --colormatrix bt2020nc --range limited`)
-- **hdrluma** — `--hdr-pq --hdr-luma-qp 1.0 --hdr-scene-qp 1.0`
-  (the tools that target the luminance metrics being validated)
-- **hdrfull** — hdrluma + `--hdr-banding-protect 1.0 --hdr-chroma-qp 1.0 --hdr-scaling-list`
-  (adds the three tools that are *by construction* subjective/chroma
-  trades and expected to lower luminance metrics)
+```sh
+# anchor -- default x265 CLI + VUI signalling only (no HDR coding tools)
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --crf $CRF \
+     --colorprim bt2020 --transfer smpte2084 --colormatrix bt2020nc --range limited \
+     -o out.hevc
+
+# hdr10opt -- anchor + x265's existing --hdr10-opt (the fixed JCTVC
+#             luma-dQP staircase), the in-tree baseline HDR tool
+x265 ... (anchor flags) ... --hdr10-opt -o out.hevc
+
+# hdrluma -- the HDR-branch tools that target the luminance metrics
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --crf $CRF \
+     --hdr-pq --hdr-luma-qp 1.0 --hdr-scene-qp 1.0 -o out.hevc
+
+# hdrfull -- all six HDR-branch tools (adds the subjective/chroma trades)
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --crf $CRF \
+     --hdr-pq --hdr-luma-qp 1.0 --hdr-scene-qp 1.0 \
+     --hdr-banding-protect 1.0 --hdr-chroma-qp 1.0 --hdr-scaling-list -o out.hevc
+```
+
+(`--hdr-pq` supplies the same VUI signalling as the anchor flags, plus
+repeat-headers, SAO and cb/cr QP offsets −2.)
+
+`run_encodes.sh` runs the full 32-encode sweep and is resumable.
 
 Single-tool ablations at CRF 22 (48 frames, whale) are reported in
 RESULTS.md alongside the sweep.
+
+## Exact metric commands
+
+```sh
+# wPSNR + PSNR for one encode (prints JSON; frames decoded via ffmpeg pipe)
+python wpsnr.py sol10.yuv sol10_anchor_crf22.hevc 3840 2160
+
+# whole sweep -> results.json (bitrates from file size; resumable)
+WPSNR_ONLY=1 python metrics.py
+
+# HDR-VDP-3: convert 4 sampled frames of source and encode to linear
+# BT.2020 RGB (absolute cd/m^2, PQ EOTF), 1080p center crop...
+python prep_frames.py yuv  sol10.yuv                  3840 2160 vdp/ref_sol10             24,72,120,168 c1920x1080
+python prep_frames.py hevc sol10_anchor_crf22.hevc    3840 2160 vdp/t_sol10_anchor_crf22  24,72,120,168 c1920x1080
+# ...then evaluate one pair (Q_JOD on stdout; 62 ppd, quality task):
+octave-cli --no-init-file run_hdrvdp.m vdp/t_sol10_anchor_crf22_0024.f32 vdp/ref_sol10_0024.f32 1920 1080
+
+# whole sweep, 4 octave workers, resumable -> vdp_results.txt
+bash vdp_evals.sh
+python merge_vdp.py        # fold per-frame Q_JODs into results.json
+
+# BD-rate tables (all configs vs anchor)
+python bdrate.py
 
 ## Metrics
 
