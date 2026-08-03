@@ -504,7 +504,8 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
      * frame-level-complexity-estimate reason documented below. */
     float* bandProtectBuf = NULL;
     double avgBandProtect = 0.0;
-    if (param->rc.hdrBandingStrength > 0)
+    if (param->rc.hdrBandingStrength > 0 &&
+        !(param->rc.bStatRead && param->rc.cuTree && IS_REFERENCED(curFrame)))
     {
         bandProtectBuf = X265_MALLOC(float, blockCount);
         if (bandProtectBuf)
@@ -531,6 +532,19 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                 }
             }
             avgBandProtect = (idx > 0) ? sum / idx : 0.0;
+
+            /* BUGFIX: acEnergyCu() accumulates wp_sum/wp_ssd (weighted
+             * prediction statistics) as a side effect of acEnergyVar(). The
+             * main qp_adj loop below walks the same blocks and accumulates
+             * them again, so running this pre-pass doubled every frame's
+             * weightp sum/SSD and skewed weight decisions whenever
+             * hdr-banding-protect was enabled. Re-zero the accumulators here
+             * so the main loop counts each block exactly once. */
+            for (int y = 0; y < 3; y++)
+            {
+                curFrame->m_lowres.wp_ssd[y] = 0;
+                curFrame->m_lowres.wp_sum[y] = 0;
+            }
         }
     }
 
@@ -755,28 +769,35 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
             }
         }
 
-        if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0)
-        {
-            /* Average 10-bit PQ luma code value (APL) across the whole frame.
-             * Computed once per frame, independent of qgSize/AQ mode, for use
-             * by the frame-level chroma-adaptive QP (hdr-chroma-qp) and the
-             * temporal scene-adaptive QP bias (hdr-scene-qp). This is a
-             * separate full-frame scan (not reused from the per-QG loop
-             * above) to keep it correct regardless of which luma-adaptive-QP
-             * branch (if any) executed above. */
-            uint64_t frameLumaSum = 0;
-            uint64_t frameLumaCnt = 0;
-            for (int blockY = 0; blockY < maxRow; blockY += loopIncr)
-            {
-                for (int blockX = 0; blockX < maxCol; blockX += loopIncr)
-                {
-                    frameLumaSum += lumaSumCu(curFrame, blockX, blockY, param->rc.qgSize);
-                    frameLumaCnt += (uint64_t)loopIncr * loopIncr;
-                }
-            }
-            curFrame->m_lowres.hdrFrameAvgLuma = frameLumaCnt ? (double)frameLumaSum / frameLumaCnt : -1.0;
-        }
+    }
 
+    if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0)
+    {
+        /* Average 10-bit PQ luma code value (APL) across the whole frame.
+         * Computed once per frame, independent of qgSize/AQ mode, for use
+         * by the frame-level chroma-adaptive QP (hdr-chroma-qp) and the
+         * temporal scene-adaptive QP bias (hdr-scene-qp). This is a
+         * separate full-frame scan (not reused from the per-QG loop above)
+         * to keep it correct regardless of which luma-adaptive-QP branch
+         * (if any) executed above. lumaSumCu() has no side effects, so this
+         * does not disturb the weightp statistics gathered above.
+         *
+         * BUGFIX: this block previously sat inside the AQ block above, which
+         * is skipped for referenced frames when 2-pass stats are read with
+         * cu-tree; hdrFrameAvgLuma then stayed -1.0 for exactly those frames
+         * and hdr-chroma-qp silently switched off for referenced frames but
+         * stayed on for non-referenced ones. Computed unconditionally now. */
+        uint64_t frameLumaSum = 0;
+        uint64_t frameLumaCnt = 0;
+        for (int blockY = 0; blockY < maxRow; blockY += loopIncr)
+        {
+            for (int blockX = 0; blockX < maxCol; blockX += loopIncr)
+            {
+                frameLumaSum += lumaSumCu(curFrame, blockX, blockY, param->rc.qgSize);
+                frameLumaCnt += (uint64_t)loopIncr * loopIncr;
+            }
+        }
+        curFrame->m_lowres.hdrFrameAvgLuma = frameLumaCnt ? (double)frameLumaSum / frameLumaCnt : -1.0;
     }
 
     if (param->bEnableWeightedPred || param->bEnableWeightedBiPred)

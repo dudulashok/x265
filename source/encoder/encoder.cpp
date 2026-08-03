@@ -3634,7 +3634,7 @@ void Encoder::populateHdrScalingList()
      * Un-initialized (malloc'd but never written) arrays contain zeros,
      * causing an integer divide-by-zero FPE.  We therefore fill 8x8 and
      * 16x16 chroma lists with the chroma ramp, then copy them into 32x32
-     * lists 1,2,4,5 — exactly what parseScalingList() does (scalinglist.cpp
+     * lists 1,2,4,5 -- exactly what parseScalingList() does (scalinglist.cpp
      * ~line 320) to handle the same requirement. */
     for (int s = 1; s < ScalingList::NUM_SIZES; s++)
     {
@@ -3919,7 +3919,7 @@ void Encoder::initPPS(PPS *pps)
      * rose from 1.3 (correct) to 15.7 (mismatched) at hdr-chroma-qp
      * strength 0.3 before this fix. */
     pps->pps_slice_chroma_qp_offsets_present_flag =
-        +m_param->bHDR10Opt || (m_param->rc.hdrChromaQpStrength > 0);
+        m_param->bHDR10Opt || (m_param->rc.hdrChromaQpStrength > 0);
     pps->bConstrainedIntraPred = m_param->bEnableConstrainedIntra;
     pps->bUseWeightPred = m_param->bEnableWeightedPred;
     pps->bUseWeightedBiPred = m_param->bEnableWeightedBiPred;
@@ -4841,6 +4841,35 @@ void Encoder::configure(x265_param *p)
         x265_log(p, X265_LOG_WARNING, "maxSlices can not be more than min(rows, MAX_NAL_UNITS-1), force set to %d\n", slicesLimit);
         p->maxSlices = slicesLimit;
     }
+    if (p->bHdrPq)
+    {
+        /* bHdrPq: convenience flag for 10-bit BT.2020/SMPTE ST 2084 (PQ) HDR10
+         * encodes. Sets the VUI colour description, repeat-headers, SAO, and
+         * chroma QP offsets for BT.2020 WCG in one shot. All individual params
+         * remain fully overridable after this block runs. Must run BEFORE the
+         * bHDR10Opt and hdrLumaQpStrength validations below, which check the
+         * VUI values this block establishes. */
+        p->vui.bEnableVideoSignalTypePresentFlag = 1;
+        p->vui.bEnableColorDescriptionPresentFlag = 1;
+        /* the default for all three colour-description fields is 2
+         * ("unspecified"); only an explicit user setting is preserved */
+        if (p->vui.colorPrimaries == 2)          p->vui.colorPrimaries = 9;          /* BT.2020 */
+        if (p->vui.transferCharacteristics == 2) p->vui.transferCharacteristics = 16; /* PQ     */
+        if (p->vui.matrixCoeffs == 2)            p->vui.matrixCoeffs = 9;             /* BT.2020nc */
+        p->vui.bEnableVideoFullRangeFlag = 0;  /* limited range */
+        p->vui.bEnableChromaLocInfoPresentFlag = 1;
+        if (!p->vui.chromaSampleLocTypeTopField)
+            p->vui.chromaSampleLocTypeTopField = p->vui.chromaSampleLocTypeBottomField = 2;
+        p->bRepeatHeaders = 1;
+        p->bEnableSAO = 1;   /* SAO ON: helps PQ banding; keep even if preset would disable */
+        if (p->cbQpOffset == 0)  p->cbQpOffset = -2;  /* protect BT.2020 WCG chroma */
+        if (p->crQpOffset == 0)  p->crQpOffset = -2;
+        x265_log(p, X265_LOG_INFO,
+                 "hdr-pq: BT.2020/PQ VUI set, repeat-headers=1, SAO=1, "
+                 "cbQpOffset=%d, crQpOffset=%d\n",
+                 p->cbQpOffset, p->crQpOffset);
+    }
+
     if (p->bHDR10Opt)
     {
         if (p->internalCsp != X265_CSP_I420 || p->internalBitDepth != 10 || p->vui.colorPrimaries != 9 ||
@@ -4871,31 +4900,6 @@ void Encoder::configure(x265_param *p)
         }
         if (p->bHDR10Opt && p->rc.hdrLumaQpStrength > 0)
             x265_log(p, X265_LOG_WARNING, "hdr-luma-qp and hdr10-opt both adjust luma-adaptive QP; hdr10-opt takes precedence for overlapping blocks.\n");
-    }
-
-    if (p->bHdrPq)
-    {
-        /* bHdrPq: convenience flag for 10-bit BT.2020/SMPTE ST 2084 (PQ) HDR10
-         * encodes. Sets the VUI colour description, repeat-headers, SAO, and
-         * chroma QP offsets for BT.2020 WCG in one shot. All individual params
-         * remain fully overridable after this block runs. */
-        p->vui.bEnableVideoSignalTypePresentFlag = 1;
-        p->vui.bEnableColorDescriptionPresentFlag = 1;
-        if (!p->vui.colorPrimaries)          p->vui.colorPrimaries = 9;          /* BT.2020 */
-        if (!p->vui.transferCharacteristics) p->vui.transferCharacteristics = 16; /* PQ     */
-        if (!p->vui.matrixCoeffs)            p->vui.matrixCoeffs = 9;             /* BT.2020nc */
-        p->vui.bEnableVideoFullRangeFlag = 0;  /* limited range */
-        p->vui.bEnableChromaLocInfoPresentFlag = 1;
-        if (!p->vui.chromaSampleLocTypeTopField)
-            p->vui.chromaSampleLocTypeTopField = p->vui.chromaSampleLocTypeBottomField = 2;
-        p->bRepeatHeaders = 1;
-        p->bEnableSAO = 1;   /* SAO ON: helps PQ banding; keep even if preset would disable */
-        if (p->cbQpOffset == 0)  p->cbQpOffset = -2;  /* protect BT.2020 WCG chroma */
-        if (p->crQpOffset == 0)  p->crQpOffset = -2;
-        x265_log(p, X265_LOG_INFO,
-                 "hdr-pq: BT.2020/PQ VUI set, repeat-headers=1, SAO=1, "
-                 "cbQpOffset=%d, crQpOffset=%d\n",
-                 p->cbQpOffset, p->crQpOffset);
     }
 
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)

@@ -173,8 +173,13 @@ public:
     Predictor m_pred[4];       /* Slice predictors to preidct bits for each Slice type - I,P,Bref and B */
     /* Rolling average (EMA, alpha=0.1) of per-frame average PQ luma (APL)
      * across recently encoded frames, used by hdr-scene-qp to detect scene
-     * brightness transitions. -1.0 means not yet initialized. */
+     * brightness transitions. -1.0 means not yet initialized. Re-baselined
+     * at scene cuts by updateHdrSceneQpBias(). */
     double m_hdrAplRunningAvg;
+    /* Per-frame QP bias derived from the APL deviation, computed once per
+     * frame by updateHdrSceneQpBias() before rateEstimateQscale() and applied
+     * inside the estimation so qpNoVbv/VBV/size predictors plan with it. */
+    double m_hdrSceneQpBias;
     int64_t m_leadingNoBSatd;
     int     m_predType;       /* Type of slice predictors to be used - depends on the slice type */
     double  m_ipOffset;
@@ -310,6 +315,7 @@ protected:
     x265_zone* getZone();
     double getQScale(RateControlEntry *rce, double rateFactor);
     double rateEstimateQscale(Frame* pic, RateControlEntry *rce); // main logic for calculating QP based on ABR
+    void   updateHdrSceneQpBias(Frame* curFrame); // hdr-scene-qp: per-frame APL-adaptive QP bias, called before rateEstimateQscale()
     double tuneAbrQScaleFromFeedback(double qScale);
     double tuneQScaleForZone(RateControlEntry *rce, double qScale); // Tune qScale to adhere to zone budget
     double tuneQscaleForSBRC(Frame* curFrame, double q); // Tune qScale to adhere to segment budget	

@@ -28,3 +28,6 @@ CrowdRun_1920x1080_50_10bit_444.yuv,--preset=superfast --bitrate 7000 --sao --li
 
 #Threaded ME tests
 BasketballDrive_1920x1080_50.y4m,--preset=superfast --threaded-me --rect --amp --qp 28
+
+#HDR tools tests
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-luma-qp 1.0

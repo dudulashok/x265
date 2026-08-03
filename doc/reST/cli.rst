@@ -2495,11 +2495,75 @@ VUI fields must be manually specified.
 	with Bt.2020 color primaries and SMPTE ST.2084 transfer characteristics.
 	It is recommended that AQ-mode be enabled along with this feature. Default disabled.
 
+.. option:: --hdr-pq, --no-hdr-pq
+
+	Convenience flag for 10-bit BT.2020 / SMPTE ST 2084 (PQ) HDR10 encodes.
+	Sets the VUI colour description (colorprim bt2020, transfer smpte2084,
+	colormatrix bt2020nc, limited range, chroma sample location type 2),
+	enables repeat-headers and SAO, and applies chroma QP offsets of -2 for
+	Cb and Cr. All individual parameters remain overridable afterwards.
+	Does not imply :option:`--hdr10-opt` or :option:`--hdr-luma-qp`; a
+	complete HDR10 stream additionally requires :option:`--master-display`
+	and :option:`--max-cll`. Default disabled.
+
+.. option:: --hdr-luma-qp <float>
+
+	Strength of the continuous JVET HDR luma-adaptive QP model for 10-bit
+	BT.2020/PQ content. Applies a per-quantization-group QP offset of
+	strength * -clip3(-3, 6, 0.015 * Yavg - 7.5), where Yavg is the average
+	10-bit luma code value of the group: bright regions receive more bits,
+	shadows fewer, matching the JVET HDR common-test-conditions dQP model.
+	This is the continuous, tunable form of the fixed :option:`--hdr10-opt`
+	staircase; do not enable both (hdr10-opt takes precedence). Requires AQ
+	(:option:`--aq-mode` with non-zero :option:`--aq-strength`). 0 disables.
+	Typical useful range is 0.5 to 1.5. Default 0.
+
+.. option:: --hdr-scaling-list, --no-hdr-scaling-list
+
+	Use built-in quantization scaling lists tuned for 10-bit PQ HDR
+	content: a convex ramp (16 to 48 for luma, 16 to 40 for chroma, in
+	diagonal-scan order) that preserves low/mid spatial-frequency precision
+	(reducing banding in smooth PQ gradients) while relaxing only the
+	highest frequencies; 4x4 lists stay flat. Equivalent to
+	``--scaling-list hdr-pq``. Standard HEVC SPS/PPS syntax, safe for any
+	decoder. Note this is a subjective-quality tool: it typically reduces
+	PSNR-family metrics at a given bitrate. Default disabled.
+
+.. option:: --hdr-chroma-qp <float>
+
+	Strength of frame-level chroma-adaptive QP for 10-bit BT.2020/PQ
+	content. Frames whose average picture level falls in the bright-midtone
+	range where BT.2020 wide-gamut chroma is most visible receive an
+	additional negative chroma QP offset (more chroma bits), up to -6 QP at
+	strength 1.0. This spends luma bits on chroma and will typically lower
+	luminance-based quality metrics; use for subjective chroma quality.
+	0 disables. Typical range 0.5 to 1.5. Default 0.
+
+.. option:: --hdr-banding-protect <float>
+
+	Strength of anti-banding QP protection for 10-bit PQ content.
+	Quantization groups that are spatially flat and in the banding-prone
+	luma range receive a negative QP offset (more bits), balanced by a
+	zero-mean redistribution across the frame. Requires AQ. Evaluate with a
+	banding-specific measure (e.g. CAMBI) rather than PSNR. 0 disables.
+	Typical range 0.5 to 1.5. Default 0.
+
+.. option:: --hdr-scene-qp <float>
+
+	Strength of the temporal, average-picture-level-adaptive QP bias for
+	10-bit PQ content. Frames whose average PQ luma deviates from a rolling
+	average of recent frames get a QP bias: transient bright events (e.g. a
+	flash or fireworks) receive lower QP, transient dark stretches higher
+	QP. The rolling average is re-baselined at scene cuts so a new scene
+	starts unbiased. Effective in single-pass ABR/CRF only (ignored in
+	2-pass and constant-QP modes). 0 disables. Typical range 0.5 to 1.5.
+	Default 0.
+
 .. option:: --dhdr10-info <filename>
 
-	Inserts tone mapping information as an SEI message. It takes as input, 
-	the path to the JSON file containing the Creative Intent Metadata 
-	to be encoded as Dynamic Tone Mapping into the bitstream. 
+	Inserts tone mapping information as an SEI message. It takes as input,
+	the path to the JSON file containing the Creative Intent Metadata
+	to be encoded as Dynamic Tone Mapping into the bitstream.
 	
 	Click `here <https://www.sra.samsung.com/assets/User-data-registered-itu-t-t35-SEI-message-for-ST-2094-40-v1.1.pdf>`__
 	for the syntax of the metadata file. A sample JSON file is available in `the downloads page <https://bitbucket.org/multicoreware/x265_git/downloads/DCIP3_4K_to_400_dynamic.json>`__

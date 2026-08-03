@@ -200,6 +200,7 @@ RateControl::RateControl(x265_param& p, Encoder *top)
     m_rateFactorMaxIncrement = 0;
     m_rateFactorMaxDecrement = 0;
     m_hdrAplRunningAvg = -1.0;
+    m_hdrSceneQpBias = 0.0;
     m_fps = (double)m_param->fpsNum / m_param->fpsDenom;
     m_startEndOrder.set(0);
     m_bTerminated = false;
@@ -1598,27 +1599,17 @@ int RateControl::rateControlStart(Frame* curFrame, RateControlEntry* rce, Encode
          * switch until the next mini-gop to ensure a min qp for all the frames within 
          * the scene-transition mini-gop */
 
-        double q = x265_qScale2qp(rateEstimateQscale(curFrame, rce));
+        /* BUGFIX: the hdr-scene-qp bias was previously added to q AFTER
+         * rateEstimateQscale() returned, so rce->qScale, qpNoVbv,
+         * frameSizePlanned, the frame-size predictors and the VBV clip were
+         * all computed with the unbiased QP; the actual bits then diverged
+         * from the plan every biased frame and the mispredictions fed back
+         * into the predictors. The bias is now computed here, once per frame
+         * in encode order, and applied INSIDE rateEstimateQscale() before
+         * qpNoVbv/clipQscale so the rate-control model plans with it. */
+        updateHdrSceneQpBias(curFrame);
 
-        if (m_param->rc.hdrSceneQpStrength > 0 && curFrame->m_lowres.hdrFrameAvgLuma >= 0.0)
-        {
-            /* Temporal / per-scene APL-adaptive QP bias. Frames whose average
-             * PQ luma (APL) deviates substantially from a rolling average of
-             * recent frames get a QP bias: brighter than recent scenes ->
-             * lower QP (protect transient highlight detail, e.g. a flash or
-             * fireworks); darker than recent scenes -> higher QP (shadows are
-             * less bit-critical; reclaim budget from a temporarily-easy dark
-             * scene). This complements hdrLumaQpStrength (per-block, within-
-             * frame) with a per-frame, across-time adaptation. */
-            double apl = curFrame->m_lowres.hdrFrameAvgLuma;
-            if (m_hdrAplRunningAvg < 0.0)
-                m_hdrAplRunningAvg = apl;
-            double delta = apl - m_hdrAplRunningAvg;
-            double deltaNorm = x265_clip3(-1.0, 1.0, delta / 512.0);
-            double bias = -m_param->rc.hdrSceneQpStrength * 2.0 * deltaNorm;
-            q += bias;
-            m_hdrAplRunningAvg = 0.9 * m_hdrAplRunningAvg + 0.1 * apl;
-        }
+        double q = x265_qScale2qp(rateEstimateQscale(curFrame, rce));
 
         q = x265_clip3((double)m_param->rc.qpMin, (double)m_param->rc.qpMax, q);
         m_qp = int(q + 0.5);
@@ -1947,6 +1938,48 @@ double RateControl::tuneQScaleForGrain(double rcOverflow)
     return q;
 }
 
+/* hdr-scene-qp: compute the per-frame APL-adaptive QP bias. Frames whose
+ * average PQ luma (APL) deviates from a rolling average of recent frames get
+ * a QP bias: brighter than the recent scene -> lower QP (protect transient
+ * highlight detail, e.g. a flash or fireworks); darker -> higher QP (reclaim
+ * budget from a temporarily-easy dark stretch). This complements
+ * hdrLumaQpStrength (per-block, within-frame) with a per-frame, across-time
+ * adaptation.
+ *
+ * Called once per frame from rateControlStart(), in encode order, BEFORE
+ * rateEstimateQscale() so the estimation applies the bias itself and every
+ * downstream consumer (qpNoVbv, VBV clip, frame-size predictors) plans with
+ * the biased QP.
+ *
+ * The rolling average is re-baselined at scene cuts: a cut to a scene with a
+ * different average brightness is the new normal, not a transient, so the
+ * first frame of a new scene starts unbiased instead of dragging the whole
+ * scene toward the previous scene's brightness for the ~10-20 frames the EMA
+ * would otherwise need to converge.
+ *
+ * Single-pass only: in 2-pass, pass-1 statistics already give the allocator a
+ * per-frame complexity picture, and hdrFrameAvgLuma is not computed for
+ * referenced frames in pass 2 (the lookahead AQ block is skipped), so a bias
+ * would apply inconsistently by frame type. */
+void RateControl::updateHdrSceneQpBias(Frame* curFrame)
+{
+    m_hdrSceneQpBias = 0.0;
+    if (m_param->rc.hdrSceneQpStrength <= 0 || m_2pass)
+        return;
+    double apl = curFrame->m_lowres.hdrFrameAvgLuma;
+    if (apl < 0.0)
+        return;
+    if (m_hdrAplRunningAvg < 0.0 || curFrame->m_lowres.bScenecut)
+    {
+        m_hdrAplRunningAvg = apl;
+        return;
+    }
+    double delta = apl - m_hdrAplRunningAvg;
+    double deltaNorm = x265_clip3(-1.0, 1.0, delta / 512.0);
+    m_hdrSceneQpBias = -m_param->rc.hdrSceneQpStrength * 2.0 * deltaNorm;
+    m_hdrAplRunningAvg = 0.9 * m_hdrAplRunningAvg + 0.1 * apl;
+}
+
 double RateControl::rateEstimateQscale(Frame* curFrame, RateControlEntry *rce)
 {
     double q;
@@ -2055,6 +2088,10 @@ double RateControl::rateEstimateQscale(Frame* curFrame, RateControlEntry *rce)
             double qScale = getQScale(rce, m_rateFactorConstant);
             q = x265_qScale2qp(qScale);
         }
+        /* hdr-scene-qp: apply the per-frame APL bias here, before qpNoVbv is
+         * recorded and before the VBV clip, so the RC model plans with it */
+        if (!m_2pass && m_hdrSceneQpBias != 0.0)
+            q += m_hdrSceneQpBias;
         double qScale = x265_qp2qScale(q);
         rce->qpNoVbv = q;
 
@@ -2379,6 +2416,11 @@ double RateControl::rateEstimateQscale(Frame* curFrame, RateControlEntry *rce)
                         x265_qp2qScale(ABR_INIT_QP_MAX);
                 q = X265_MIN(lqmax, q);
             }
+            /* hdr-scene-qp: apply the per-frame APL bias before the step-limit
+             * clip, qpNoVbv assignment and clipQscale() so planned frame size,
+             * predictors and the VBV all see the biased QP */
+            if (!m_2pass && m_hdrSceneQpBias != 0.0)
+                q = x265_qp2qScale(x265_qScale2qp(q) + m_hdrSceneQpBias);
             q = x265_clip3(lqmin, lqmax, q);
             /* Set a min qp at scenechanges and transitions */
             if (m_isSceneTransition)
