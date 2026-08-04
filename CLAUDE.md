@@ -115,7 +115,7 @@ Adding an `x265_param` member requires **all seven** steps (see `CONTRIBUTING.md
 3. Emit it in `x265_param2string()` — same file
 4. Add the `getopt` entry and `--help` text in `source/x265cli.h` and `source/x265cli.cpp`
 5. Document the CLI option in `doc/reST/cli.rst`
-6. Increment `X265_BUILD` in `source/CMakeLists.txt` (currently `218`)
+6. Increment `X265_BUILD` in `source/CMakeLists.txt` (currently `220`)
 7. Add coverage to `source/test/smoke-tests.txt` and `source/test/regression-tests.txt`
 
 `X265_BUILD` is the soname / API build number and is pasted textually into the exported
@@ -192,7 +192,7 @@ it against C.
 ## HDR tools project (branch `HDR`)
 
 The `HDR` branch carries an experimental set of VVC/JVET-inspired HDR coding tools,
-implemented strictly inside HEVC-conformant syntax (no decoder changes). Six `x265_param`
+implemented strictly inside HEVC-conformant syntax (no decoder changes). Eight `x265_param`
 members / CLI options, all documented in `doc/reST/cli.rst`:
 
 - `--hdr-pq` — one-shot BT.2020/PQ VUI signalling + repeat-headers, SAO, chroma QP offsets.
@@ -210,6 +210,16 @@ members / CLI options, all documented in `doc/reST/cli.rst`:
   frame by `RateControl::updateHdrSceneQpBias()` and applied *inside*
   `rateEstimateQscale()` so qpNoVbv, the VBV clip and the size predictors plan with it;
   single-pass only; the APL rolling average re-baselines at scene cuts.
+- `--hdr-wsse-rd <float>` — wSSE-weighted RDO: the JVET wPSNR weight as a per-CTU *lambda*
+  scale at `Search::setLambdaFromQP()`, covering mode-decision, ME and RDOQ lambdas
+  consistently. Weight cache keyed by (poc, ctuAddr) — never derive it from the passed
+  CUData's position/size (slave paths receive sub-CUs). RDOQ scales live on `Quant`, not
+  `QpParam` (its setQpParam early-outs on unchanged QP and would go stale).
+- `--hdr-deblock <float>` — per-frame slice-header beta/tc deblock overrides from frame
+  APL (dark → stronger). The loop filter reads `Slice::m_deblockBeta/TcOffsetDiv2`, which
+  are assigned unconditionally every frame in `compressFrame()` (Slice objects are
+  recycled via the FrameData free list). Force-disabled with `--no-deblock` — signalling
+  overrides without encoder-side filtering would desync encoder and decoder.
 
 Metric validation (wPSNR per JVET CTC, HDR-VDP-3 via Octave) against real HDR10 PQ content
 lives in `hdr-validation/` on this branch: encode sweep + metric scripts + results
@@ -272,14 +282,16 @@ file plus that repo are the reference points for continuing development.
       applies in both B-slice and P/I branches of `rateEstimateQscale`).
 - [ ] **Subjective pass on an HDR display** for the two subjective tools before any
       further metric-driven tuning of them.
-- [ ] **wSSE-weighted RDO** (new tool, highest-value of the 2026-08 idea review): apply the
-      JVET luma-dependent weight as a *distortion weight* in the RD cost instead of (or on
-      top of) the `--hdr-luma-qp` QP offset — finer-grained than per-QG QP, spends no
-      QP-delta bits, directly optimizes wPSNR. Plumb as a third modified-cost flavor next
-      to psy-rd / `--ssim-rd` in `RDCost` (`rdcost.h`, `analysis.cpp:326`). Keep the weight
-      consistent between mode-decision lambda and RDOQ lambda, and cover the SATD-based
-      early-out paths. Inherits the JVET dark-content model assumption — pair with the
-      content-adaptive item above. Encoder-side only, fully conformant.
+- [x] **wSSE-weighted RDO** — implemented 2026-08-04 as `--hdr-wsse-rd <float>`
+      (`c859ad181`). Design differs from the original sketch after review: instead of a
+      fourth cost flavor at ~24 sites, the weight is applied as a per-CTU *lambda* scale
+      at the single choke point `Search::setLambdaFromQP()` (argmin-equivalent, reaches
+      mode-decision + ME + RDOQ lambdas consistently, leaves distortion stats and
+      analysis-reuse untouched). Weight cache is keyed by (poc, ctuAddr) for determinism.
+      **Remaining: metric validation** — strength sweep (0.5/1.0/1.5) on both clips vs
+      baseline and vs the hdrluma set; success = recover Sol Levante's +7.3% without
+      losing the whale win. Still inherits the JVET dark-content model assumption — pair
+      with the content-adaptive item above.
 - [ ] **Measured MaxCLL/MaxFALL → CLL SEI**: x265 already measures per-frame max/avg luma
       (`picyuv.cpp:515`, `planeClipAndMax`) and aggregates `m_maxCLL`/`m_maxFALL`
       (`encoder.cpp:3216`) but only for CSV; the SEI (`encoder.cpp:3490`) trusts user input.
@@ -292,13 +304,15 @@ file plus that repo are the reference points for continuing development.
       (x265's fixed ipratio/pbratio vs VTM's QP-adaptive ones); cheap to test with the
       existing wPSNR harness. Reimplement the concept, don't port code (BSD→GPLv2 is fine
       but the commercial dual-license makes copied code a relicensing problem).
-- [ ] **MCTF temporal pre-filter** (`--mctf`, biggest single item — plan separately before
-      starting): port the *concept* of HM/VTM GOP-based motion-compensated temporal
-      filtering (AV1 alt-ref filtering is the same idea) into the frame-input/lookahead
-      path before `calcAdaptiveQuantFrame`. Typically 2-5% BD-rate on noisy sources,
-      encoder-side only, zero syntax impact. Design questions to settle in its own plan:
-      filter strength per temporal layer, ME reuse from lookahead vs dedicated search,
-      HIGH_BIT_DEPTH paths, frame-latency interaction with `--frame-threads`.
+- [ ] **MCTF temporal pre-filter** — RE-SCOPED 2026-08-04: the rebase onto v4.3 master
+      brought a full upstream MCSTF implementation (`--mcstf`, `--selective-mcstf`,
+      AVX2 kernels, multithreaded ME, HM-equivalent lowres averaging), which covers the
+      original "port HM/VTM MCTF" idea. New scope: *evaluate and HDR-tune upstream
+      MCSTF* — measure it on the PQ corpus with the wPSNR harness, check the
+      interaction with the HDR lookahead stats (its HM-averaging lowres path is gated
+      on `bEnableTemporalFilter`, so HDR stats are unaffected unless enabled —
+      untested combination), and consider PQ-aware filter strength (noise in PQ
+      near-blacks is the expensive case).
 - [ ] **Experiments** (cheap; keep only if they measure well on the harness):
       joint-chroma RD bias (zero the weaker chroma residual when Cb/Cr anti-correlate —
       the only conformant shadow of VVC JCCR); per-luma-band RDOQ lambda (HDR-tuned
@@ -323,12 +337,14 @@ file plus that repo are the reference points for continuing development.
       `--hdr-banding-protect`), lower SAO lambda / bias toward band-offset mode so SAO
       engages there — the post-quantization partner to the QP-side banding tool. Evaluate
       with the CAMBI item. Small, contained change in the SAO cost path.
-- [ ] **Luma-adaptive deblocking offsets**: blocking is far more visible in PQ darks than
-      brights. x265 exposes only one global beta/tc pair (PPS-level,
-      `encoder.cpp:3910-3913`); HEVC allows per-slice overrides. Drive
-      `slice_beta/tc_offset_div2` per frame from `hdrFrameAvgLuma` (already computed in
-      the lookahead): stronger deblocking for dark scenes, weaker for bright detail.
-      Very cheap to implement and test.
+- [x] **Luma-adaptive deblocking offsets** — implemented 2026-08-04 as
+      `--hdr-deblock <float>` (`93610f195`): per-frame slice-header beta/tc overrides
+      from `hdrFrameAvgLuma`, delta = round(strength · clip3(−2, 3, (400 − APL)/150)),
+      on top of `--deblock` base offsets. x265 previously never used slice deblock
+      overrides (PPS flag was hard-coded 0); the loop filter now reads per-slice fields.
+      Verified: default path bit-identical, recon byte-equal to ffmpeg decode with
+      overrides engaged. **Remaining: validation** — wPSNR delta (expect small) +
+      subjective dark-frame check; tune pivot/slope constants if needed.
 - [ ] **Linear-light weighted-prediction analysis**: weightp fits gain/offset on PQ code
       values, but real light fades are linear in nits — PQ non-linearity gives HDR fades
       poor weights and expensive residuals. Fit weights in linear light via LUT, map
