@@ -14,7 +14,7 @@ OCTAVE = os.path.join(HERE, "..", "octave-11.3.0-w64", "mingw64", "bin", "octave
 W, H = 3840, 2160
 CLIPS = {"sol10": {"fps": 24.0, "frames": 192, "vdp_frames": [24, 72, 120, 168]},
          "whale10": {"fps": 60.0, "frames": 300, "vdp_frames": [37, 112, 187, 262]}}
-CONFIGS = ["anchor", "hdr10opt", "hdrluma", "hdrfull"]
+CONFIGS = ["anchor", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10"]
 CRFS = [22, 26, 30, 34]
 
 results = {}

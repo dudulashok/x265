@@ -235,9 +235,14 @@ file plus that repo are the reference points for continuing development.
 ### What the 2026-08 validation established (start from here, don't re-derive)
 
 - `hdrluma` set (`--hdr-pq --hdr-luma-qp --hdr-scene-qp`) is ~wPSNR-Y-neutral on natural
-  content (−0.8% BD-rate on whale) but **+7.3% on dark anime** (Sol Levante) — the JVET
-  dQP model assumes a brightness distribution that dark/graded content violates. This is
-  the main open luma-efficiency problem.
+  content (−0.8% BD-rate on whale) but **+7.3% on dark anime** (Sol Levante).
+  **2026-08-05 CORRECTION (decomposed with an `--hdr-pq`-alone config): that +7.3% is
+  the `--hdr-pq` floor** — its fixed −2/−2 chroma offsets moving bits luma→chroma — not
+  the JVET dQP model, which adds only ~+0.2% on Sol Levante and *gains* −2.2% on whale
+  relative to the floor. The luma/chroma split is an allocation choice (JVET CTC reports
+  Y/Cb/Cr separately); the open item is *adaptive chroma offsets*, not luma re-centering.
+  Also: measured APL says whale10 is dark throughout (APL 108–131) and sol10 is
+  bright-then-dark — the segment folklore ("bright ocean" / "dark anime") is wrong.
 - The same set beats the in-tree `--hdr10-opt` on luminance metrics by a wide margin
   (hdr10-opt: +33.1%/+6.4% wPSNR-Y BD-rate) — the continuous model is the right base.
 - Chroma wPSNR gains are large and cheap (−11..−21% BD-rate from `--hdr-pq`'s −2 offsets
@@ -252,14 +257,28 @@ file plus that repo are the reference points for continuing development.
   (`calcAdaptiveQuantFrame`); anything one-sided there corrupts the CRF complexity
   estimate — keep contributions zero-mean (see the banding-protect fix, `479426a59`).
 - Only CRF was validated. ABR/VBV paths of `hdr-scene-qp` are plumbed but unmeasured.
+- **2026-08-05, `--hdr-wsse-rd` measured: negative.** A pure per-CTU lambda scale
+  (quantizer step unchanged) is off-hull and the damage grows with strength — whale
+  +1.5/+5.4/+12.1% wPSNR-Y vs the hdrpq floor at strengths 0.5/1.0/1.5 (whale's uniform
+  dark APL makes it the clean experiment: uniform lambda-vs-qstep mismatch, no
+  redistribution benefit). The QP-domain `--hdr-luma-qp` stays on-hull and delivers what
+  the lambda tool intended. Tool kept as an off-by-default experiment; any future wSSE
+  work must pair the weight with a matching QP offset or weight mode-decision distortion
+  only. Full numbers in `hdr-validation/RESULTS.md` (2026-08-05 section).
+- `--hdr-deblock 1.0` is wPSNR-neutral-to-slightly-positive (+0.2 sol / −0.7 whale vs
+  floor) with +2..+3 offsets engaged on dark content — no metric harm; value is
+  subjective and still needs the HDR-display pass.
 
 ### TODO — HDR quality / efficiency investigation
 
 - [ ] **Strength sweeps** for `--hdr-luma-qp` (0.25/0.5/0.75/1.0/1.5) on both clips;
       pick a BD-rate-optimal default instead of the untested 1.0.
-- [ ] **Content-adaptive luma-dQP**: attenuate or re-center the JVET model when the frame
-      APL histogram is dark-dominant (fixes the Sol Levante +7.3% regression without
-      giving up the whale win). The lookahead already computes `hdrFrameAvgLuma`.
+- [ ] **Content-adaptive chroma offsets** (RE-SCOPED 2026-08-05, was "content-adaptive
+      luma-dQP" — the +7.3% Sol Levante cost decomposed to `--hdr-pq`'s fixed −2/−2
+      chroma offsets, not the luma model): scale the hdr-pq cb/cr offsets per frame from
+      APL/chroma-energy so dark or chroma-flat content doesn't pay +7% luma for chroma
+      bits it can't use. `hdr-chroma-qp` already has the frame-level plumbing; this is
+      about making the *baseline* −2/−2 adaptive rather than adding more on top.
 - [ ] **CAMBI into the harness** (libvmaf ships it) and a gradient-heavy PQ test segment
       (sunset/sky); then actually tune banding-protect's SCALE/clamp — its current ±6 QP
       at strength 1.0 costs 4 dB wPSNR-Y and is unjustified until banding is measured.
@@ -288,10 +307,10 @@ file plus that repo are the reference points for continuing development.
       at the single choke point `Search::setLambdaFromQP()` (argmin-equivalent, reaches
       mode-decision + ME + RDOQ lambdas consistently, leaves distortion stats and
       analysis-reuse untouched). Weight cache is keyed by (poc, ctuAddr) for determinism.
-      **Remaining: metric validation** — strength sweep (0.5/1.0/1.5) on both clips vs
-      baseline and vs the hdrluma set; success = recover Sol Levante's +7.3% without
-      losing the whale win. Still inherits the JVET dark-content model assumption — pair
-      with the content-adaptive item above.
+      **Measured 2026-08-05: negative** — lambda decoupled from the quantizer step is
+      off-hull; whale +1.5/+5.4/+12.1% wPSNR-Y vs floor at 0.5/1.0/1.5 (see the
+      validation-established section and RESULTS.md). Kept off-by-default; don't pursue
+      as implemented.
 - [ ] **Measured MaxCLL/MaxFALL → CLL SEI**: x265 already measures per-frame max/avg luma
       (`picyuv.cpp:515`, `planeClipAndMax`) and aggregates `m_maxCLL`/`m_maxFALL`
       (`encoder.cpp:3216`) but only for CSV; the SEI (`encoder.cpp:3490`) trusts user input.
@@ -343,8 +362,8 @@ file plus that repo are the reference points for continuing development.
       on top of `--deblock` base offsets. x265 previously never used slice deblock
       overrides (PPS flag was hard-coded 0); the loop filter now reads per-slice fields.
       Verified: default path bit-identical, recon byte-equal to ffmpeg decode with
-      overrides engaged. **Remaining: validation** — wPSNR delta (expect small) +
-      subjective dark-frame check; tune pivot/slope constants if needed.
+      overrides engaged. Measured 2026-08-05: wPSNR-neutral-to-slightly-positive
+      (+0.2 sol / −0.7 whale vs floor). **Remaining: subjective dark-frame pass.**
 - [ ] **Linear-light weighted-prediction analysis**: weightp fits gain/offset on PQ code
       values, but real light fades are linear in nits — PQ non-linearity gives HDR fades
       poor weights and expensive residuals. Fit weights in linear light via LUT, map

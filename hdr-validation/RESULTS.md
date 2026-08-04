@@ -130,3 +130,114 @@ kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD
 | hdrfull | 2451 \| 45.27 \| 46.80 \| 51.27 \| 55.85 \| 8.32 | 1482 \| 42.96 \| 44.28 \| 50.05 \| 54.68 \| 8.11 | 906 \| 40.70 \| 41.77 \| 48.76 \| 53.43 \| 7.96 | 582 \| 38.62 \| 39.44 \| 47.40 \| 52.24 \| 7.76 |
 
 Raw per-encode numbers: [results.json](results.json) · BD-rates: [bd.json](bd.json)
+
+---
+
+# 2026-08-05 — post-rebase sweep: `--hdr-wsse-rd` strengths, `--hdr-deblock`, and the `--hdr-pq` floor
+
+Re-anchored sweep after the rebase onto v4.3 master (encoder binary changed;
+all configs re-encoded, same segments and CRF ladder as above). New tools
+under test: `--hdr-wsse-rd` (wSSE-weighted RDO, per-CTU lambda scale) at
+strengths 0.5/1.0/1.5 and `--hdr-deblock 1.0` (luma-adaptive slice deblock
+offsets). A `hdrpq` config (`--hdr-pq` alone) was added to decompose the
+tool-set results into "the `--hdr-pq` floor" vs "what each luma tool adds".
+
+Note on content: measured APL says the segment labels were misleading —
+`whale10` is dark throughout (APL 108–131 of 1023), `sol10` opens bright
+(APL ~595) and cuts to dark (~185). Interpretations below use the measured
+APL, not the folklore.
+
+## BD-rate vs anchor (%, negative = better)
+
+| clip | config | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr |
+|---|---|---|---|---|---|
+| sol10 | hdrpq | +7.14 | +7.14 | −18.81 | −19.53 |
+| sol10 | hdrluma | +15.80 | +7.34 | −18.67 | −12.83 |
+| sol10 | wsse05 | +7.51 | +6.82 | −18.69 | −18.18 |
+| sol10 | wsse10 | +8.49 | +7.01 | −18.27 | −15.86 |
+| sol10 | wsse15 | +10.43 | +7.84 | −16.69 | −12.28 |
+| sol10 | dbk10 | +7.33 | +7.33 | −18.66 | −19.42 |
+| whale10 | hdrpq | +1.38 | +1.37 | −17.49 | −22.92 |
+| whale10 | hdrluma | +1.36 | −0.81 | −21.11 | −11.54 |
+| whale10 | wsse05 | +3.58 | +2.90 | −15.72 | −20.10 |
+| whale10 | wsse10 | +8.11 | +6.78 | −11.94 | −19.70 |
+| whale10 | wsse15 | +15.59 | +13.47 | −7.48 | −17.39 |
+| whale10 | dbk10 | +0.48 | +0.63 | −17.65 | −22.78 |
+
+## Findings
+
+1. **The "+7.3% dark-anime luma regression" was misattributed.** The
+   `hdrpq` floor alone costs +7.14% wPSNR-Y on sol10; `hdrluma` (floor +
+   luma-qp + scene-qp) costs +7.34%. The JVET luma-dQP model contributes
+   ~+0.2% on sol10 — noise — and **gains −2.2%** on whale10 relative to the
+   floor (−0.81 vs +1.37). The luma cost of the 2026-08 hdrluma result is
+   almost entirely `--hdr-pq`'s fixed −2/−2 chroma QP offsets moving bits
+   from luma to chroma (the same bits that buy the −12..−23% chroma
+   BD-gains). That is an allocation choice, not a luma-model defect — JVET
+   CTC reports Y/Cb/Cr separately for exactly this reason. The
+   "content-adaptive luma-dQP re-centering" TODO item was aimed at the
+   wrong culprit; if anything should adapt to dark content, it is the
+   chroma offsets.
+
+2. **wSSE-weighted RDO as a pure lambda scale is metric-counterproductive,
+   and the damage grows with strength.** Relative to the `hdrpq` floor:
+   whale10 +1.5/+5.4/+12.1% wPSNR-Y at strengths 0.5/1.0/1.5; sol10
+   −0.3/−0.1/+0.7%. whale10 is the clean experiment: with APL ~120 the
+   dQP clips to −3 nearly everywhere, so the tool applies a *uniform*
+   lambda scale with the quantizer step unchanged — and a lambda that no
+   longer matches the quantizer step moves every block off the R-D hull
+   (RDOQ/mode decisions prune or keep coefficients against a q-step the
+   lambda no longer describes). The per-QG **QP-domain** tool
+   (`--hdr-luma-qp`) moves quantizer and lambda together, stays on-hull,
+   and actually delivers the wPSNR gain the lambda tool was hoping for.
+   Verdict: keep `--hdr-wsse-rd` as an off-by-default experiment; do not
+   pursue as implemented. Any future wSSE work should weight *distortion
+   in mode decision only* (leaving RDOQ lambda alone) or pair the weight
+   with a matching per-QG QP offset — i.e. converge back to
+   `--hdr-luma-qp`.
+
+3. **`--hdr-deblock 1.0` is metric-neutral-to-slightly-positive** (+0.19
+   on sol10, −0.74 on whale10 vs floor; the whale10 headers carry +2..+3
+   beta/tc offsets throughout given its low APL). It does what it was
+   designed to do without costing the objective metrics; its actual value
+   (dark-scene blocking visibility) needs the subjective pass.
+
+4. **Chroma gains belong to `--hdr-pq`**, confirmed: the floor alone shows
+   −17..−23% chroma BD-rate; every tool stack inherits them.
+
+## Caveats
+
+- Same two-segment corpus as 2026-08; n=1 per content class.
+- No HDR-VDP-3 this round (wPSNR/PSNR only); the 2026-08 caveat about
+  Q_JOD sampling noise stands.
+- whale10's hdrluma chroma numbers differ from the floor's (−21.1/−11.5 vs
+  −17.5/−22.9): luma-qp's per-QG offsets shift the chroma QP mapping as a
+  side effect; not investigated further.
+
+## Raw rate-quality tables (kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr)
+
+### Sol Levante (3840x2160p24, frames 2088–2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 33493 \| 43.70 \| 42.71 \| 44.03 \| 45.42 | 20121 \| 41.27 \| 40.28 \| 41.78 \| 43.92 | 11466 \| 39.00 \| 38.00 \| 39.70 \| 42.69 | 6487 \| 37.02 \| 35.99 \| 38.35 \| 41.76 |
+| hdrpq | 36027 \| 43.71 \| 42.72 \| 45.48 \| 46.39 | 21490 \| 41.28 \| 40.28 \| 42.86 \| 44.67 | 12393 \| 39.01 \| 38.01 \| 40.73 \| 43.30 | 6966 \| 37.03 \| 36.00 \| 39.05 \| 42.24 |
+| hdrluma | 37643 \| 43.62 \| 43.00 \| 45.61 \| 46.29 | 22467 \| 41.13 \| 40.49 \| 43.03 \| 44.57 | 12985 \| 38.86 \| 38.15 \| 40.91 \| 43.22 | 7237 \| 36.92 \| 36.10 \| 39.12 \| 42.16 |
+| wsse05 | 36131 \| 43.71 \| 42.74 \| 45.49 \| 46.36 | 21561 \| 41.28 \| 40.31 \| 42.86 \| 44.63 | 12408 \| 39.00 \| 38.03 \| 40.73 \| 43.27 | 6972 \| 37.02 \| 36.02 \| 39.05 \| 42.20 |
+| wsse10 | 36242 \| 43.68 \| 42.74 \| 45.48 \| 46.31 | 21624 \| 41.25 \| 40.31 \| 42.85 \| 44.57 | 12437 \| 38.98 \| 38.03 \| 40.72 \| 43.21 | 6974 \| 36.98 \| 36.01 \| 39.04 \| 42.13 |
+| wsse15 | 36371 \| 43.62 \| 42.72 \| 45.44 \| 46.22 | 21685 \| 41.19 \| 40.30 \| 42.80 \| 44.49 | 12467 \| 38.91 \| 38.01 \| 40.65 \| 43.12 | 6960 \| 36.91 \| 35.98 \| 38.98 \| 42.02 |
+| dbk10 | 36018 \| 43.71 \| 42.71 \| 45.48 \| 46.39 | 21507 \| 41.27 \| 40.28 \| 42.86 \| 44.67 | 12404 \| 39.01 \| 38.01 \| 40.72 \| 43.30 | 6975 \| 37.02 \| 36.00 \| 39.04 \| 42.23 |
+
+### whale (3840x2160p60, frames 100–399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 6159 \| 49.96 \| 51.79 \| 53.11 \| 57.41 | 3744 \| 47.77 \| 49.45 \| 51.64 \| 55.76 | 2292 \| 45.41 \| 46.92 \| 50.02 \| 53.93 | 1435 \| 42.95 \| 44.31 \| 48.66 \| 53.32 |
+| hdrpq | 6295 \| 49.96 \| 51.79 \| 53.72 \| 58.21 | 3805 \| 47.78 \| 49.46 \| 52.26 \| 56.49 | 2323 \| 45.41 \| 46.93 \| 50.72 \| 55.03 | 1445 \| 42.93 \| 44.29 \| 49.16 \| 53.59 |
+| hdrluma | 4699 \| 48.63 \| 50.50 \| 52.97 \| 57.04 | 2831 \| 46.32 \| 48.01 \| 51.39 \| 55.56 | 1681 \| 43.89 \| 45.39 \| 49.93 \| 52.95 | 986 \| 41.40 \| 42.71 \| 48.23 \| 52.21 |
+| wsse05 | 6005 \| 49.72 \| 51.56 \| 53.58 \| 58.09 | 3601 \| 47.43 \| 49.12 \| 52.09 \| 56.24 | 2185 \| 44.97 \| 46.50 \| 50.42 \| 54.81 | 1361 \| 42.46 \| 43.80 \| 48.86 \| 52.68 |
+| wsse10 | 5683 \| 49.36 \| 51.22 \| 53.36 \| 57.88 | 3400 \| 46.96 \| 48.65 \| 51.82 \| 56.04 | 2062 \| 44.44 \| 45.95 \| 50.07 \| 54.61 | 1307 \| 41.82 \| 43.13 \| 48.37 \| 52.62 |
+| wsse15 | 5349 \| 48.82 \| 50.69 \| 53.11 \| 57.63 | 3178 \| 46.32 \| 48.01 \| 51.47 \| 55.77 | 1952 \| 43.75 \| 45.23 \| 49.63 \| 54.29 | 1266 \| 41.12 \| 42.35 \| 47.89 \| 52.25 |
+| dbk10 | 6286 \| 50.00 \| 51.83 \| 53.71 \| 58.19 | 3798 \| 47.82 \| 49.49 \| 52.28 \| 56.48 | 2322 \| 45.44 \| 46.96 \| 50.73 \| 55.02 | 1445 \| 42.99 \| 44.34 \| 49.12 \| 53.59 |
+
+Pre-rebase numbers: [results-2026-08-03-prerebase.json](results-2026-08-03-prerebase.json)

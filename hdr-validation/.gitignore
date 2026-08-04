@@ -1,0 +1,6 @@
+# extracted test segments and encode products -- regenerate via README
+*.yuv
+*.hevc
+*.log
+vdp/
+bd_final.json

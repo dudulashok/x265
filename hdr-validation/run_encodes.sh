@@ -1,5 +1,9 @@
 #!/bin/bash
 # CRF sweep: anchor (VUI signalling only) vs HDR tool sets, 2 real HDR10 PQ clips.
+# 2026-08-04: re-anchored on the v4.3 rebase binary; adds the --hdr-wsse-rd
+# strength sweep (0.5/1.0/1.5) and an --hdr-deblock ride-along config.
+# hdr10opt/hdrfull are commented out for this round (their pre-rebase numbers
+# are in results-2026-08-03-prerebase.json / RESULTS.md).
 set -e
 cd "$(dirname "$0")"
 X265=/c/x265_github/x265/build/vc17-x86_64/Release/x265.exe
@@ -17,14 +21,24 @@ ANCHOR=(--colorprim bt2020 --transfer smpte2084 --colormatrix bt2020nc --range l
 HDR10OPT=("${ANCHOR[@]}" --hdr10-opt)
 HDRLUMA=(--hdr-pq --hdr-luma-qp 1.0 --hdr-scene-qp 1.0)
 HDRFULL=("${HDRLUMA[@]}" --hdr-banding-protect 1.0 --hdr-chroma-qp 1.0 --hdr-scaling-list)
+HDRPQ=(--hdr-pq)
+WSSE05=(--hdr-pq --hdr-wsse-rd 0.5)
+WSSE10=(--hdr-pq --hdr-wsse-rd 1.0)
+WSSE15=(--hdr-pq --hdr-wsse-rd 1.5)
+DBK10=(--hdr-pq --hdr-deblock 1.0)
 
 for crf in 22 26 30 34; do
     for clipfps in "sol10.yuv 24" "whale10.yuv 60"; do
         set -- $clipfps
         encode "$1" "$2" anchor   "$crf" "${ANCHOR[@]}"
-        encode "$1" "$2" hdr10opt "$crf" "${HDR10OPT[@]}"
+        # encode "$1" "$2" hdr10opt "$crf" "${HDR10OPT[@]}"
         encode "$1" "$2" hdrluma  "$crf" "${HDRLUMA[@]}"
-        encode "$1" "$2" hdrfull  "$crf" "${HDRFULL[@]}"
+        encode "$1" "$2" hdrpq    "$crf" "${HDRPQ[@]}"
+        # encode "$1" "$2" hdrfull  "$crf" "${HDRFULL[@]}"
+        encode "$1" "$2" wsse05   "$crf" "${WSSE05[@]}"
+        encode "$1" "$2" wsse10   "$crf" "${WSSE10[@]}"
+        encode "$1" "$2" wsse15   "$crf" "${WSSE15[@]}"
+        encode "$1" "$2" dbk10    "$crf" "${DBK10[@]}"
     done
 done
 echo ALL_ENCODES_DONE

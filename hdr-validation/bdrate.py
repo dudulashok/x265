@@ -29,7 +29,7 @@ def series(clip, cfg, field):
 
 rows = []
 for clip in ["sol10", "whale10"]:
-    for cfg in ["hdr10opt", "hdrluma", "hdrfull"]:
+    for cfg in ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10"]:
         row = {"clip": clip, "config": cfg}
         for field in ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr", "vdp_jod"]:
             try:
