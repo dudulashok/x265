@@ -69,6 +69,9 @@ Search::Search()
     m_slice = NULL;
     m_frame = NULL;
     m_maxTUDepth = -1;
+    m_wssePoc = -1;
+    m_wsseCuAddr = -1;
+    m_wsseDqp = 0.0;
 }
 
 bool Search::initSearch(const x265_param& param, ScalingList& scalingList)
@@ -211,14 +214,78 @@ Search::~Search()
     X265_FREE(m_tsRecon);
 }
 
+/* --hdr-wsse-rd: strength-scaled JVET dQP for the CTU containing this CU,
+ * derived from the average original (fenc) luma of the whole CTU. The value
+ * is cached per (poc, ctuAddr); it deliberately keys off m_cuAddr rather
+ * than the CUData's own position/size because most callers pass the CTU
+ * root while the pmode/pme slave paths pass an initSubCU'd sub-CU — both
+ * share m_cuAddr, so master and slaves always agree. */
+double Search::wsseCtuDqp(const CUData& ctu)
+{
+    int poc = m_slice->m_poc;
+    if (m_wssePoc == poc && m_wsseCuAddr == (int32_t)ctu.m_cuAddr)
+        return m_wsseDqp;
+
+    const SPS& sps = *m_slice->m_sps;
+    uint32_t maxCUSize = m_param->maxCUSize;
+    uint32_t pelX = (ctu.m_cuAddr % sps.numCuInWidth) * maxCUSize;
+    uint32_t pelY = (ctu.m_cuAddr / sps.numCuInWidth) * maxCUSize;
+    uint32_t width = X265_MIN(maxCUSize, sps.picWidthInLumaSamples - pelX);
+    uint32_t height = X265_MIN(maxCUSize, sps.picHeightInLumaSamples - pelY);
+
+    const PicYuv* fencPic = m_frame->m_fencPic;
+    const pixel* fenc = fencPic->m_picOrg[0] + pelY * fencPic->m_stride + pelX;
+
+    uint64_t sum;
+    if (width == maxCUSize && height == maxCUSize)
+        /* var packs the pixel sum into its low 32 bits; any SSD overflow in
+         * the high half is irrelevant here */
+        sum = (uint32_t)primitives.cu[g_log2Size[maxCUSize] - 2].var(fenc, fencPic->m_stride);
+    else
+    {
+        /* picture-edge CTU: sum only the valid region so the replicated pad
+         * margin does not bias the average */
+        sum = 0;
+        for (uint32_t y = 0; y < height; y++)
+            for (uint32_t x = 0; x < width; x++)
+                sum += fenc[y * fencPic->m_stride + x];
+    }
+
+    double avg = (double)sum / (width * height);
+    double y10 = avg * (1024.0 / (1 << X265_DEPTH)); /* normalize to 10-bit code values */
+    double dqp = x265_clip3(-3.0, 6.0, 0.015 * y10 - 7.5);
+
+    m_wssePoc = poc;
+    m_wsseCuAddr = (int32_t)ctu.m_cuAddr;
+    m_wsseDqp = m_param->rc.hdrWsseRdStrength * dqp;
+    return m_wsseDqp;
+}
+
 int Search::setLambdaFromQP(const CUData& ctu, int qp, int lambdaQp)
 {
     X265_CHECK(qp >= QP_MIN && qp <= QP_MAX_MAX, "QP used for lambda is out of range\n");
 
-    m_me.setQP(qp);
+    int meQp = qp;
+    uint32_t wsseLambda2Scale = 256, wsseLambdaScale = 256;
+    if (m_param->rc.hdrWsseRdStrength > 0)
+    {
+        /* Apply the wPSNR weight w = 2^(dqpW/3) as a lambda scale: lambda2
+         * (SSE domain) scales by 2^(-dqpW/3), lambda (SAD/SATD amplitude
+         * domain) by its square root 2^(-dqpW/6). ME bit-cost tables are
+         * cached per integer QP, so ME takes the rounded delta instead —
+         * clamped, since BitCost::setQP indexes its tables unchecked. */
+        double dqpW = wsseCtuDqp(ctu);
+        wsseLambda2Scale = (uint32_t)x265_exp2fix8(2.0 * dqpW);
+        wsseLambdaScale = (uint32_t)x265_exp2fix8(dqpW);
+        meQp = x265_clip3(QP_MIN, QP_MAX_MAX, qp - (int)floor(dqpW + 0.5));
+    }
+
+    m_me.setQP(meQp);
+    m_rdCost.setWsseLambdaScales(wsseLambda2Scale, wsseLambdaScale);
     m_rdCost.setQP(*m_slice, lambdaQp < 0 ? qp : lambdaQp);
 
     int quantQP = x265_clip3(QP_MIN, QP_MAX_SPEC, qp);
+    m_quant.setWsseLambdaScales(wsseLambda2Scale, wsseLambdaScale);
     m_quant.setQPforQuant(ctu, quantQP);
     return quantQP;
 }

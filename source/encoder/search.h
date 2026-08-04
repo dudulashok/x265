@@ -292,6 +292,13 @@ public:
     int32_t         m_sliceMaxY;
     int32_t         m_sliceMinY;
 
+    /* --hdr-wsse-rd per-CTU lambda-dQP cache, keyed by (poc, ctuAddr) so
+     * master and pmode/pme slave instances derive identical lambdas for the
+     * same CTU (sub-CU CUData copies share m_cuAddr with their CTU) */
+    int             m_wssePoc;
+    int32_t         m_wsseCuAddr;
+    double          m_wsseDqp;
+
     bool            m_vertRestriction;
 
     MV              m_areaBestMV[5][2][MAX_NUM_REF];
@@ -314,6 +321,7 @@ public:
 
     bool     initSearch(const x265_param& param, ScalingList& scalingList);
     int      setLambdaFromQP(const CUData& ctu, int qp, int lambdaQP = -1); /* returns real quant QP in valid spec range */
+    double   wsseCtuDqp(const CUData& ctu); /* --hdr-wsse-rd strength-scaled JVET dQP for the CTU containing this CU */
 
     // mark temp RD entropy contexts as uninitialized; useful for finding loads without stores
     void     invalidateContexts(int fromDepth);

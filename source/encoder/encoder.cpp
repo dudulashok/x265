@@ -4902,6 +4902,14 @@ void Encoder::configure(x265_param *p)
             x265_log(p, X265_LOG_WARNING, "hdr-luma-qp and hdr10-opt both adjust luma-adaptive QP; hdr10-opt takes precedence for overlapping blocks.\n");
     }
 
+    if (p->rc.hdrWsseRdStrength > 0)
+    {
+        if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
+            x265_log(p, X265_LOG_WARNING, "hdr-wsse-rd assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
+        if (p->rc.hdrLumaQpStrength > 0)
+            x265_log(p, X265_LOG_WARNING, "hdr-wsse-rd and hdr-luma-qp both weight bits toward bright regions; their effects multiply. Consider using only one at full strength.\n");
+    }
+
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)
     {
         if (!p->bRepeatHeaders)

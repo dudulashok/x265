@@ -86,6 +86,11 @@ protected:
 
     int                m_rdoqLevel;
     int32_t            m_psyRdoqScale;  // dynamic range [0,50] * 256 = 14-bits
+    /* FIX8 wSSE-RDO lambda scales (see RDCost); 256 when disabled. Kept
+     * outside QpParam because setQpParam() early-outs when the QP is
+     * unchanged, which would leave a stale weight from the previous CTU. */
+    uint32_t           m_wsseLambda2Scale;
+    uint32_t           m_wsseLambdaScale;
     int16_t*           m_resiDctCoeff;
     int16_t*           m_fencDctCoeff;
     int16_t*           m_fencShortBuf;
@@ -106,6 +111,11 @@ public:
 
     /* CU setup */
     void setQPforQuant(const CUData& ctu, int qp);
+    void setWsseLambdaScales(uint32_t lambda2Scale, uint32_t lambdaScale)
+    {
+        m_wsseLambda2Scale = lambda2Scale;
+        m_wsseLambdaScale = lambdaScale;
+    }
 
     uint32_t transformNxN(const CUData& cu, const pixel* fenc, uint32_t fencStride, const int16_t* residual, uint32_t resiStride, coeff_t* coeff,
                           uint32_t log2TrSize, TextType ttype, uint32_t absPartIdx, bool useTransformSkip);

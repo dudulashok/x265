@@ -2559,6 +2559,24 @@ VUI fields must be manually specified.
 	2-pass and constant-QP modes). 0 disables. Typical range 0.5 to 1.5.
 	Default 0.
 
+.. option:: --hdr-wsse-rd <float>
+
+	Strength of wSSE-weighted rate-distortion optimization for 10-bit PQ
+	content. Applies the JVET wPSNR luma-dependent weight
+	``w(Y) = 2^(dQP(Y)/3)`` with ``dQP(Y) = clip3(-3, 6, 0.015*Yavg - 7.5)``
+	as a per-CTU lambda scale inside all rate-distortion decisions (mode
+	decision, motion estimation and RDOQ), where Yavg is the average 10-bit
+	luma code value of the CTU in the source picture: bright CTUs are coded
+	with a lower lambda (more bits), shadows with a higher one, mirroring
+	the wPSNR error weighting of the JVET HDR common test conditions.
+
+	Unlike :option:`--hdr-luma-qp` this operates in the lambda/distortion
+	domain rather than the QP domain: it spends no delta-QP bits, is not
+	quantized to integer QP steps, and does not feed back into the rate
+	control complexity estimate. Combining both multiplies their effects;
+	prefer one at full strength. Does not require AQ. Assumes 10-bit
+	BT.2020/PQ input. 0 disables. Typical range 0.5 to 1.5. Default 0.
+
 .. option:: --dhdr10-info <filename>
 
 	Inserts tone mapping information as an SEI message. It takes as input,

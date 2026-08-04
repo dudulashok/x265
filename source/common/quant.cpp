@@ -186,6 +186,8 @@ Quant::Quant()
     m_fencShortBuf = NULL;
     m_frameNr      = NULL;
     m_nr           = NULL;
+    m_wsseLambda2Scale = 256;
+    m_wsseLambdaScale  = 256;
 }
 
 bool Quant::init(double psyScale, const ScalingList& scalingList, Entropy& entropy)
@@ -629,6 +631,14 @@ uint32_t Quant::rdoQuant(const CUData& cu, int16_t* dstCoeff, TextType ttype, ui
     const uint32_t trSize = 1 << log2TrSize;
     int64_t lambda2 = m_qpParam[ttype].lambda2;
     int64_t psyScale = ((int64_t)m_psyRdoqScale * m_qpParam[ttype].lambda);
+    if (m_wsseLambda2Scale != 256 || m_wsseLambdaScale != 256)
+    {
+        /* wSSE-RDO: keep the RDOQ lambdas consistent with the weighted
+         * mode-decision lambdas (RDCost::setQP); QpParam itself is never
+         * mutated so its qp-unchanged early-out stays valid. */
+        lambda2 = (lambda2 * m_wsseLambda2Scale) >> 8;
+        psyScale = (psyScale * m_wsseLambdaScale) >> 8;
+    }
     /* unquant constants for measuring distortion. Scaling list quant coefficients have a (1 << 4)
      * scale applied that must be removed during unquant. Note that in real dequant there is clipping
      * at several stages. We skip the clipping for simplicity when measuring RD cost */

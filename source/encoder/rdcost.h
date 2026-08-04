@@ -42,16 +42,34 @@ public:
     uint32_t  m_psyRdBase;
     uint32_t  m_psyRd;
     uint32_t  m_ssimRd;
+    /* FIX8 wSSE-RDO lambda scales, 2^(-dqpW/3) for lambda2 and 2^(-dqpW/6)
+     * for lambda; 256 (unity) when --hdr-wsse-rd is disabled. Applied after
+     * the table lookup in setQP() so the weight composes with whatever QP
+     * selected the base lambda (including the recode lambdaQp paths). */
+    uint32_t  m_wsseLambda2Scale;
+    uint32_t  m_wsseLambdaScale;
     int       m_qp; /* QP used to configure lambda, may be higher than QP_MAX_SPEC but <= QP_MAX_MAX */
+
+    RDCost() : m_wsseLambda2Scale(256), m_wsseLambdaScale(256) {}
 
     void setPsyRdScale(double scale)                { m_psyRdBase = (uint32_t)floor(65536.0 * scale * 0.33); }
     void setSsimRd(int ssimRd) { m_ssimRd = ssimRd; };
+    void setWsseLambdaScales(uint32_t lambda2Scale, uint32_t lambdaScale)
+    {
+        m_wsseLambda2Scale = lambda2Scale;
+        m_wsseLambdaScale = lambdaScale;
+    }
 
     void setQP(const Slice& slice, int qp)
     {
         x265_emms(); /* TODO: if the lambda tables were ints, this would not be necessary */
         m_qp = qp;
         setLambda(x265_lambda2_tab[qp], x265_lambda_tab[qp]);
+        if (m_wsseLambda2Scale != 256 || m_wsseLambdaScale != 256)
+        {
+            m_lambda2 = (m_lambda2 * m_wsseLambda2Scale) >> 8;
+            m_lambda = (m_lambda * m_wsseLambdaScale) >> 8;
+        }
 
         /* Scale PSY RD factor by a slice type factor */
         static const uint32_t psyScaleFix8[3] = { 300, 256, 96 }; /* B, P, I */

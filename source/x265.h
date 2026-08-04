@@ -1918,6 +1918,20 @@ typedef struct x265_param
          * 0.5 - 1.5. Requires --aq-mode or CRF/ABR rate control (not
          * effective in constant-QP mode). */
         double    hdrSceneQpStrength;
+
+        /* Strength of wSSE-weighted rate-distortion optimization for 10-bit
+         * PQ content. Applies the JVET wPSNR luma-dependent weight
+         * w(Y) = 2^(dQP(Y)/3), dQP(Y) = clip3(-3, 6, 0.015*Yavg - 7.5),
+         * as a per-CTU LAMBDA scale inside all RD decisions (mode decision,
+         * motion estimation and RDOQ): bright CTUs get a lower lambda (more
+         * bits), shadows a higher one, mirroring the wPSNR error weighting.
+         * Unlike hdrLumaQpStrength this spends no delta-QP bits, is applied
+         * in the distortion/lambda domain rather than the QP domain, and
+         * does not feed back into the rate-control complexity estimate.
+         * Combining with hdrLumaQpStrength multiplies the two effects; use
+         * one or the other at full strength. Assumes 10-bit BT.2020/PQ
+         * input. 0 disables (default). Typical useful range 0.5 - 1.5. */
+        double    hdrWsseRdStrength;
     } rc;
 
     /*== Video Usability Information ==*/
