@@ -115,7 +115,7 @@ Adding an `x265_param` member requires **all seven** steps (see `CONTRIBUTING.md
 3. Emit it in `x265_param2string()` — same file
 4. Add the `getopt` entry and `--help` text in `source/x265cli.h` and `source/x265cli.cpp`
 5. Document the CLI option in `doc/reST/cli.rst`
-6. Increment `X265_BUILD` in `source/CMakeLists.txt` (currently `216`)
+6. Increment `X265_BUILD` in `source/CMakeLists.txt` (currently `218`)
 7. Add coverage to `source/test/smoke-tests.txt` and `source/test/regression-tests.txt`
 
 `X265_BUILD` is the soname / API build number and is pasted textually into the exported
