@@ -727,6 +727,31 @@ void FrameEncoder::compressFrame(int layer)
         slice->m_chromaQpOffset[1] = x265_clip3(-12, 0, slice->m_chromaQpOffset[1] + extraOffset);
     }
 
+    /* Effective deblocking offsets for this frame. Assigned unconditionally
+     * every frame: Slice objects are recycled through the FrameData free
+     * list, so a conditional assignment could carry a previous frame's
+     * override into a frame that should use the PPS defaults. Must happen
+     * before m_frameFilter.start() and the slice-header coding below so the
+     * loop filter applies exactly what the header signals. */
+    slice->m_deblockBetaOffsetDiv2 = slice->m_pps->deblockingFilterBetaOffsetDiv2;
+    slice->m_deblockTcOffsetDiv2 = slice->m_pps->deblockingFilterTcOffsetDiv2;
+    if (m_param->rc.hdrDeblockStrength > 0 && m_param->bEnableLoopFilter &&
+        m_frame[layer]->m_lowres.hdrFrameAvgLuma >= 0.0)
+    {
+        /* Luma-adaptive deblocking for PQ content: blocking artifacts are
+         * far more visible in PQ darks than in highlights, so dark frames
+         * (low average picture level) get stronger deblocking via positive
+         * slice-level beta/tc offsets and bright frames slightly weaker.
+         * Linear in APL around a mid pivot of 400 (10-bit PQ code, roughly
+         * 60 nits), one offset step per 150 code values, saturating at
+         * +3/-2 at strength 1.0. */
+        double apl10 = m_frame[layer]->m_lowres.hdrFrameAvgLuma;
+        double deltaRaw = x265_clip3(-2.0, 3.0, (400.0 - apl10) / 150.0);
+        int delta = (int)floor(m_param->rc.hdrDeblockStrength * deltaRaw + 0.5);
+        slice->m_deblockBetaOffsetDiv2 = x265_clip3(-6, 6, slice->m_deblockBetaOffsetDiv2 + delta);
+        slice->m_deblockTcOffsetDiv2 = x265_clip3(-6, 6, slice->m_deblockTcOffsetDiv2 + delta);
+    }
+
     if (m_param->bOptQpPPS && m_param->bRepeatHeaders)
     {
         ScopedLock qpLock(m_top->m_sliceQpLock);

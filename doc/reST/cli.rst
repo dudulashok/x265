@@ -2577,6 +2577,23 @@ VUI fields must be manually specified.
 	prefer one at full strength. Does not require AQ. Assumes 10-bit
 	BT.2020/PQ input. 0 disables. Typical range 0.5 to 1.5. Default 0.
 
+.. option:: --hdr-deblock <float>
+
+	Strength of luma-adaptive deblocking-filter offsets for 10-bit PQ
+	content. Blocking artifacts are far more visible in PQ darks than in
+	highlights, so dark frames (low average picture level) receive stronger
+	deblocking via positive slice-level beta/tC offsets, and bright frames
+	slightly weaker filtering. The per-frame delta is linear in the frame's
+	average PQ luma around a mid pivot (10-bit code 400), saturating at
+	+3/-2 offset steps at strength 1.0, added on top of any
+	:option:`--deblock` base offsets and clipped to the HEVC spec range
+	[-6, 6]. Signalled with standard slice-header deblocking overrides
+	(``deblocking_filter_override_enabled_flag``), so streams remain fully
+	conformant. Requires deblocking to be enabled and AQ or weighted
+	prediction (for the frame-level luma analysis; both are on by
+	default). Assumes 10-bit BT.2020/PQ input. 0 disables. Typical range
+	0.5 to 2.0. Default 0.
+
 .. option:: --dhdr10-info <filename>
 
 	Inserts tone mapping information as an SEI message. It takes as input,

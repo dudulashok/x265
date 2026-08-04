@@ -318,6 +318,7 @@ void x265_param_default(x265_param* param)
     param->rc.hdrBandingStrength = 0.0;
     param->rc.hdrSceneQpStrength = 0.0;
     param->rc.hdrWsseRdStrength = 0.0;
+    param->rc.hdrDeblockStrength = 0.0;
 
     param->rc.cuTree = 1;
     param->rc.rfConstantMax = 0;
@@ -1468,6 +1469,7 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("hdr-banding-protect") p->rc.hdrBandingStrength = atof(value);
         OPT("hdr-scene-qp") p->rc.hdrSceneQpStrength = atof(value);
         OPT("hdr-wsse-rd") p->rc.hdrWsseRdStrength = atof(value);
+        OPT("hdr-deblock") p->rc.hdrDeblockStrength = atof(value);
 
 #ifdef SVT_HEVC
         OPT("svt")
@@ -1842,6 +1844,8 @@ int x265_check_params(x265_param* param)
         "qp adaptation range is out of range");
     CHECK(param->rc.hdrWsseRdStrength < 0 || param->rc.hdrWsseRdStrength > 3,
           "hdr-wsse-rd strength must be between 0 and 3");
+    CHECK(param->rc.hdrDeblockStrength < 0 || param->rc.hdrDeblockStrength > 2,
+          "hdr-deblock strength must be between 0 and 2");
     CHECK(param->deblockingFilterTCOffset < -6 || param->deblockingFilterTCOffset > 6,
           "deblocking filter tC offset must be in the range of -6 to +6");
     CHECK(param->deblockingFilterBetaOffset < -6 || param->deblockingFilterBetaOffset > 6,
@@ -2535,6 +2539,8 @@ char *x265_param2string(x265_param* p, int padx, int pady)
         s += sprintf(s, " hdr-scene-qp=%.2f", p->rc.hdrSceneQpStrength);
     if (p->rc.hdrWsseRdStrength > 0)
         s += sprintf(s, " hdr-wsse-rd=%.2f", p->rc.hdrWsseRdStrength);
+    if (p->rc.hdrDeblockStrength > 0)
+        s += sprintf(s, " hdr-deblock=%.2f", p->rc.hdrDeblockStrength);
     BOOL(p->bHdrPq, "hdr-pq");
     BOOL(p->bDhdr10opt, "dhdr10-opt");
     BOOL(p->bEmitIDRRecoverySEI, "idr-recovery-sei");
@@ -3004,6 +3010,7 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->rc.hdrBandingStrength = src->rc.hdrBandingStrength;
     dst->rc.hdrSceneQpStrength = src->rc.hdrSceneQpStrength;
     dst->rc.hdrWsseRdStrength = src->rc.hdrWsseRdStrength;
+    dst->rc.hdrDeblockStrength = src->rc.hdrDeblockStrength;
     dst->vui.aspectRatioIdc = src->vui.aspectRatioIdc;
     dst->vui.sarWidth = src->vui.sarWidth;
     dst->vui.sarHeight = src->vui.sarHeight;

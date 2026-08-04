@@ -1932,6 +1932,18 @@ typedef struct x265_param
          * one or the other at full strength. Assumes 10-bit BT.2020/PQ
          * input. 0 disables (default). Typical useful range 0.5 - 1.5. */
         double    hdrWsseRdStrength;
+
+        /* Strength of luma-adaptive deblocking-filter offsets for 10-bit PQ
+         * content. Computed once per frame from the frame's average PQ luma
+         * level: dark frames (where blocking is most visible on a PQ
+         * display) get stronger deblocking via positive slice-level
+         * beta/tC offsets, bright frames slightly weaker. Signalled with
+         * standard HEVC slice-header deblocking overrides on top of any
+         * --deblock base offsets; the result is clipped to the spec range
+         * [-6, 6]. Requires deblocking to be enabled and AQ or weighted
+         * prediction (for the frame-level luma analysis). 0 disables
+         * (default). Typical useful range 0.5 - 2.0. */
+        double    hdrDeblockStrength;
     } rc;
 
     /*== Video Usability Information ==*/

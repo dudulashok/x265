@@ -32,3 +32,4 @@ BasketballDrive_1920x1080_50.y4m,--preset=superfast --threaded-me --rect --amp -
 #HDR tools tests
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-luma-qp 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-wsse-rd 1.0
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-deblock 1.0

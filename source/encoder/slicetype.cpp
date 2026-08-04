@@ -803,12 +803,13 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
 
     }
 
-    if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0)
+    if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0 || param->rc.hdrDeblockStrength > 0)
     {
         /* Average 10-bit PQ luma code value (APL) across the whole frame.
          * Computed once per frame, independent of qgSize/AQ mode, for use
-         * by the frame-level chroma-adaptive QP (hdr-chroma-qp) and the
-         * temporal scene-adaptive QP bias (hdr-scene-qp). This is a
+         * by the frame-level chroma-adaptive QP (hdr-chroma-qp), the
+         * temporal scene-adaptive QP bias (hdr-scene-qp) and the
+         * luma-adaptive deblocking offsets (hdr-deblock). This is a
          * separate full-frame scan (not reused from the per-QG loop above)
          * to keep it correct regardless of which luma-adaptive-QP branch
          * (if any) executed above. lumaSumCu() has no side effects, so this

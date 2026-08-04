@@ -3927,7 +3927,12 @@ void Encoder::initPPS(PPS *pps)
     pps->bTransformSkipEnabled = m_param->bEnableTransformSkip;
     pps->bSignHideEnabled = m_param->bEnableSignHiding;
 
-    pps->bDeblockingFilterControlPresent = !m_param->bEnableLoopFilter || m_param->deblockingFilterBetaOffset || m_param->deblockingFilterTCOffset;
+    /* hdr-deblock signals per-frame beta/tc offsets through slice-header
+     * deblocking overrides, which requires the control-present and
+     * override-enabled PPS flags */
+    pps->bDeblockingFilterOverrideEnabled = m_param->rc.hdrDeblockStrength > 0;
+    pps->bDeblockingFilterControlPresent = !m_param->bEnableLoopFilter || m_param->deblockingFilterBetaOffset ||
+        m_param->deblockingFilterTCOffset || pps->bDeblockingFilterOverrideEnabled;
     pps->bPicDisableDeblockingFilter = !m_param->bEnableLoopFilter;
     pps->deblockingFilterBetaOffsetDiv2 = m_param->deblockingFilterBetaOffset;
     pps->deblockingFilterTcOffsetDiv2 = m_param->deblockingFilterTCOffset;
@@ -4908,6 +4913,27 @@ void Encoder::configure(x265_param *p)
             x265_log(p, X265_LOG_WARNING, "hdr-wsse-rd assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
         if (p->rc.hdrLumaQpStrength > 0)
             x265_log(p, X265_LOG_WARNING, "hdr-wsse-rd and hdr-luma-qp both weight bits toward bright regions; their effects multiply. Consider using only one at full strength.\n");
+    }
+
+    if (p->rc.hdrDeblockStrength > 0)
+    {
+        if (!p->bEnableLoopFilter)
+        {
+            /* must disable, not merely ignore: signalling slice deblocking
+             * overrides while the encoder-side filter is off would make the
+             * decoder deblock a reconstruction the encoder never filtered */
+            x265_log(p, X265_LOG_WARNING, "hdr-deblock requires the deblocking filter (--deblock); disabling hdr-deblock.\n");
+            p->rc.hdrDeblockStrength = 0;
+        }
+        else if (!p->rc.aqMode && !p->rc.hevcAq && !p->bAQMotion && !p->bEnableWeightedPred && !p->bEnableWeightedBiPred)
+        {
+            /* frame APL is computed in calcAdaptiveQuantFrame(), which the
+             * lookahead only runs when AQ or weighted prediction is active */
+            x265_log(p, X265_LOG_WARNING, "hdr-deblock requires AQ or weighted prediction for frame-level luma analysis; disabling hdr-deblock.\n");
+            p->rc.hdrDeblockStrength = 0;
+        }
+        else if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
+            x265_log(p, X265_LOG_WARNING, "hdr-deblock assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
     }
 
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)

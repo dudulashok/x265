@@ -326,6 +326,7 @@ struct PPS
     bool     bSignHideEnabled;          // use param
 
     bool     bDeblockingFilterControlPresent;
+    bool     bDeblockingFilterOverrideEnabled; // allow slice-level beta/tc overrides (hdr-deblock)
     bool     bPicDisableDeblockingFilter;
 
     int      numRefIdxDefault[2];
@@ -388,6 +389,14 @@ public:
     SliceType   m_origSliceType;
     int         m_sliceQp;
     int         m_chromaQpOffset[2];
+    /* Effective deblocking offsets for this frame; assigned every frame in
+     * FrameEncoder::compressFrame() (PPS values, plus the hdr-deblock delta
+     * when enabled). Read by both the loop filter and the slice-header
+     * writer so signalling and filtering always agree. Slice objects are
+     * recycled through the FrameData free list, so per-frame assignment --
+     * not construction -- is what keeps these current. */
+    int         m_deblockBetaOffsetDiv2;
+    int         m_deblockTcOffsetDiv2;
     int         m_poc;
     int         m_lastIDR;
     int         m_rpsIdx;
@@ -433,6 +442,7 @@ public:
         numRefIdxDefault[1] = 1;
         m_rpsIdx = -1;
         m_chromaQpOffset[0] = m_chromaQpOffset[1] = 0;
+        m_deblockBetaOffsetDiv2 = m_deblockTcOffsetDiv2 = 0;
         m_fieldNum = 0;
 #if  ENABLE_SCC_EXT
         m_lastEncPic = NULL;

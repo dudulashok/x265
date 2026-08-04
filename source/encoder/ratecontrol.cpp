@@ -1958,9 +1958,11 @@ double RateControl::tuneQScaleForGrain(double rcOverflow)
  * would otherwise need to converge.
  *
  * Single-pass only: in 2-pass, pass-1 statistics already give the allocator a
- * per-frame complexity picture, and hdrFrameAvgLuma is not computed for
- * referenced frames in pass 2 (the lookahead AQ block is skipped), so a bias
- * would apply inconsistently by frame type. */
+ * per-frame complexity picture, so an additional APL bias would fight the
+ * allocation pass 1 already made. (hdrFrameAvgLuma itself IS computed in
+ * pass 2 -- the APL scan runs unconditionally in calcAdaptiveQuantFrame --
+ * so frame-level consumers like hdr-chroma-qp and hdr-deblock work fine in
+ * 2-pass.) */
 void RateControl::updateHdrSceneQpBias(Frame* curFrame)
 {
     m_hdrSceneQpBias = 0.0;

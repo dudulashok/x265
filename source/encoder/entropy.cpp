@@ -674,7 +674,7 @@ void Entropy::codePPS( const PPS& pps, bool filerAcross, int iPPSInitQpMinus26, 
     WRITE_FLAG(pps.bDeblockingFilterControlPresent, "deblocking_filter_control_present_flag");
     if (pps.bDeblockingFilterControlPresent)
     {
-        WRITE_FLAG(0,                               "deblocking_filter_override_enabled_flag");
+        WRITE_FLAG(pps.bDeblockingFilterOverrideEnabled, "deblocking_filter_override_enabled_flag");
         WRITE_FLAG(pps.bPicDisableDeblockingFilter, "pps_disable_deblocking_filter_flag");
         if (!pps.bPicDisableDeblockingFilter)
         {
@@ -1122,6 +1122,22 @@ void Entropy::codeSliceHeader(const Slice& slice, FrameData& encData, uint32_t s
     {
         WRITE_SVLC(slice.m_chromaQpOffset[0], "slice_cb_qp_offset");
         WRITE_SVLC(slice.m_chromaQpOffset[1], "slice_cr_qp_offset");
+    }
+
+    if (slice.m_pps->bDeblockingFilterOverrideEnabled)
+    {
+        /* hdr-deblock: the override flag must be coded in every slice once
+         * the PPS enables overrides; signal offsets only when they differ
+         * from the PPS defaults (frames without an APL keep PPS values) */
+        bool bOverride = slice.m_deblockBetaOffsetDiv2 != slice.m_pps->deblockingFilterBetaOffsetDiv2 ||
+                         slice.m_deblockTcOffsetDiv2 != slice.m_pps->deblockingFilterTcOffsetDiv2;
+        WRITE_FLAG(bOverride, "deblocking_filter_override_flag");
+        if (bOverride)
+        {
+            WRITE_FLAG(0, "slice_deblocking_filter_disabled_flag");
+            WRITE_SVLC(slice.m_deblockBetaOffsetDiv2, "slice_beta_offset_div2");
+            WRITE_SVLC(slice.m_deblockTcOffsetDiv2,   "slice_tc_offset_div2");
+        }
     }
     // TODO: Enable when pps_loop_filter_across_slices_enabled_flag==1
     //       We didn't support filter across slice board, so disable it now
