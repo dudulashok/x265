@@ -31,6 +31,13 @@ for crf in 22 26 30 34; do
     for clipfps in "sol10.yuv 24" "whale10.yuv 60"; do
         set -- $clipfps
         encode "$1" "$2" anchor   "$crf" "${ANCHOR[@]}"
+        # 2026-08-05 plan item 1: pure --hdr-luma-qp strength sweep (no --hdr-pq,
+        # so the model is measured without the chroma-offset floor)
+        encode "$1" "$2" lumaq025 "$crf" "${ANCHOR[@]}" --hdr-luma-qp 0.25
+        encode "$1" "$2" lumaq05  "$crf" "${ANCHOR[@]}" --hdr-luma-qp 0.5
+        encode "$1" "$2" lumaq075 "$crf" "${ANCHOR[@]}" --hdr-luma-qp 0.75
+        encode "$1" "$2" lumaq10  "$crf" "${ANCHOR[@]}" --hdr-luma-qp 1.0
+        encode "$1" "$2" lumaq15  "$crf" "${ANCHOR[@]}" --hdr-luma-qp 1.5
         # encode "$1" "$2" hdr10opt "$crf" "${HDR10OPT[@]}"
         encode "$1" "$2" hdrluma  "$crf" "${HDRLUMA[@]}"
         encode "$1" "$2" hdrpq    "$crf" "${HDRPQ[@]}"

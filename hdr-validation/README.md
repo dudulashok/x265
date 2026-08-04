@@ -53,7 +53,32 @@ x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
 (`--hdr-pq` supplies the same VUI signalling as the anchor flags, plus
 repeat-headers, SAO and cb/cr QP offsets −2.)
 
-`run_encodes.sh` runs the full 32-encode sweep and is resumable.
+`run_encodes.sh` runs the full sweep and is resumable.
+
+### 2026-08-05 additions
+
+New configs in `run_encodes.sh` / `metrics.py` / `bdrate.py` (hdr10opt and
+hdrfull are commented out; their pre-rebase numbers are archived in
+`results-2026-08-03-prerebase.json`):
+
+- `hdrpq` — `--hdr-pq` alone, the floor that decomposes the tool sets
+- `wsse05/10/15` — `--hdr-pq --hdr-wsse-rd 0.5/1.0/1.5`
+- `dbk10` — `--hdr-pq --hdr-deblock 1.0`
+- `lumaq025/05/075/10/15` — `--hdr-luma-qp` strength sweep on ANCHOR VUI
+  flags (no `--hdr-pq`), measuring the JVET dQP model without the
+  chroma-offset floor
+
+Segments and encode products are gitignored; re-extract per "Test
+material" above (whale: `dd bs=24883200 skip=100 count=300` from the
+source yuv; sol: `dd bs=24883200 skip=2088 count=192 | ffmpeg -f rawvideo
+-pix_fmt yuv420p16le -s 3840x2160 -i - -pix_fmt yuv420p10le -f rawvideo
+sol10.yuv`).
+
+**Long sweeps on this machine**: it thermally throttles after ~1 h of
+sustained 4K encoding (encodes go from ~45 s to >10 min) and session/tool
+timeouts orphan the running x265. Use `run_sweep_detached.sh` (see its
+header for the PowerShell detached-launch line); progress via
+`grep -c encoded *.log`, completion via `sweep_done.marker`.
 
 Single-tool ablations at CRF 22 (48 frames, whale) are reported in
 RESULTS.md alongside the sweep.

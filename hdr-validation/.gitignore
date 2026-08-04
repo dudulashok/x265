@@ -4,3 +4,5 @@
 *.log
 vdp/
 bd_final.json
+sweep_progress.out
+sweep_done.marker
