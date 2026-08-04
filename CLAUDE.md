@@ -269,6 +269,28 @@ file plus that repo are the reference points for continuing development.
   floor) with +2..+3 offsets engaged on dark content — no metric harm; value is
   subjective and still needs the HDR-display pass.
 
+### Agreed next-session plan (noted 2026-08-05 — start here)
+
+Priority order agreed after the 2026-08-05 sweep:
+
+1. **`--hdr-luma-qp` strength sweep first** (cheapest, runs unattended): configs
+   `anchor-VUI + --hdr-luma-qp S` for S ∈ {0.25, 0.5, 0.75, 1.0, 1.5} *without*
+   `--hdr-pq`, so the model is measured pure instead of on top of the +7% floor.
+   2 clips × 4 CRFs × 5 strengths = 40 encodes — launch detached (thermal throttling
+   makes this an overnight job; see ops notes) and pick the BD-optimal default.
+2. **Content-adaptive chroma offsets** (highest value): make `--hdr-pq`'s fixed −2/−2
+   cb/cr offsets per-frame adaptive. Extend the APL scan in `calcAdaptiveQuantFrame()`
+   with frame chroma-energy/saturation stats; map (APL, chroma energy) → per-frame
+   slice cb/cr offsets in `compressFrame()` (the `hdr-chroma-qp` block is the template;
+   compose with it, clip to [−12, 0]). Success = cut sol10's +7.1% wPSNR-Y floor cost
+   to < +3% while keeping the bulk of the −17..−23% chroma gains. New param or an
+   `--hdr-pq` behavior revision — decide during design; 7-step checklist either way.
+3. **CAMBI into the harness + banding segment**: build/obtain libvmaf with CAMBI
+   (no-reference — runs on the decode alone), add a gradient-heavy PQ segment
+   (sunset/sky or synthetic ramp), then tune `--hdr-banding-protect` SCALE/clamp and
+   judge `--hdr-scaling-list` / the SAO banding item with it.
+4. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR display.
+
 ### TODO — HDR quality / efficiency investigation
 
 - [ ] **Strength sweeps** for `--hdr-luma-qp` (0.25/0.5/0.75/1.0/1.5) on both clips;
