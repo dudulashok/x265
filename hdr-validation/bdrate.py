@@ -33,7 +33,7 @@ CFGS = {"sol10": ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
         "whale10": ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
                     "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
                     "chromaadapt", "prodstack"],
-        "band10": ["bandp05", "bandp10", "slist"]}
+        "band10": ["bandp05", "bandp10", "slist", "saoband10", "saoband30"]}
 
 rows = []
 for clip, cfgs in CFGS.items():

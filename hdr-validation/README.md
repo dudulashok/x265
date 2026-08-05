@@ -79,6 +79,8 @@ hdrfull are commented out; their pre-rebase numbers are archived in
 - `band10` configs `bandp05/10` (`--hdr-banding-protect 0.5/1.0`) and
   `slist` (`--hdr-scaling-list`), on ANCHOR flags so the `--hdr-pq` chroma
   offsets don't confound the banding measurement
+- `saoband10/30` — `--hdr-sao-band 1.0/3.0` (late-3; needs the X265_BUILD
+  222 binary), the SAO banding-repair bias on ANCHOR flags
 
 Segments and encode products are gitignored; re-extract per "Test
 material" above (whale: `dd bs=24883200 skip=100 count=300` from the

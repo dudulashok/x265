@@ -2576,6 +2576,29 @@ VUI fields must be manually specified.
 	dither, which no QP allocation can prevent. Not recommended until
 	redesigned. 0 disables. Default 0.
 
+.. option:: --hdr-sao-band <float>
+
+	Strength of the SAO banding-repair bias for 10-bit PQ content. SAO's
+	SSE-driven mode decision barely notices the 1-2 codeword steps that
+	read as visible banding on a PQ display, so SAO usually stays off (or
+	picks nothing useful) exactly where its band offsets could re-step a
+	quantized gradient or its edge offsets soften a contour line. In CTUs
+	whose source luma is banding-prone -- spatially flat and in the
+	banding-prone PQ luma range, the same classifier definition as
+	:option:`--hdr-banding-protect` but evaluated per CTU from full-res
+	source pixels -- the SAO mode decision runs with a proportionally
+	reduced lambda, letting small-distortion offsets survive their rate
+	cost. A pure encoder-side decision bias: standard SAO syntax, safe for
+	any decoder, deterministic. Requires SAO (implied by
+	:option:`--hdr-pq`). Evaluate with a banding-specific measure (e.g.
+	CAMBI). Experimental: on a dithered-gradient PQ banding segment the
+	bias engaged (up to +26% rate at max strength) but did not reduce
+	CAMBI — SAO's per-class constant offsets modify only contour pixels
+	(edge offsets) or shift whole plateaus (band offsets); the
+	plateau-step-plateau structure that reads as banding survives. Not
+	recommended; kept as an experiment. 0 disables. Typical range 0.5 to
+	2.0. Default 0.
+
 .. option:: --hdr-scene-qp <float>
 
 	Strength of the temporal, average-picture-level-adaptive QP bias for

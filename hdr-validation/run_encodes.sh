@@ -42,6 +42,9 @@ PRODSTACK=(--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0)
 BANDP05=("${ANCHOR[@]}" --hdr-banding-protect 0.5)
 BANDP10=("${ANCHOR[@]}" --hdr-banding-protect 1.0)
 SLIST=("${ANCHOR[@]}" --hdr-scaling-list)
+# 2026-08-05 late-3: SAO banding-repair bias (needs the X265_BUILD 222 binary)
+SAOBAND10=("${ANCHOR[@]}" --hdr-sao-band 1.0)
+SAOBAND30=("${ANCHOR[@]}" --hdr-sao-band 3.0)
 
 # band10 first: the synthetic segment encodes fast and unblocks CAMBI analysis
 # while the heavy 4K real-content encodes grind on. Regenerate the segment
@@ -51,6 +54,8 @@ for crf in 22 26 30 34; do
     encode band10.yuv 24 bandp05 "$crf" "${BANDP05[@]}"
     encode band10.yuv 24 bandp10 "$crf" "${BANDP10[@]}"
     encode band10.yuv 24 slist   "$crf" "${SLIST[@]}"
+    encode band10.yuv 24 saoband10 "$crf" "${SAOBAND10[@]}"
+    encode band10.yuv 24 saoband30 "$crf" "${SAOBAND30[@]}"
 done
 
 for crf in 22 26 30 34; do

@@ -361,6 +361,7 @@ static const struct option long_options[] =
     { "hdr-chroma-qp",   required_argument,  NULL, 0 },
     { "hdr-chroma-adapt", required_argument, NULL, 0 },
     { "hdr-banding-protect", required_argument, NULL, 0 },
+    { "hdr-sao-band", required_argument, NULL, 0 },
     { "hdr-scene-qp", required_argument, NULL, 0 },
     { "hdr-wsse-rd", required_argument, NULL, 0 },
     { "hdr-deblock", required_argument, NULL, 0 },

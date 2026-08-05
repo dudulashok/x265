@@ -4967,6 +4967,20 @@ void Encoder::configure(x265_param *p)
             x265_log(p, X265_LOG_WARNING, "hdr-chroma-adapt assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
     }
 
+    if (p->rc.hdrSaoBandStrength > 0)
+    {
+        if (!p->bEnableSAO)
+        {
+            /* the tool is a bias inside the SAO mode decision; without SAO
+             * there is nothing to bias. Runs after the bHdrPq block above,
+             * so --hdr-pq's SAO enable is already in place. */
+            x265_log(p, X265_LOG_WARNING, "hdr-sao-band requires SAO (--sao); disabling hdr-sao-band.\n");
+            p->rc.hdrSaoBandStrength = 0;
+        }
+        else if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
+            x265_log(p, X265_LOG_WARNING, "hdr-sao-band assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
+    }
+
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)
     {
         if (!p->bRepeatHeaders)

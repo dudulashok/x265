@@ -22,7 +22,8 @@ CLIPS = {"sol10": {"fps": 24.0, "frames": 192, "vdp_frames": [24, 72, 120, 168],
          # synthetic banding segment: judged with CAMBI (no HDR-VDP -- the
          # 4-frame Q_JOD sampling is noise on content this uniform)
          "band10": {"fps": 24.0, "frames": 96, "vdp_frames": [],
-                    "configs": ["anchor", "bandp05", "bandp10", "slist"],
+                    "configs": ["anchor", "bandp05", "bandp10", "slist",
+                                "saoband10", "saoband30"],
                     "cambi": True}}
 CRFS = [22, 26, 30, 34]
 

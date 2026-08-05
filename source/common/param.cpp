@@ -317,6 +317,7 @@ void x265_param_default(x265_param* param)
     param->rc.hdrChromaQpStrength = 0.0;
     param->rc.hdrChromaAdaptStrength = 0.0;
     param->rc.hdrBandingStrength = 0.0;
+    param->rc.hdrSaoBandStrength = 0.0;
     param->rc.hdrSceneQpStrength = 0.0;
     param->rc.hdrWsseRdStrength = 0.0;
     param->rc.hdrDeblockStrength = 0.0;
@@ -1469,6 +1470,7 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("hdr-chroma-qp") p->rc.hdrChromaQpStrength = atof(value);
         OPT("hdr-chroma-adapt") p->rc.hdrChromaAdaptStrength = atof(value);
         OPT("hdr-banding-protect") p->rc.hdrBandingStrength = atof(value);
+        OPT("hdr-sao-band") p->rc.hdrSaoBandStrength = atof(value);
         OPT("hdr-scene-qp") p->rc.hdrSceneQpStrength = atof(value);
         OPT("hdr-wsse-rd") p->rc.hdrWsseRdStrength = atof(value);
         OPT("hdr-deblock") p->rc.hdrDeblockStrength = atof(value);
@@ -1850,6 +1852,8 @@ int x265_check_params(x265_param* param)
           "hdr-deblock strength must be between 0 and 2");
     CHECK(param->rc.hdrChromaAdaptStrength < 0 || param->rc.hdrChromaAdaptStrength > 2,
           "hdr-chroma-adapt strength must be between 0 and 2");
+    CHECK(param->rc.hdrSaoBandStrength < 0 || param->rc.hdrSaoBandStrength > 3,
+          "hdr-sao-band strength must be between 0 and 3");
     CHECK(param->deblockingFilterTCOffset < -6 || param->deblockingFilterTCOffset > 6,
           "deblocking filter tC offset must be in the range of -6 to +6");
     CHECK(param->deblockingFilterBetaOffset < -6 || param->deblockingFilterBetaOffset > 6,
@@ -2541,6 +2545,8 @@ char *x265_param2string(x265_param* p, int padx, int pady)
         s += sprintf(s, " hdr-chroma-adapt=%.2f", p->rc.hdrChromaAdaptStrength);
     if (p->rc.hdrBandingStrength > 0)
         s += sprintf(s, " hdr-banding-protect=%.2f", p->rc.hdrBandingStrength);
+    if (p->rc.hdrSaoBandStrength > 0)
+        s += sprintf(s, " hdr-sao-band=%.2f", p->rc.hdrSaoBandStrength);
     if (p->rc.hdrSceneQpStrength > 0)
         s += sprintf(s, " hdr-scene-qp=%.2f", p->rc.hdrSceneQpStrength);
     if (p->rc.hdrWsseRdStrength > 0)
@@ -3015,6 +3021,7 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->rc.hdrChromaQpStrength = src->rc.hdrChromaQpStrength;
     dst->rc.hdrChromaAdaptStrength = src->rc.hdrChromaAdaptStrength;
     dst->rc.hdrBandingStrength = src->rc.hdrBandingStrength;
+    dst->rc.hdrSaoBandStrength = src->rc.hdrSaoBandStrength;
     dst->rc.hdrSceneQpStrength = src->rc.hdrSceneQpStrength;
     dst->rc.hdrWsseRdStrength = src->rc.hdrWsseRdStrength;
     dst->rc.hdrDeblockStrength = src->rc.hdrDeblockStrength;

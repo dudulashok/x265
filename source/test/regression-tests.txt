@@ -224,3 +224,4 @@ NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 24 --hdr-pq --h
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 24 --hdr-pq --hdr-wsse-rd 1.0 --psy-rdoq 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset slow --hdr-pq --hdr-wsse-rd 1.5 --rd 5 --frame-threads 3
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --hdr-pq --hdr-deblock 1.0 --deblock -1:-1 --repeat-headers
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 26 --hdr-pq --hdr-sao-band 1.0 --limit-sao

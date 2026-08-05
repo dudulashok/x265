@@ -1249,6 +1249,47 @@ void SAO::rdoSaoUnitCu(SAOParam* saoParam, int rowBaseAddr, int idxX, int addr)
     lambda[0] = (int64_t)floor(256.0 * x265_lambda2_tab[qp]);
     lambda[1] = (int64_t)floor(256.0 * x265_lambda2_tab[qpCb]); // Use Cb QP for SAO chroma
 
+    if (m_param->rc.hdrSaoBandStrength > 0)
+    {
+        /* hdr-sao-band: SSE-driven SAO RDO barely notices the 1-2 codeword
+         * steps that glare as banding on a PQ display, so in banding-prone
+         * CTUs (spatially flat source luma in the banding-prone PQ range,
+         * same definition as the lookahead hdr-banding-protect classifier)
+         * the SAO mode decision runs with a reduced lambda: small-distortion
+         * offsets (band offsets re-stepping a quantized gradient, edge
+         * offsets softening contour lines) survive their rate cost and SAO
+         * engages where it would otherwise stay off. Source-pixel driven and
+         * per-CTU only: deterministic, WPP-safe, no cross-CTU state. */
+        const pixel* fenc = m_frame->m_fencPic->getPlaneAddr(0, addr);
+        intptr_t stride = m_frame->m_fencPic->m_stride;
+        int ctuWidth  = x265_min((uint32_t)m_param->maxCUSize, (uint32_t)m_param->sourceWidth - cu->m_cuPelX);
+        int ctuHeight = x265_min((uint32_t)m_param->maxCUSize, (uint32_t)m_param->sourceHeight - cu->m_cuPelY);
+        uint64_t sum = 0, ssd = 0;
+        for (int y = 0; y < ctuHeight; y++, fenc += stride)
+        {
+            for (int x = 0; x < ctuWidth; x++)
+            {
+                sum += fenc[x];
+                ssd += (uint64_t)fenc[x] * fenc[x];
+            }
+        }
+        double n = (double)ctuWidth * ctuHeight;
+        double mean = sum / n;
+        double var = ssd / n - mean * mean;
+        /* thresholds are defined in the 10-bit PQ code domain */
+        double depthScale = (double)(1 << X265_DEPTH) / 1024.0;
+        double mean10 = mean / depthScale;
+        double var10 = var / (depthScale * depthScale);
+        double lumaNorm = mean10 / 1023.0;
+        double lumaWeight = (lumaNorm > 0.10 && lumaNorm < 0.92) ? 1.0 : 0.2;
+        /* per-pixel variance ~<3 (dithered flats, glacial gradients) is fully
+         * banding-prone; >=64 (real texture) is not. Log ramp between. */
+        double flat = x265_clip3(0.0, 1.0, (6.0 - X265_LOG2(var10 + 1.0)) / 4.0);
+        double scale = 1.0 + 2.0 * m_param->rc.hdrSaoBandStrength * lumaWeight * flat;
+        lambda[0] = X265_MAX((int64_t)1, (int64_t)(lambda[0] / scale));
+        lambda[1] = X265_MAX((int64_t)1, (int64_t)(lambda[1] / scale));
+    }
+
     const bool allowMerge[2] = {(idxX != 0), (rowBaseAddr != 0)}; // left, up
 
     const int addrMerge[2] = {(idxX ? addr - 1 : -1), (rowBaseAddr ? addr - m_numCuInWidth : -1)};// left, up

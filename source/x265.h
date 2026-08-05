@@ -1921,6 +1921,20 @@ typedef struct x265_param
          * not be combined). 0 disables (default). Typical range 0.5 - 1.5. */
         double    hdrBandingStrength;
 
+        /* Strength of the SAO banding-repair bias for 10-bit PQ content.
+         * SAO's SSE-driven mode decision barely notices the 1-2 codeword
+         * steps that read as banding on a PQ display, so SAO usually stays
+         * off exactly where it could repair a banded gradient. In CTUs whose
+         * SOURCE luma is banding-prone (spatially flat and in the
+         * banding-prone PQ luma range -- the same classifier definition as
+         * hdrBandingStrength, evaluated per CTU from full-res source pixels)
+         * the SAO mode decision runs with a reduced lambda, letting
+         * small-distortion band/edge offsets survive their rate cost. Pure
+         * encoder-side decision bias: standard SAO syntax, decoder-safe,
+         * deterministic. Requires SAO. 0 disables (default). Typical range
+         * 0.5 - 2.0. */
+        double    hdrSaoBandStrength;
+
         /* Strength of temporal / per-scene APL-adaptive QP bias for 10-bit PQ
          * content. Tracks a rolling average of per-frame average PQ luma
          * (APL) across recently encoded frames (EMA, alpha=0.1). Frames whose

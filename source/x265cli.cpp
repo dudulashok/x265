@@ -284,6 +284,7 @@ namespace X265_NS {
         H0("   --hdr-chroma-qp <float>       Frame-level WCG chroma-adaptive QP strength for 10-bit BT.2020/PQ (APL-based). 0 disables. Default %.2f\n", param->rc.hdrChromaQpStrength);
         H0("   --hdr-chroma-adapt <float>    Per-frame scaling of the static cb/cr QP offsets by chroma activity; chroma-flat frames return the offset bits to luma. Requires nonzero cbqpoffs/crqpoffs (e.g. --hdr-pq). 0 disables. Default %.2f\n", param->rc.hdrChromaAdaptStrength);
         H0("   --hdr-banding-protect <float> Anti-banding QP strength for flat/gradient regions in 10-bit PQ content. 0 disables. Default %.2f\n", param->rc.hdrBandingStrength);
+        H0("   --hdr-sao-band <float>        SAO banding-repair bias: reduce SAO RD lambda in banding-prone CTUs so band/edge offsets engage. Requires SAO. 0 disables. Default %.2f\n", param->rc.hdrSaoBandStrength);
         H0("   --hdr-scene-qp <float>        Temporal APL-adaptive QP bias strength for scene brightness transitions. 0 disables. Default %.2f\n", param->rc.hdrSceneQpStrength);
         H0("   --hdr-wsse-rd <float>         wSSE-weighted RDO strength: JVET wPSNR luma weight applied as per-CTU lambda scale (0 to 3.0). 0 disables. Default %.2f\n", param->rc.hdrWsseRdStrength);
         H0("   --hdr-deblock <float>         Luma-adaptive deblocking strength for PQ: stronger filtering in dark frames via slice beta/tc offsets (0 to 2.0). 0 disables. Default %.2f\n", param->rc.hdrDeblockStrength);
