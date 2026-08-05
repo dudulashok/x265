@@ -16,6 +16,7 @@ Real 3840x2160 10-bit 4:2:0 BT.2020 / SMPTE ST 2084 (PQ) sources:
 |---|---|---|---|---|
 | `sol10` | Netflix Open Content *Sol Levante* (1000-nit master) | 2088–2279 (192) | 24 | Bright anime scene with a hard cut to a dark scene — exercises `hdr-scene-qp` re-baselining |
 | `whale10` | Sony *Whale* demo | 100–399 (300) | 60 | Natural bright ocean content, smooth gradients |
+| `band10` | synthetic (`gen_band10.py`, deterministic) | 96 | 24 | Gradient-heavy PQ "sunset sky" banding segment: smooth dark-to-mid gradients built in linear light, TPDF-dithered to 10 bits like a real master (source CAMBI ≈ 0; a medium CRF34 encode scores ≈ 3.3). Judged with CAMBI, not wPSNR |
 
 The Sol Levante distribution file holds 16-bit samples; the segment is
 converted to 10-bit LSB-aligned with ffmpeg before encoding
@@ -68,6 +69,17 @@ hdrfull are commented out; their pre-rebase numbers are archived in
   flags (no `--hdr-pq`), measuring the JVET dQP model without the
   chroma-offset floor
 
+### 2026-08-05 (late) additions
+
+- `prodstack` — `--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5
+  --hdr-scene-qp 1.0`, the recommended production stack measured as a unit
+- `chromaadapt05/15` — `--hdr-chroma-adapt` strength sweep, sol10 only
+  (whale10's chroma share 0.03–0.05 sits below the 0.10 mapping knee, so
+  every strength is bit-identical to 1.0 there)
+- `band10` configs `bandp05/10` (`--hdr-banding-protect 0.5/1.0`) and
+  `slist` (`--hdr-scaling-list`), on ANCHOR flags so the `--hdr-pq` chroma
+  offsets don't confound the banding measurement
+
 Segments and encode products are gitignored; re-extract per "Test
 material" above (whale: `dd bs=24883200 skip=100 count=300` from the
 source yuv; sol: `dd bs=24883200 skip=2088 count=192 | ffmpeg -f rawvideo
@@ -91,6 +103,11 @@ python wpsnr.py sol10.yuv sol10_anchor_crf22.hevc 3840 2160
 
 # whole sweep -> results.json (bitrates from file size; resumable)
 WPSNR_ONLY=1 python metrics.py
+
+# CAMBI (banding, no-reference; libvmaf via ffmpeg -- gyan.dev builds have it)
+python cambi.py band10_anchor_crf34.hevc          # one encode
+python cambi.py band10.yuv 3840 2160 24           # raw source baseline
+# metrics.py runs CAMBI automatically for clips flagged "cambi" (band10)
 
 # HDR-VDP-3: convert 4 sampled frames of source and encode to linear
 # BT.2020 RGB (absolute cd/m^2, PQ EOTF), 1080p center crop...
@@ -118,6 +135,11 @@ python bdrate.py
   (`prep_frames.py`), center-cropped to 1920x1080 (identically for
   reference and test) to keep CPU runtime tractable; 62 pixels/degree
   (BT.2100 recommended 1.6-picture-heights UHD viewing distance).
+- **CAMBI** (`cambi.py`) — Netflix's banding detector, computed by libvmaf
+  through ffmpeg's `libvmaf` filter (default options, on the 10-bit decode;
+  no-reference). 0 = no banding, ≳5 = clearly visible, scale tops at 24.
+  Reported as per-encode mean and p95 over all frames. Not BD-fitted —
+  `bdrate.py` prints the raw CAMBI-vs-bitrate table for `band10`.
 - **BD-rate** (`bdrate.py`) — classic Bjøntegaard cubic fit of log-rate vs
   metric over the overlapping quality interval. Negative = bitrate saving
   at equal quality.

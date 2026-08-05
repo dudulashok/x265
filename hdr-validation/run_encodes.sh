@@ -29,6 +29,29 @@ DBK10=(--hdr-pq --hdr-deblock 1.0)
 # 2026-08-05 plan item 2: content-adaptive chroma offsets on top of the hdr-pq
 # floor (needs the post-862809aed binary)
 CHROMAADAPT=(--hdr-pq --hdr-chroma-adapt 1.0)
+# 2026-08-05 late: chroma-adapt strength sweep (sol10 only -- whale10's chroma
+# share 0.03-0.05 is below the 0.10 mapping knee, so shrink=0 and every
+# strength is bit-identical to 1.0 there) and the recommended production stack,
+# previously unmeasured as a unit.
+CHROMAADAPT05=(--hdr-pq --hdr-chroma-adapt 0.5)
+CHROMAADAPT15=(--hdr-pq --hdr-chroma-adapt 1.5)
+PRODSTACK=(--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0)
+# 2026-08-05 late: banding segment configs, judged with CAMBI (cambi.py).
+# banding-protect and scaling-list ride on ANCHOR flags (no --hdr-pq) so the
+# chroma-offset floor doesn't confound the banding measurement.
+BANDP05=("${ANCHOR[@]}" --hdr-banding-protect 0.5)
+BANDP10=("${ANCHOR[@]}" --hdr-banding-protect 1.0)
+SLIST=("${ANCHOR[@]}" --hdr-scaling-list)
+
+# band10 first: the synthetic segment encodes fast and unblocks CAMBI analysis
+# while the heavy 4K real-content encodes grind on. Regenerate the segment
+# with gen_band10.py (deterministic, seeded).
+for crf in 22 26 30 34; do
+    encode band10.yuv 24 anchor  "$crf" "${ANCHOR[@]}"
+    encode band10.yuv 24 bandp05 "$crf" "${BANDP05[@]}"
+    encode band10.yuv 24 bandp10 "$crf" "${BANDP10[@]}"
+    encode band10.yuv 24 slist   "$crf" "${SLIST[@]}"
+done
 
 for crf in 22 26 30 34; do
     for clipfps in "sol10.yuv 24" "whale10.yuv 60"; do
@@ -50,6 +73,11 @@ for crf in 22 26 30 34; do
         encode "$1" "$2" wsse15   "$crf" "${WSSE15[@]}"
         encode "$1" "$2" dbk10    "$crf" "${DBK10[@]}"
         encode "$1" "$2" chromaadapt "$crf" "${CHROMAADAPT[@]}"
+        encode "$1" "$2" prodstack   "$crf" "${PRODSTACK[@]}"
+        if [ "$1" = "sol10.yuv" ]; then
+            encode "$1" "$2" chromaadapt05 "$crf" "${CHROMAADAPT05[@]}"
+            encode "$1" "$2" chromaadapt15 "$crf" "${CHROMAADAPT15[@]}"
+        fi
     done
 done
 echo ALL_ENCODES_DONE

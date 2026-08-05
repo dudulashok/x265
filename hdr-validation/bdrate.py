@@ -27,10 +27,17 @@ def series(clip, cfg, field):
     return (np.array([res[k]["kbps"] for k in keys]),
             np.array([res[k][field] for k in keys]))
 
+CFGS = {"sol10": ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
+                  "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
+                  "chromaadapt", "chromaadapt05", "chromaadapt15", "prodstack"],
+        "whale10": ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
+                    "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
+                    "chromaadapt", "prodstack"],
+        "band10": ["bandp05", "bandp10", "slist"]}
+
 rows = []
-for clip in ["sol10", "whale10"]:
-    for cfg in ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
-                "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15", "chromaadapt"]:
+for clip, cfgs in CFGS.items():
+    for cfg in cfgs:
         row = {"clip": clip, "config": cfg}
         for field in ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr", "vdp_jod"]:
             try:
@@ -41,3 +48,23 @@ for clip in ["sol10", "whale10"]:
                 row[field] = None
         rows.append(row)
 print(json.dumps(rows, indent=1))
+
+# CAMBI is not a rate-quality metric (lower = less banding, and it is not
+# monotonic with rate on all content), so no BD fit -- print the raw table.
+cambi_rows = []
+for clip in ["band10"]:
+    src = res.get(f"{clip}_source", {})
+    if src:
+        cambi_rows.append({"clip": clip, "config": "source", "crf": None,
+                           "kbps": None, "cambi_mean": src.get("cambi_mean"),
+                           "cambi_p95": src.get("cambi_p95")})
+    for cfg in ["anchor"] + CFGS[clip]:
+        for crf in CRFS:
+            e = res.get(f"{clip}_{cfg}_crf{crf}", {})
+            if "cambi_mean" in e:
+                cambi_rows.append({"clip": clip, "config": cfg, "crf": crf,
+                                   "kbps": round(e["kbps"], 1),
+                                   "cambi_mean": e["cambi_mean"],
+                                   "cambi_p95": e["cambi_p95"]})
+if cambi_rows:
+    print(json.dumps(cambi_rows, indent=1))

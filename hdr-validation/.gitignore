@@ -8,3 +8,4 @@ sweep_progress.out
 sweep_done.marker
 metrics_progress.out
 metrics_done.marker
+__pycache__/

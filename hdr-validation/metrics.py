@@ -12,26 +12,42 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(HERE)
 OCTAVE = os.path.join(HERE, "..", "octave-11.3.0-w64", "mingw64", "bin", "octave-cli.exe")
 W, H = 3840, 2160
-CLIPS = {"sol10": {"fps": 24.0, "frames": 192, "vdp_frames": [24, 72, 120, 168]},
-         "whale10": {"fps": 60.0, "frames": 300, "vdp_frames": [37, 112, 187, 262]}}
-CONFIGS = ["anchor", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
-           "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15", "chromaadapt"]
+COMMON = ["anchor", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
+          "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15", "chromaadapt",
+          "prodstack"]
+CLIPS = {"sol10": {"fps": 24.0, "frames": 192, "vdp_frames": [24, 72, 120, 168],
+                   "configs": COMMON + ["chromaadapt05", "chromaadapt15"]},
+         "whale10": {"fps": 60.0, "frames": 300, "vdp_frames": [37, 112, 187, 262],
+                     "configs": COMMON},
+         # synthetic banding segment: judged with CAMBI (no HDR-VDP -- the
+         # 4-frame Q_JOD sampling is noise on content this uniform)
+         "band10": {"fps": 24.0, "frames": 96, "vdp_frames": [],
+                    "configs": ["anchor", "bandp05", "bandp10", "slist"],
+                    "cambi": True}}
 CRFS = [22, 26, 30, 34]
 
 results = {}
 if os.path.exists("results.json"):
     results = json.load(open("results.json"))
 
+
+def encode_done(key):
+    """True only when the encode finished (the sweep may still be writing)."""
+    try:
+        return "encoded" in open(f"{key}.log").read()
+    except OSError:
+        return False
+
 def save():
     json.dump(results, open("results.json", "w"), indent=1)
 
 # ---- wPSNR ----
 for clip, meta in CLIPS.items():
-    for cfg in CONFIGS:
+    for cfg in meta["configs"]:
         for crf in CRFS:
             key = f"{clip}_{cfg}_crf{crf}"
             hevc = f"{key}.hevc"
-            if not os.path.exists(hevc):
+            if not os.path.exists(hevc) or not encode_done(key):
                 print("MISSING", hevc); continue
             ent = results.setdefault(key, {})
             ent["kbps"] = os.path.getsize(hevc) * 8 / (meta["frames"] / meta["fps"]) / 1000.0
@@ -42,14 +58,34 @@ for clip, meta in CLIPS.items():
                 print(key, "wPSNR-Y %.4f" % ent["wpsnr_y"])
                 save()
 
+# ---- CAMBI (banding; no-reference, decode only) ----
+from cambi import cambi as cambi_one
+for clip, meta in CLIPS.items():
+    if not meta.get("cambi"):
+        continue
+    ent = results.setdefault(f"{clip}_source", {})
+    if "cambi_mean" not in ent:
+        ent.update(cambi_one(f"{clip}.yuv", W, H, meta["fps"]))
+        print(f"{clip}_source", "CAMBI mean %.3f" % ent["cambi_mean"])
+        save()
+    for cfg in meta["configs"]:
+        for crf in CRFS:
+            key = f"{clip}_{cfg}_crf{crf}"
+            if key in results and os.path.exists(f"{key}.hevc") \
+                    and encode_done(key) and "cambi_mean" not in results[key]:
+                results[key].update(cambi_one(f"{key}.hevc"))
+                print(key, "CAMBI mean %.3f p95 %.3f" %
+                      (results[key]["cambi_mean"], results[key]["cambi_p95"]))
+                save()
+
 if os.environ.get("WPSNR_ONLY"):
-    print("METRICS_DONE (wpsnr only; run vdp_evals.sh + merge_vdp.py for HDR-VDP-3)")
+    print("METRICS_DONE (wpsnr+cambi only; run vdp_evals.sh + merge_vdp.py for HDR-VDP-3)")
     sys.exit(0)
 
 # ---- HDR-VDP-3 prep ----
 for clip, meta in CLIPS.items():
     idxs = ",".join(str(i) for i in meta["vdp_frames"])
-    for cfg in CONFIGS:
+    for cfg in meta["configs"]:
         for crf in CRFS:
             key = f"{clip}_{cfg}_crf{crf}"
             if not os.path.exists(f"{key}.hevc") or key not in results:
@@ -73,7 +109,7 @@ def vdp_one(job):
 
 jobs = []
 for clip, meta in CLIPS.items():
-    for cfg in CONFIGS:
+    for cfg in meta["configs"]:
         for crf in CRFS:
             key = f"{clip}_{cfg}_crf{crf}"
             if key not in results or "vdp_jod" in results[key]:
