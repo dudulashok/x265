@@ -311,15 +311,56 @@ file plus that repo are the reference points for continuing development.
    undecodable streams (`3923cec8d`), and `hdr-chroma-qp` slice offsets accumulated
    across recycled Slice objects (`71a593188`).
 
+### 2026-08-05 (late-2) session log — CAMBI harness, banding verdict, prodstack validated
+
+All three priorities from the previous session executed; numbers in RESULTS.md
+"2026-08-05 (late-2)".
+
+1. **CAMBI is in the harness** — no new binaries: the local gyan ffmpeg's libvmaf
+   computes it (`cambi.py`; metrics.py runs it for clips flagged `cambi`; bdrate.py
+   prints the raw table — CAMBI is not BD-fittable and is NOT monotonic with rate).
+   Feature options need quote-protection through ffmpeg's filter parser
+   (`feature='name=cambi\:opt=val'` as a literal process arg; libvmaf renames the
+   output key, e.g. `cambi_mlc_3`).
+2. **Banding segment `band10`** (`gen_band10.py`, deterministic): synthetic 4K PQ
+   sunset-sky gradients, TPDF-dithered to 10 bits. The dither is the load-bearing
+   design choice: undithered, the SOURCE scores CAMBI ~4.0 and encodes score LOWER
+   than the source; dithered, source = 0.005 and every encode bands ~3.2-3.7.
+3. **`--hdr-banding-protect` measured: fails its design goal, do not enable.**
+   +9.15/+22.57% wPSNR-Y BD-rate at strengths 0.5/1.0 on band10 with CAMBI unmoved
+   (mean 3.2-3.7 in every config; p95 pinned ~3.8). The decisive control: CRF 12/16
+   encodes score CAMBI 3.95/3.86 — HIGHER than CRF 34 and converging on the
+   undithered source's 4.0. Banding on this content class is **dither-loss banding**
+   (the encoder strips the master's dither at any practical rate; the reconstructed
+   smooth gradient bands by itself) — unfixable by QP allocation at any strength,
+   which redirects the anti-banding effort to the film-grain/dither-preservation and
+   SAO band-offset TODO items. cli.rst updated with a "not recommended" note.
+4. **`--hdr-scaling-list` is banding-neutral on pure gradients** (CAMBI unchanged,
+   wPSNR ~-0.2%): its high-frequency ramp never engages when everything is DC. Its
+   texture-retention case remains subjective-only.
+5. **The production stack measured as a unit and validated — recommend it:**
+   `--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0` is
+   wPSNR-Y −0.16% (sol10) / −0.26% (whale10) vs anchor — luma-neutral on the clip
+   class where the plain floor costs +7.14% — keeping whale10's full chroma gains
+   (−19.6/−20.6) and −2.9/−2.4 on sol10. Strictly better than `--hdr-pq` alone on
+   every metric column of both clips. cli.rst `--hdr-pq` section now recommends it.
+6. **`--hdr-chroma-adapt` strength sweep (sol10 only — whale10 is bit-identical at
+   all strengths, share below the 0.10 knee): 1.0 is the knee, keep it.** 0.5 →
+   +4.09% wPSNR-Y (too much floor left), 1.5 → +0.71% but chroma residual halves
+   again (−1.5/−4.2). Docs updated.
+
 ### Remaining next-session priorities
 
-1. **CAMBI into the harness + banding segment**: build/obtain libvmaf with CAMBI
-   (no-reference — runs on the decode alone), add a gradient-heavy PQ segment
-   (sunset/sky or synthetic ramp), then tune `--hdr-banding-protect` SCALE/clamp and
-   judge `--hdr-scaling-list` / the SAO banding item with it.
-2. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR display.
-3. If `--hdr-chroma-adapt 1.0` measures well, consider strength sweep + making it part
-   of the `--hdr-pq` recommendation in the docs.
+1. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR
+   display (subjective pass also still owed to `--hdr-scaling-list`).
+2. **Anti-banding, correctly aimed**: the CAMBI harness + band10 exist now; the QP
+   tool is dead on arrival for dither-loss banding, so the next banding lever is the
+   **SAO band-offset bias** TODO (post-quantization repair) and, longer-term, the
+   film-grain/dither-preservation pipeline. A coarser-gradient variant of band10
+   (undithered-clean, bands only through coarse quantization) would isolate the
+   QP-domain banding mode if banding-protect is ever redesigned.
+3. **Exercise `--hdr-scene-qp`** (transient-rich segment) — now the only tool in the
+   recommended stack never exercised by the corpus.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -336,9 +377,13 @@ file plus that repo are the reference points for continuing development.
       through [0.10, 0.30], slice-level delta vs the PPS offsets). Measured 2026-08-05
       at strength 1.0: sol10 floor cost +7.14 → +1.19% wPSNR-Y (< +3% target met),
       whale10 identical to the floor with full chroma gains — working as designed.
-- [ ] **CAMBI into the harness** (libvmaf ships it) and a gradient-heavy PQ test segment
-      (sunset/sky); then actually tune banding-protect's SCALE/clamp — its current ±6 QP
-      at strength 1.0 costs 4 dB wPSNR-Y and is unjustified until banding is measured.
+- [x] **CAMBI into the harness** — done 2026-08-05 late-2 (`cambi.py` via the local
+      ffmpeg's libvmaf, `gen_band10.py` dithered-gradient segment). The tuning half is
+      MOOT: banding-protect measured +9/+23% wPSNR-Y BD-rate at 0.5/1.0 with CAMBI
+      unmoved — band10's banding is dither-loss banding, unfixable by QP allocation
+      (CRF12 control scores WORSE CAMBI than CRF34). Tool marked not-recommended in
+      cli.rst; any redesign needs a coarse-gradient segment that isolates the
+      QP-domain banding mode first.
 - [ ] **Exercise `--hdr-scene-qp`**: acquire or synthesize a transient-rich HDR segment
       (fireworks, flash cuts); verify the bias interacts sanely with VBV and ABR, and add
       a `rate-control-tests.txt` descriptor.
@@ -412,7 +457,10 @@ file plus that repo are the reference points for continuing development.
       display. In banding-prone CTUs (classifier already exists in the lookahead for
       `--hdr-banding-protect`), lower SAO lambda / bias toward band-offset mode so SAO
       engages there — the post-quantization partner to the QP-side banding tool. Evaluate
-      with the CAMBI item. Small, contained change in the SAO cost path.
+      with the CAMBI item. Small, contained change in the SAO cost path. PRIORITIZED
+      2026-08-05 late-2: the QP-side tool measured useless against dither-loss banding
+      (the dominant mode on the new band10 segment), so SAO band-offset repair is now
+      the lead anti-banding lever; the harness to judge it (cambi.py + band10) exists.
 - [x] **Luma-adaptive deblocking offsets** — implemented 2026-08-04 as
       `--hdr-deblock <float>` (`93610f195`): per-frame slice-header beta/tc overrides
       from `hdrFrameAvgLuma`, delta = round(strength · clip3(−2, 3, (400 − APL)/150)),

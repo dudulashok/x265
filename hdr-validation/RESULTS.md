@@ -334,3 +334,116 @@ lumaq/anchor encodes predate it (verified bit-identical default paths).
 - wPSNR/PSNR only this round; no HDR-VDP-3.
 - chromaadapt measured on the floor only; the combined production stack
   (floor + chroma-adapt + luma-qp 0.5 + scene-qp) is unmeasured.
+
+# 2026-08-05 (late-2) — production stack, `--hdr-chroma-adapt` strengths, and CAMBI on a banding segment
+
+Three questions: (1) does the recommended production stack (`--hdr-pq
+--hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0`, `prodstack`)
+hold up measured as a unit? (2) is 1.0 the right `--hdr-chroma-adapt`
+strength? (3) with CAMBI finally in the harness (`cambi.py`, libvmaf via
+ffmpeg) and a dedicated gradient-heavy PQ segment (`band10`,
+`gen_band10.py`), does `--hdr-banding-protect` actually reduce banding, and
+does `--hdr-scaling-list` affect it?
+
+The `band10` segment is synthetic sunset-sky gradients built in linear
+light and TPDF-dithered to 10 bits like a real master. The dither matters:
+undithered, the source itself scored CAMBI ≈ 4.0 and a CRF34 encode scored
+*lower* than the source. Dithered, source CAMBI is 0.005 and every encode
+bands (~3.2–3.7).
+
+## BD-rate vs anchor (%, negative = better)
+
+| clip | config | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr |
+|---|---|---|---|---|---|
+| sol10 | chromaadapt05 | +4.08 | +4.09 | −11.14 | −13.83 |
+| sol10 | chromaadapt (1.0) | +1.19 | +1.19 | −2.68 | −5.85 |
+| sol10 | chromaadapt15 | +0.70 | +0.71 | −1.47 | −4.19 |
+| sol10 | **prodstack** | +3.90 | **−0.16** | −2.85 | −2.35 |
+| whale10 | **prodstack** | +0.90 | **−0.26** | −19.59 | −20.59 |
+| band10 | bandp05 | +8.94 | +9.15 | +5.81 | +7.72 |
+| band10 | bandp10 | +21.55 | +22.57 | +16.62 | +19.93 |
+| band10 | slist | −0.39 | −0.23 | −0.52 | −0.15 |
+
+## CAMBI on band10 (mean over 96 frames; 0 = none, ≳5 = clearly visible)
+
+| config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| source | 0.005 | | | |
+| anchor | 3.64 | 3.37 | 3.46 | 3.25 |
+| bandp05 | 3.68 | 3.43 | 3.22 | 3.29 |
+| bandp10 | 3.58 | 3.46 | 3.46 | 3.16 |
+| slist | 3.63 | 3.44 | 3.49 | 3.26 |
+
+p95 is pinned at 3.72–3.88 for every config and CRF. Control encodes at
+CRF 12/16 (not in results.json) scored CAMBI mean 3.95/3.86 — *higher*
+than CRF 34, and converging on the **undithered** source's 4.0.
+
+## Findings
+
+1. **The production stack works measured as a unit: recommend it.**
+   wPSNR-Y −0.16% (sol10) / −0.26% (whale10) vs anchor — luma-neutral on
+   the clip class where the plain floor costs +7.14% — while keeping
+   whale10's full chroma gains (−19.6/−20.6) and a residual −2.9/−2.4 on
+   sol10. The stack is strictly better than `--hdr-pq` alone on every
+   metric column of both clips.
+2. **`--hdr-chroma-adapt 1.0` is the right default.** The strength sweep
+   brackets it: 0.5 leaves too much floor cost (+4.09), 1.5 buys only
+   0.5% more luma at a further ~halving of the residual chroma gain
+   (−1.5/−4.2). The knee sits at 1.0.
+3. **`--hdr-banding-protect` fails its design goal — measured, do not
+   enable.** On a segment built of exactly the flat PQ gradients it
+   targets, it costs +9.15% / +22.57% wPSNR-Y BD-rate at strengths
+   0.5 / 1.0 and moves CAMBI by less than the config-to-config noise.
+   The CRF 12/16 control explains why: banding on dither-protected smooth
+   gradients is **dither-loss banding** — the encoder strips the master's
+   dither at any practical rate, and the reconstructed smooth 10-bit
+   gradient bands at ~4.0 *by itself*. No QP allocation can fix that; the
+   levers that can are dither/grain preservation (film-grain pipeline
+   TODO) and SAO band-offset repair (SAO banding TODO).
+4. **`--hdr-scaling-list` is banding-neutral** (CAMBI unchanged, wPSNR
+   ~−0.2%) on pure gradients — its high-frequency-biased scaling never
+   engages when everything is DC. Its subjective texture case remains
+   untested; nothing here justifies or condemns it.
+
+## Raw rate-quality tables (kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr)
+
+### Sol Levante (3840x2160p24, frames 2088–2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| chromaadapt05 | 34967 \| 43.71 \| 42.72 \| 44.85 \| 46.00 | 20934 \| 41.28 \| 40.28 \| 42.42 \| 44.40 | 11970 \| 39.00 \| 38.00 \| 40.23 \| 43.08 | 6762 \| 37.02 \| 36.00 \| 38.75 \| 42.10 |
+| chromaadapt15 | 33766 \| 43.70 \| 42.71 \| 44.14 \| 45.54 | 20262 \| 41.27 \| 40.28 \| 41.86 \| 44.03 | 11558 \| 39.00 \| 38.00 \| 39.78 \| 42.80 | 6545 \| 37.02 \| 35.99 \| 38.42 \| 41.88 |
+| prodstack | 34219 \| 43.65 \| 42.84 \| 44.32 \| 45.54 | 20453 \| 41.18 \| 40.37 \| 41.95 \| 44.00 | 11660 \| 38.90 \| 38.05 \| 39.86 \| 42.78 | 6551 \| 36.93 \| 36.01 \| 38.44 \| 41.84 |
+
+### whale (3840x2160p60, frames 100–399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| prodstack | 5420 \| 49.33 \| 51.19 \| 53.36 \| 57.66 | 3282 \| 47.08 \| 48.77 \| 51.82 \| 56.09 | 1987 \| 44.66 \| 46.18 \| 50.37 \| 54.32 | 1205 \| 42.18 \| 43.52 \| 48.69 \| 53.01 |
+
+### band10 (synthetic gradients, 3840x2160p24, 96 frames)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 149 \| 62.10 \| 61.80 \| 59.97 \| 60.93 | 128 \| 60.49 \| 60.21 \| 57.36 \| 58.42 | 112 \| 58.47 \| 58.20 \| 54.59 \| 55.66 | 102 \| 56.11 \| 55.80 \| 51.57 \| 52.35 |
+| bandp05 | 156 \| 61.92 \| 61.64 \| 59.78 \| 60.56 | 132 \| 60.16 \| 59.87 \| 57.65 \| 58.57 | 120 \| 57.75 \| 57.33 \| 54.37 \| 54.53 | 113 \| 54.93 \| 54.47 \| 51.91 \| 51.55 |
+| bandp10 | 164 \| 61.30 \| 60.90 \| 59.19 \| 60.03 | 142 \| 59.23 \| 58.80 \| 56.48 \| 56.89 | 127 \| 56.71 \| 56.25 \| 54.17 \| 54.03 | 125 \| 54.11 \| 53.54 \| 51.32 \| 52.06 |
+| slist | 149 \| 62.11 \| 61.80 \| 60.05 \| 60.61 | 127 \| 60.53 \| 60.26 \| 57.30 \| 58.78 | 110 \| 58.27 \| 57.92 \| 54.53 \| 54.90 | 102 \| 55.97 \| 55.66 \| 51.50 \| 52.30 |
+
+## Caveats
+
+- `band10` is one synthetic segment whose banding is dominated by the
+  dither-loss mode. A coarser-gradient segment (where undithered 10-bit is
+  clean and banding appears only through coarse quantization at high QP)
+  would test the QP-domain banding mode banding-protect was designed for —
+  no such real-world PQ segment is in the corpus yet, and on this evidence
+  the tool should stay off-by-default either way.
+- CAMBI runs with libvmaf defaults (SDR-tuned TVI). Fine for ranking
+  configs on the same content; absolute "visibility" readings on PQ
+  content should not be quoted as such.
+- prodstack rides on `--hdr-scene-qp 1.0`, still never exercised by
+  temporally transient content (both real segments are steady).
+- band10's PSNR/wPSNR columns compare against the *dithered* source, so
+  part of every config's distortion is the (perceptually invisible,
+  metrically expensive) dither removal — treat those columns as
+  rate-matching context, not quality.

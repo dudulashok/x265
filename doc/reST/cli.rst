@@ -2504,7 +2504,12 @@ VUI fields must be manually specified.
 	Cb and Cr. All individual parameters remain overridable afterwards.
 	Does not imply :option:`--hdr10-opt` or :option:`--hdr-luma-qp`; a
 	complete HDR10 stream additionally requires :option:`--master-display`
-	and :option:`--max-cll`. Default disabled.
+	and :option:`--max-cll`. For coding-efficiency HDR tuning the measured
+	recommendation is to combine it with the adaptive tools:
+	``--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0``
+	(wPSNR-Y-neutral vs a plain VUI anchor on both natural and animated 4K
+	PQ test content while retaining the chroma gains of the -2/-2 offsets
+	where they are cheap). Default disabled.
 
 .. option:: --hdr-luma-qp <float>
 
@@ -2554,7 +2559,9 @@ VUI fields must be manually specified.
 	canceled at strength 1.0). The adaptation is signaled per slice
 	relative to the PPS offsets; it requires nonzero base offsets to act on
 	and AQ or weighted prediction for the frame-level analysis. 0 disables.
-	Typical range 0.5 to 1.5. Default 0.
+	Strength 1.0 measured best on 4K PQ content (0.5 leaves most of the
+	luma cost of the static offsets in place, 1.5 gives up most of the
+	remaining chroma gain for little further luma benefit). Default 0.
 
 .. option:: --hdr-banding-protect <float>
 
@@ -2562,8 +2569,12 @@ VUI fields must be manually specified.
 	Quantization groups that are spatially flat and in the banding-prone
 	luma range receive a negative QP offset (more bits), balanced by a
 	zero-mean redistribution across the frame. Requires AQ. Evaluate with a
-	banding-specific measure (e.g. CAMBI) rather than PSNR. 0 disables.
-	Typical range 0.5 to 1.5. Default 0.
+	banding-specific measure (e.g. CAMBI) rather than PSNR. Experimental:
+	on a dedicated dithered-gradient PQ banding segment this tool did not
+	reduce CAMBI at any strength while costing 9-23% wPSNR-Y BD-rate —
+	banding on such content comes from the encoder discarding the master's
+	dither, which no QP allocation can prevent. Not recommended until
+	redesigned. 0 disables. Default 0.
 
 .. option:: --hdr-scene-qp <float>
 
