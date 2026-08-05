@@ -368,21 +368,23 @@ banded plateau; combined with the banding-protect result, HEVC-conformant
 encoder-side banding repair on dither-loss content is now a closed question —
 grain/dither preservation (FGC) or display-side debanding are the only levers left.
 
-### Remaining next-session priorities
+### Remaining next-session priorities (agreed with user 2026-08-06)
 
-1. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR
-   display (subjective pass also still owed to `--hdr-scaling-list`) — user will run
-   this.
-2. **Exercise `--hdr-scene-qp`** (transient-rich segment) — the only tool in the
-   recommended stack never exercised by the corpus; add a rate-control-tests.txt
-   descriptor and check the ABR/VBV paths.
-3. **Anti-banding**: only the **film-grain/dither-preservation pipeline** (FGC SEI)
-   remains viable — plan it as its own project. A coarser-gradient band10 variant
-   (undithered-clean, bands only through coarse quantization) would isolate the
-   QP-domain banding mode if banding-protect is ever revisited, but nothing measured
-   so far motivates that.
-4. Next cheap wins from the TODO: **VTM HDR lambda tables** (existing harness measures
-   it directly) and **measured MaxCLL/MaxFALL → CLL SEI**.
+**Anti-banding is CLOSED within this project.** The user decided (2026-08-06) that
+banding — measured, documented and pushed through `47b3f77b7`: default x265 bands
+visibly on real HDR content (whale10 anchor CAMBI 5.6-7.0 vs source 0.15), and
+neither QP nor SAO tools can repair it — will be investigated in a **separate
+project** (film-grain/dither-preservation pipeline) after the HDR improvement
+feature is finished. Don't pick banding items from the TODO until then; the
+CAMBI harness + band10 + the whale10 problem statement are ready when it starts.
+
+1. **NEXT SESSION: exercise `--hdr-scene-qp`** (transient-rich segment) — the only
+   tool in the recommended production stack never exercised by the corpus; add a
+   rate-control-tests.txt descriptor and check the ABR/VBV paths.
+2. **User is running the subjective HDR-display pass** for `--hdr-deblock` and
+   `--hdr-scaling-list` in parallel — fold the outcome into the docs when it lands.
+3. Then the cheap wins from the TODO: **VTM HDR lambda tables** (existing harness
+   measures it directly) and **measured MaxCLL/MaxFALL → CLL SEI**.
 
 ### TODO — HDR quality / efficiency investigation
 
