@@ -4867,6 +4867,16 @@ void Encoder::configure(x265_param *p)
             p->vui.chromaSampleLocTypeTopField = p->vui.chromaSampleLocTypeBottomField = 2;
         p->bRepeatHeaders = 1;
         p->bEnableSAO = 1;   /* SAO ON: helps PQ banding; keep even if preset would disable */
+        /* BUGFIX: the selective-sao harmonization earlier in configure()
+         * ("if (!p->selectiveSAO && p->bEnableSAO) p->selectiveSAO = 4")
+         * has already run by the time this block forces SAO on, so a preset
+         * that started with SAO off (superfast/ultrafast) would be left in
+         * the never-intended state bEnableSAO=1/selectiveSAO=0, which
+         * produces slice headers the decoder cannot parse (desync at the
+         * WPP entry points; ffmpeg: "offset_len N is invalid", corrupt
+         * decode). Mirror the harmonization here. */
+        if (!p->selectiveSAO)
+            p->selectiveSAO = 4;
         if (p->cbQpOffset == 0)  p->cbQpOffset = -2;  /* protect BT.2020 WCG chroma */
         if (p->crQpOffset == 0)  p->crQpOffset = -2;
         x265_log(p, X265_LOG_INFO,
