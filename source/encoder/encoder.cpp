@@ -3919,7 +3919,7 @@ void Encoder::initPPS(PPS *pps)
      * rose from 1.3 (correct) to 15.7 (mismatched) at hdr-chroma-qp
      * strength 0.3 before this fix. */
     pps->pps_slice_chroma_qp_offsets_present_flag =
-        m_param->bHDR10Opt || (m_param->rc.hdrChromaQpStrength > 0);
+        m_param->bHDR10Opt || (m_param->rc.hdrChromaQpStrength > 0) || (m_param->rc.hdrChromaAdaptStrength > 0);
     pps->bConstrainedIntraPred = m_param->bEnableConstrainedIntra;
     pps->bUseWeightPred = m_param->bEnableWeightedPred;
     pps->bUseWeightedBiPred = m_param->bEnableWeightedBiPred;
@@ -4944,6 +4944,27 @@ void Encoder::configure(x265_param *p)
         }
         else if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
             x265_log(p, X265_LOG_WARNING, "hdr-deblock assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
+    }
+
+    if (p->rc.hdrChromaAdaptStrength > 0)
+    {
+        if (!p->cbQpOffset && !p->crQpOffset)
+        {
+            /* the tool scales the static PPS offsets; with a 0/0 base there
+             * is nothing to scale. Runs after the bHdrPq block above, so
+             * --hdr-pq's -2/-2 defaults are already in place. */
+            x265_log(p, X265_LOG_WARNING, "hdr-chroma-adapt requires nonzero cbqpoffs/crqpoffs (e.g. --hdr-pq); disabling hdr-chroma-adapt.\n");
+            p->rc.hdrChromaAdaptStrength = 0;
+        }
+        else if (!p->rc.aqMode && !p->rc.hevcAq && !p->bAQMotion && !p->bEnableWeightedPred && !p->bEnableWeightedBiPred)
+        {
+            /* frame chroma stats are computed in calcAdaptiveQuantFrame(),
+             * which the lookahead only runs when AQ or weightp is active */
+            x265_log(p, X265_LOG_WARNING, "hdr-chroma-adapt requires AQ or weighted prediction for frame-level chroma analysis; disabling hdr-chroma-adapt.\n");
+            p->rc.hdrChromaAdaptStrength = 0;
+        }
+        else if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
+            x265_log(p, X265_LOG_WARNING, "hdr-chroma-adapt assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
     }
 
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)

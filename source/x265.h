@@ -1891,6 +1891,22 @@ typedef struct x265_param
          * (default). Typical useful range 0.5 - 1.5. */
         double    hdrChromaQpStrength;
 
+        /* Strength of content-adaptive scaling of the static chroma QP
+         * offsets (cbQpOffset/crQpOffset, e.g. the -2/-2 set by bHdrPq) for
+         * 10-bit BT.2020/PQ. Computed ONCE PER FRAME from the chroma share
+         * of the frame's AC energy (lookahead full-frame scan of all three
+         * planes): where chroma carries a small share of the residual-coding
+         * work (smooth natural chroma under textured luma), the static
+         * offset costs luma almost nothing and is kept in full; where chroma
+         * carries a large share (hard color edges, flat-shaded animation),
+         * the same offset inflates a substantial fraction of the total
+         * bitrate and starves luma, so it is returned toward 0 (fully
+         * canceled at strength 1.0). The adjustment is signaled per-slice
+         * (slice_cb/cr_qp_offset) relative to the PPS offsets, so it
+         * requires nonzero cbQpOffset/crQpOffset to act on. 0 disables
+         * (default). Typical useful range 0.5 - 1.5. */
+        double    hdrChromaAdaptStrength;
+
         /* Strength of anti-banding protection for 10-bit PQ content. Computed
          * per quantization group from the SAME luma-average and AC-energy
          * statistics already used for adaptive quantization. Quantization

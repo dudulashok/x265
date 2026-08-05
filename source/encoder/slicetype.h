@@ -73,6 +73,19 @@ class Lookahead;
 #endif
 #define PI 3.14159265
 
+/* Per-frame accumulator for the HDR frame-stats scan (hdr-chroma-adapt);
+ * filled block by block by LookaheadTLD::hdrFrameStatsCu() */
+struct HdrFrameStats
+{
+    double   lumaAcSum;    /* per-block luma AC energy (ssd - sum^2/n), summed */
+    double   chromaAcSum;  /* same, both chroma planes */
+    double   chromaDevSum; /* pixel-weighted |block mean - neutral|, both chroma planes */
+    uint64_t lumaPixCnt;
+    uint64_t chromaPixCnt;
+
+    HdrFrameStats() { lumaAcSum = chromaAcSum = chromaDevSum = 0.0; lumaPixCnt = chromaPixCnt = 0; }
+};
+
 /* Thread local data for lookahead tasks */
 struct LookaheadTLD
 {
@@ -146,6 +159,8 @@ protected:
     uint32_t acEnergyCu(Frame* curFrame, uint32_t blockX, uint32_t blockY, int csp, uint32_t qgSize);
     uint32_t edgeDensityCu(Frame* curFrame, uint32_t &avgAngle, uint32_t blockX, uint32_t blockY, uint32_t qgSize);
     uint32_t lumaSumCu(Frame* curFrame, uint32_t blockX, uint32_t blockY, uint32_t qgSize);
+    void     hdrFrameStatsCu(Frame* curFrame, uint32_t blockX, uint32_t blockY, int csp, uint32_t qgSize,
+                             HdrFrameStats& acc);
     uint32_t weightCostLuma(Lowres& fenc, Lowres& ref, WeightParam& wp);
     bool     allocWeightedRef(Lowres& fenc);
 };

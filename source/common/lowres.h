@@ -187,6 +187,21 @@ struct Lowres : public ReferencePlanes
      * or hdr-scene-qp is enabled. -1.0 means not computed for this frame. */
     double hdrFrameAvgLuma;
 
+    /* Frame-level AC-energy statistics, computed once per frame in
+     * LookaheadTLD::calcAdaptiveQuantFrame() when hdr-chroma-adapt is
+     * enabled. -1.0 means not computed for this frame.
+     * hdrFrameLumaAct / hdrFrameChromaAct: mean per-pixel AC energy
+     * (variance within analysis blocks, code-value^2) of the luma plane and
+     * of both chroma planes together. Their ratio estimates the chroma
+     * share of residual-coding work: the higher the chroma share, the more
+     * total bits a static negative chroma QP offset drags away from luma.
+     * hdrFrameChromaDev: mean per-block |block mean - neutral| (code
+     * values) -- how saturated the frame is; gathered for analysis/logging
+     * alongside the activity measures. */
+    double hdrFrameLumaAct;
+    double hdrFrameChromaAct;
+    double hdrFrameChromaDev;
+
     /* lookahead output data */
     int64_t   costEst[X265_BFRAME_MAX + 2][X265_BFRAME_MAX + 2];
     int64_t   costEstAq[X265_BFRAME_MAX + 2][X265_BFRAME_MAX + 2];

@@ -284,6 +284,80 @@ uint32_t LookaheadTLD::acEnergyCu(Frame* curFrame, uint32_t blockX, uint32_t blo
     return var;
 }
 
+/* Accumulate frame-level HDR statistics for one analysis block over all
+ * three planes: per-block AC energy (ssd - sum^2/n, i.e. block variance
+ * before normalization) for luma and chroma, and pixel-weighted
+ * |block mean - neutral| (saturation) for chroma. Unlike acEnergyCu() this
+ * has NO side effects on the weightp wp_sum/wp_ssd accumulators, so it is
+ * safe to call from the unconditional HDR frame-stats scan. Block
+ * coordinates are in luma pixels (same grid as lumaSumCu). */
+void LookaheadTLD::hdrFrameStatsCu(Frame* curFrame, uint32_t blockX, uint32_t blockY, int csp, uint32_t qgSize,
+                                   HdrFrameStats& acc)
+{
+    intptr_t stride = curFrame->m_fencPic->m_stride;
+    intptr_t cStride = curFrame->m_fencPic->m_strideC;
+    int hShift = CHROMA_H_SHIFT(csp);
+    int vShift = CHROMA_V_SHIFT(csp);
+    intptr_t blockOffsetLuma = blockX + (blockY * stride);
+    intptr_t blockOffsetChroma = (blockX >> hShift) + ((blockY >> vShift) * cStride);
+    const int neutral = 1 << (X265_DEPTH - 1);
+
+    for (int plane = 0; plane <= 2; plane++)
+    {
+        pixel* src = curFrame->m_fencPic->m_picOrg[plane] + (plane ? blockOffsetChroma : blockOffsetLuma);
+        intptr_t srcStride = plane ? cStride : stride;
+        uint64_t sum_ssd;
+        int blockPix;
+
+        if (plane && csp != X265_CSP_I444)
+        {
+            if (qgSize == 8)
+            {
+                ALIGN_VAR_4(pixel, pix[4 * 4]);
+                primitives.cu[BLOCK_4x4].copy_pp(pix, 4, src, srcStride);
+                sum_ssd = primitives.cu[BLOCK_4x4].var(pix, 4);
+                blockPix = 4 * 4;
+            }
+            else
+            {
+                ALIGN_VAR_8(pixel, pix[8 * 8]);
+                primitives.cu[BLOCK_8x8].copy_pp(pix, 8, src, srcStride);
+                sum_ssd = primitives.cu[BLOCK_8x8].var(pix, 8);
+                blockPix = 8 * 8;
+            }
+        }
+        else
+        {
+            if (qgSize == 8)
+            {
+                sum_ssd = primitives.cu[BLOCK_8x8].var(src, srcStride);
+                blockPix = 8 * 8;
+            }
+            else
+            {
+                sum_ssd = primitives.cu[BLOCK_16x16].var(src, srcStride);
+                blockPix = 16 * 16;
+            }
+        }
+
+        uint32_t sum = (uint32_t)sum_ssd;
+        uint32_t ssd = (uint32_t)(sum_ssd >> 32);
+        double ac = (double)ssd - (double)sum * sum / blockPix;
+        if (plane)
+        {
+            acc.chromaAcSum += ac;
+            acc.chromaDevSum += fabs((double)sum - (double)neutral * blockPix);
+            acc.chromaPixCnt += blockPix;
+        }
+        else
+        {
+            acc.lumaAcSum += ac;
+            acc.lumaPixCnt += blockPix;
+        }
+    }
+    x265_emms();
+}
+
 /* Find the sum of pixels of each block for luma plane */
 uint32_t LookaheadTLD::lumaSumCu(Frame* curFrame, uint32_t blockX, uint32_t blockY, uint32_t qgSize)
 {
@@ -803,7 +877,8 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
 
     }
 
-    if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0 || param->rc.hdrDeblockStrength > 0)
+    if (param->rc.hdrChromaQpStrength > 0 || param->rc.hdrSceneQpStrength > 0 || param->rc.hdrDeblockStrength > 0 ||
+        param->rc.hdrChromaAdaptStrength > 0)
     {
         /* Average 10-bit PQ luma code value (APL) across the whole frame.
          * Computed once per frame, independent of qgSize/AQ mode, for use
@@ -822,15 +897,29 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
          * stayed on for non-referenced ones. Computed unconditionally now. */
         uint64_t frameLumaSum = 0;
         uint64_t frameLumaCnt = 0;
+        /* hdr-chroma-adapt additionally needs frame luma/chroma AC-energy
+         * statistics; the accumulation shares this scan's block grid.
+         * hdrFrameStatsCu() is side-effect-free like lumaSumCu(). */
+        bool bHdrStats = param->rc.hdrChromaAdaptStrength > 0 && param->internalCsp != X265_CSP_I400 &&
+            curFrame->m_fencPic->m_picCsp != X265_CSP_I400;
+        HdrFrameStats hdrStats;
         for (int blockY = 0; blockY < maxRow; blockY += loopIncr)
         {
             for (int blockX = 0; blockX < maxCol; blockX += loopIncr)
             {
                 frameLumaSum += lumaSumCu(curFrame, blockX, blockY, param->rc.qgSize);
                 frameLumaCnt += (uint64_t)loopIncr * loopIncr;
+                if (bHdrStats)
+                    hdrFrameStatsCu(curFrame, blockX, blockY, param->internalCsp, param->rc.qgSize, hdrStats);
             }
         }
         curFrame->m_lowres.hdrFrameAvgLuma = frameLumaCnt ? (double)frameLumaSum / frameLumaCnt : -1.0;
+        if (bHdrStats && hdrStats.lumaPixCnt && hdrStats.chromaPixCnt)
+        {
+            curFrame->m_lowres.hdrFrameLumaAct = hdrStats.lumaAcSum / hdrStats.lumaPixCnt;
+            curFrame->m_lowres.hdrFrameChromaAct = hdrStats.chromaAcSum / hdrStats.chromaPixCnt;
+            curFrame->m_lowres.hdrFrameChromaDev = hdrStats.chromaDevSum / hdrStats.chromaPixCnt;
+        }
     }
 
     if (param->bEnableWeightedPred || param->bEnableWeightedBiPred)

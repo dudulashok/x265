@@ -2539,6 +2539,22 @@ VUI fields must be manually specified.
 	luminance-based quality metrics; use for subjective chroma quality.
 	0 disables. Typical range 0.5 to 1.5. Default 0.
 
+.. option:: --hdr-chroma-adapt <float>
+
+	Strength of per-frame content-adaptive scaling of the static chroma QP
+	offsets (:option:`--cbqpoffs`/:option:`--crqpoffs`, e.g. the -2/-2 set
+	by :option:`--hdr-pq`) for 10-bit BT.2020/PQ content. The lookahead
+	measures the chroma share of each frame's AC energy: where chroma
+	carries little of the residual-coding work (smooth natural chroma under
+	textured luma), boosting it is nearly free and the full static offset
+	is kept; where chroma carries a large share (hard color edges,
+	flat-shaded animation), the same offset inflates a substantial fraction
+	of the total bitrate at luma's expense and is returned toward 0 (fully
+	canceled at strength 1.0). The adaptation is signaled per slice
+	relative to the PPS offsets; it requires nonzero base offsets to act on
+	and AQ or weighted prediction for the frame-level analysis. 0 disables.
+	Typical range 0.5 to 1.5. Default 0.
+
 .. option:: --hdr-banding-protect <float>
 
 	Strength of anti-banding QP protection for 10-bit PQ content.

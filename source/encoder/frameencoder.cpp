@@ -716,6 +716,42 @@ void FrameEncoder::compressFrame(int layer)
         slice->m_chromaQpOffset[1] = slice->m_pps->chromaQpOffset[1] + qpCr < -12 ? (qpCr + (-12 - (slice->m_pps->chromaQpOffset[1] + qpCr))) : qpCr;
     }
 
+    if (m_param->rc.hdrChromaAdaptStrength > 0 && m_frame[layer]->m_lowres.hdrFrameChromaAct >= 0.0 &&
+        m_frame[layer]->m_lowres.hdrFrameLumaAct > 0.0)
+    {
+        /* Content-adaptive scaling of the static PPS chroma QP offsets
+         * (e.g. the -2/-2 set by --hdr-pq). What a static negative chroma
+         * offset COSTS is proportional to the chroma share of the frame's
+         * residual-coding work: where chroma carries little of the total AC
+         * energy (e.g. smooth natural chroma over textured luma), boosting
+         * it is nearly free and the offset stays; where chroma carries a
+         * large share (hard color edges, flat-shaded animation over simple
+         * luma), the same offset inflates a substantial bit fraction and
+         * starves luma -- the measured +7% wPSNR-Y floor on such content --
+         * so the offset is returned toward 0. Scale is applied per frame as
+         * a slice-level delta relative to the PPS offsets. The share is
+         * mapped through [LO, HI] (below LO the offset is kept in full, at
+         * and above HI it is fully canceled at strength 1.0). */
+        const double HDR_CHROMA_SHARE_LO = 0.10;
+        const double HDR_CHROMA_SHARE_HI = 0.30;
+        double lumaAct = m_frame[layer]->m_lowres.hdrFrameLumaAct;
+        double chromaAct = m_frame[layer]->m_lowres.hdrFrameChromaAct;
+        double share = chromaAct / (chromaAct + lumaAct);
+        double shrink = x265_clip3(0.0, 1.0, (share - HDR_CHROMA_SHARE_LO) / (HDR_CHROMA_SHARE_HI - HDR_CHROMA_SHARE_LO));
+        double factor = x265_clip3(0.0, 1.5, 1.0 - m_param->rc.hdrChromaAdaptStrength * shrink);
+        for (int c = 0; c < 2; c++)
+        {
+            int base = slice->m_pps->chromaQpOffset[c];
+            int eff = x265_clip3(-12, 0, (int)floor(base * factor + 0.5));
+            slice->m_chromaQpOffset[c] += eff - base;
+        }
+        x265_log(m_param, X265_LOG_DEBUG,
+                 "hdr-chroma-adapt: poc %d apl %.1f lumaAct %.1f chromaAct %.1f dev %.1f share %.3f factor %.3f slice cb/cr %+d/%+d\n",
+                 m_frame[layer]->m_poc, m_frame[layer]->m_lowres.hdrFrameAvgLuma, lumaAct, chromaAct,
+                 m_frame[layer]->m_lowres.hdrFrameChromaDev, share, factor,
+                 slice->m_chromaQpOffset[0], slice->m_chromaQpOffset[1]);
+    }
+
     if (m_param->rc.hdrChromaQpStrength > 0 && m_frame[layer]->m_lowres.hdrFrameAvgLuma >= 0.0)
     {
         /* Frame-level WCG chroma-adaptive QP. BT.2020 wide-gamut chroma is

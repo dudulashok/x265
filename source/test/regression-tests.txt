@@ -220,6 +220,7 @@ nature_1920x1080_25.yuv,--qp 28 --fovea-delta 20 --fovea-gaze-file gaze_nature.t
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --hdr-pq --hdr-luma-qp 1.0 --hdr10
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset fast --hdr-pq --hdr-scaling-list --hdr-banding-protect 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 24 --hdr-pq --hdr-chroma-qp 1.0 --hdr-scene-qp 1.0
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 24 --hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 24 --hdr-pq --hdr-wsse-rd 1.0 --psy-rdoq 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset slow --hdr-pq --hdr-wsse-rd 1.5 --rd 5 --frame-threads 3
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --hdr-pq --hdr-deblock 1.0 --deblock -1:-1 --repeat-headers
