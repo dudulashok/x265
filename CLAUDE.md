@@ -290,16 +290,22 @@ file plus that repo are the reference points for continuing development.
   slice-level chroma-offset writer must reset the fields unconditionally per frame,
   exactly like the hdr-deblock overrides.
 
-### 2026-08-05 session log (items 1+2 of the agreed plan executed)
+### 2026-08-05 session log (items 1+2 of the agreed plan executed — BOTH MEASURED, see
+### the RESULTS.md "2026-08-05 (late)" section for full numbers)
 
-1. **`--hdr-luma-qp` strength sweep ran** (40 encodes, `lumaq025..lumaq15` configs,
-   pure model on anchor VUI without `--hdr-pq`); wPSNR metrics + BD-rate in
-   `hdr-validation/` (`RESULTS.md` for the verdict and chosen default).
-2. **Content-adaptive chroma offsets implemented** as `--hdr-chroma-adapt <float>`
-   (`862809aed`, X265_BUILD 221; decided as a new param, not an `--hdr-pq` revision, so
-   the validated floor stays A/B-comparable). `chromaadapt` config added to the harness.
-   Success criterion stands: cut sol10's +7.1% wPSNR-Y floor cost to < +3% while keeping
-   the bulk of the −17..−23% chroma gains.
+1. **`--hdr-luma-qp` strength sweep ran and settled the default: recommend 0.5**
+   (0.5–0.75 is a BD-optimal plateau; means across clips −1.41/−1.42% wPSNR-Y; 1.0
+   gives most of sol10's gain back, 1.5 reverses). Pure model (no `--hdr-pq`) gains on
+   BOTH clips — sol10 −1.31%, whale10 −1.50% at 0.5 — confirming the luma model has no
+   dark-content penalty; the old +7.3% was entirely the chroma-offset floor.
+2. **Content-adaptive chroma offsets implemented AND validated** as
+   `--hdr-chroma-adapt <float>` (`862809aed`, X265_BUILD 221; a new param, not an
+   `--hdr-pq` revision, so the floor stays A/B-comparable). Measured at 1.0: sol10
+   floor cost **+7.14 → +1.19% wPSNR-Y** (target was < +3%), whale10 numerically
+   identical to the plain floor (full −17.5/−22.9 chroma gains kept; share mapping
+   held factor 1.0 on every frame as designed). The production stack to try next is
+   `--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0` — unmeasured
+   as a unit.
 3. **Two pre-existing bugs found and fixed during verification** (details in the
    validation-established section): `--hdr-pq` at superfast/ultrafast produced
    undecodable streams (`3923cec8d`), and `hdr-chroma-qp` slice offsets accumulated
@@ -317,8 +323,9 @@ file plus that repo are the reference points for continuing development.
 
 ### TODO — HDR quality / efficiency investigation
 
-- [x] **Strength sweeps** for `--hdr-luma-qp` — encodes ran 2026-08-05 (lumaq configs);
-      BD-rate verdict and chosen default in `hdr-validation/RESULTS.md`.
+- [x] **Strength sweeps** for `--hdr-luma-qp` — measured 2026-08-05: BD-optimal
+      plateau 0.5–0.75, recommend 0.5 (docs updated); 1.5 reverses the gain. Pure
+      model gains on both clips (sol −1.31 / whale −1.50% wPSNR-Y at 0.5).
 - [x] **Content-adaptive chroma offsets** — implemented 2026-08-05 as
       `--hdr-chroma-adapt <float>` (`862809aed`). Design differs from the sketch in one
       key way: the probe FALSIFIED "scale by chroma energy so chroma-flat frames drop
@@ -326,8 +333,9 @@ file plus that repo are the reference points for continuing development.
       (share 0.03-0.05) and sol10 (where it costs +7%) the chroma-heavy one (up to
       0.4): the offset's cost tracks the chroma share of residual-coding work. So the
       mapping is inverted: low share keeps the offset, high share cancels it (share
-      through [0.10, 0.30], slice-level delta vs the PPS offsets). BD-rate measurement
-      pending (`chromaadapt` harness config).
+      through [0.10, 0.30], slice-level delta vs the PPS offsets). Measured 2026-08-05
+      at strength 1.0: sol10 floor cost +7.14 → +1.19% wPSNR-Y (< +3% target met),
+      whale10 identical to the floor with full chroma gains — working as designed.
 - [ ] **CAMBI into the harness** (libvmaf ships it) and a gradient-heavy PQ test segment
       (sunset/sky); then actually tune banding-protect's SCALE/clamp — its current ±6 QP
       at strength 1.0 costs 4 dB wPSNR-Y and is unjustified until banding is measured.

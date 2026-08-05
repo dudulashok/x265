@@ -2516,7 +2516,8 @@ VUI fields must be manually specified.
 	This is the continuous, tunable form of the fixed :option:`--hdr10-opt`
 	staircase; do not enable both (hdr10-opt takes precedence). Requires AQ
 	(:option:`--aq-mode` with non-zero :option:`--aq-strength`). 0 disables.
-	Typical useful range is 0.5 to 1.5. Default 0.
+	Strengths 0.5 to 0.75 measured BD-optimal in wPSNR-Y on 4K PQ content
+	(recommend 0.5); above 1.0 the gain reverses. Default 0.
 
 .. option:: --hdr-scaling-list, --no-hdr-scaling-list
 

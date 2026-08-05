@@ -241,3 +241,96 @@ APL, not the folklore.
 | dbk10 | 6286 \| 50.00 \| 51.83 \| 53.71 \| 58.19 | 3798 \| 47.82 \| 49.49 \| 52.28 \| 56.48 | 2322 \| 45.44 \| 46.96 \| 50.73 \| 55.02 | 1445 \| 42.99 \| 44.34 \| 49.12 \| 53.59 |
 
 Pre-rebase numbers: [results-2026-08-03-prerebase.json](results-2026-08-03-prerebase.json)
+
+# 2026-08-05 (late) — `--hdr-luma-qp` strength sweep and `--hdr-chroma-adapt`
+
+Same segments, CRF ladder and metric pipeline as above. Two questions from
+the agreed plan: (1) what is the BD-optimal `--hdr-luma-qp` strength when
+the model is measured *pure* (`lumaqNN` configs = anchor VUI + strength,
+**no** `--hdr-pq`, so nothing rides on the +7% chroma-offset floor)?
+(2) does the new `--hdr-chroma-adapt` (per-frame scaling of the `--hdr-pq`
+−2/−2 offsets by the chroma share of frame AC energy, `862809aed`) cut the
+sol10 floor cost below the +3% target without giving up whale10's chroma
+gains? Encodes for `chromaadapt` used the post-`862809aed` binary; the
+lumaq/anchor encodes predate it (verified bit-identical default paths).
+
+## BD-rate vs anchor (%, negative = better)
+
+| clip | config | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr |
+|---|---|---|---|---|---|
+| sol10 | lumaq025 | +0.77 | −0.94 | −0.11 | +0.51 |
+| sol10 | lumaq05 | +2.21 | **−1.31** | +0.36 | +1.50 |
+| sol10 | lumaq075 | +4.36 | −1.03 | +0.97 | +3.01 |
+| sol10 | lumaq10 | +7.26 | −0.12 | +2.08 | +5.15 |
+| sol10 | lumaq15 | +15.02 | +3.35 | +5.41 | +10.28 |
+| sol10 | chromaadapt | +1.19 | **+1.19** | −2.68 | −5.85 |
+| whale10 | lumaq025 | +0.43 | −0.26 | −1.54 | +6.73 |
+| whale10 | lumaq05 | −0.22 | −1.50 | −2.22 | +1.31 |
+| whale10 | lumaq075 | −0.07 | −1.81 | −3.05 | −2.25 |
+| whale10 | lumaq10 | +0.08 | **−2.08** | −2.98 | −3.94 |
+| whale10 | lumaq15 | +2.13 | −0.74 | −0.16 | +10.53 |
+| whale10 | chromaadapt | +1.38 | +1.38 | −17.48 | −22.91 |
+
+(Reference for chromaadapt: the `hdrpq` floor is +7.14 wPSNR-Y on sol10 and
++1.37 on whale10, chroma −17..−23 on both — table in the section above.)
+
+## Findings
+
+1. **The pure JVET luma-dQP model gains on BOTH clips** — including the
+   dark anime that motivated the whole floor investigation: sol10 −1.31%,
+   whale10 −1.50% wPSNR-Y at strength 0.5. There is no dark-content penalty
+   in the luma model itself; the 2026-08 "+7.3%" was entirely the floor.
+2. **BD-optimal strength is a 0.5–0.75 plateau; recommend 0.5.** Means
+   across clips: 0.25 → −0.60, 0.5 → −1.41, 0.75 → −1.42, 1.0 → −1.10,
+   1.5 → +1.31. The 0.5/0.75 means are statistically tied; 0.5 has the
+   smaller chroma side-costs on sol10 (+0.4/+1.5 vs +1.0/+3.0 Cb/Cr) and
+   is never worse than −0.9 on either clip. 1.0 (the untested default we
+   had been using) already gives back most of sol10's gain; 1.5 overdrives
+   both clips. Docs updated to recommend 0.5–0.75.
+3. **`--hdr-chroma-adapt 1.0` meets its target.** sol10's floor cost drops
+   +7.14 → **+1.19% wPSNR-Y** (target was < +3%), and whale10 is
+   numerically indistinguishable from the plain floor (+1.38 vs +1.37
+   wPSNR-Y; chroma −17.5/−22.9 fully retained) — the share mapping held
+   factor 1.0 on every whale10 frame, exactly as designed. On sol10 most
+   of the chroma gain is (correctly) given back (−2.7/−5.9 remains of
+   −18.8/−19.5): those gains were being bought at +7% luma on content
+   whose chroma carries up to 40% of the AC energy. The exchange rate
+   improves from ~2.7% chroma-gain per 1% luma-cost to ~7% per 1%.
+4. **Composability caveat**: chromaadapt was measured alone on the floor.
+   The natural production set is now `--hdr-pq --hdr-chroma-adapt 1.0
+   --hdr-luma-qp 0.5 --hdr-scene-qp 1.0`; that stack has not been measured
+   as a unit yet.
+
+## Raw rate-quality tables (kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr)
+
+### Sol Levante (3840x2160p24, frames 2088–2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| lumaq025 | 33950 \| 43.74 \| 42.83 \| 44.12 \| 45.45 | 20337 \| 41.29 \| 40.37 \| 41.83 \| 43.93 | 11600 \| 39.00 \| 38.07 \| 39.74 \| 42.70 | 6534 \| 37.02 \| 36.04 \| 38.38 \| 41.77 |
+| lumaq05 | 34504 \| 43.76 \| 42.93 \| 44.22 \| 45.47 | 20640 \| 41.29 \| 40.46 \| 41.86 \| 43.95 | 11775 \| 39.00 \| 38.14 \| 39.78 \| 42.70 | 6620 \| 37.01 \| 36.09 \| 38.38 \| 41.76 |
+| lumaq075 | 35113 \| 43.76 \| 43.02 \| 44.30 \| 45.48 | 20960 \| 41.27 \| 40.53 \| 41.88 \| 43.95 | 11997 \| 38.98 \| 38.19 \| 39.83 \| 42.71 | 6732 \| 37.01 \| 36.13 \| 38.40 \| 41.77 |
+| lumaq10 | 35869 \| 43.74 \| 43.09 \| 44.36 \| 45.50 | 21385 \| 41.24 \| 40.58 \| 41.90 \| 43.96 | 12279 \| 38.95 \| 38.23 \| 39.89 \| 42.71 | 6876 \| 37.00 \| 36.17 \| 38.42 \| 41.75 |
+| lumaq15 | 37574 \| 43.64 \| 43.20 \| 44.40 \| 45.50 | 22462 \| 41.14 \| 40.65 \| 41.97 \| 43.97 | 12985 \| 38.89 \| 38.30 \| 40.00 \| 42.72 | 7240 \| 36.99 \| 36.25 \| 38.42 \| 41.75 |
+| chromaadapt | 33922 \| 43.71 \| 42.71 \| 44.22 \| 45.62 | 20351 \| 41.27 \| 40.28 \| 41.93 \| 44.09 | 11616 \| 39.00 \| 38.00 \| 39.83 \| 42.84 | 6574 \| 37.02 \| 36.00 \| 38.45 \| 41.90 |
+
+### whale (3840x2160p60, frames 100–399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| lumaq025 | 5718 \| 49.64 \| 51.48 \| 52.89 \| 57.10 | 3482 \| 47.41 \| 49.10 \| 51.40 \| 55.50 | 2137 \| 45.03 \| 46.55 \| 49.96 \| 53.40 | 1333 \| 42.52 \| 43.88 \| 48.33 \| 52.90 |
+| lumaq05 | 5298 \| 49.31 \| 51.17 \| 52.67 \| 56.77 | 3222 \| 47.05 \| 48.75 \| 51.21 \| 55.27 | 1955 \| 44.62 \| 46.15 \| 49.68 \| 53.30 | 1191 \| 42.13 \| 43.48 \| 47.78 \| 52.46 |
+| lumaq075 | 4928 \| 48.97 \| 50.83 \| 52.43 \| 56.48 | 2999 \| 46.69 \| 48.39 \| 51.02 \| 54.94 | 1811 \| 44.25 \| 45.77 \| 49.45 \| 53.57 | 1089 \| 41.74 \| 43.09 \| 47.84 \| 51.80 |
+| lumaq10 | 4596 \| 48.61 \| 50.48 \| 52.20 \| 56.17 | 2783 \| 46.31 \| 48.01 \| 50.78 \| 54.73 | 1657 \| 43.84 \| 45.34 \| 49.18 \| 53.35 | 979 \| 41.37 \| 42.68 \| 47.40 \| 51.85 |
+| lumaq15 | 4025 \| 47.89 \| 49.76 \| 51.77 \| 55.80 | 2422 \| 45.52 \| 47.19 \| 50.19 \| 54.01 | 1424 \| 43.11 \| 44.57 \| 48.73 \| 53.27 | 809 \| 40.68 \| 41.91 \| 47.76 \| 51.70 |
+| chromaadapt | 6295 \| 49.96 \| 51.79 \| 53.72 \| 58.21 | 3805 \| 47.78 \| 49.46 \| 52.26 \| 56.49 | 2323 \| 45.41 \| 46.93 \| 50.72 \| 55.03 | 1445 \| 42.93 \| 44.29 \| 49.16 \| 53.59 |
+
+## Caveats
+
+- Same two-segment corpus; n=1 per content class. The chroma-share mapping
+  thresholds [0.10, 0.30] are calibrated on exactly these two clips — a
+  mid-share clip (0.1–0.3) would exercise the interpolated region for the
+  first time.
+- wPSNR/PSNR only this round; no HDR-VDP-3.
+- chromaadapt measured on the floor only; the combined production stack
+  (floor + chroma-adapt + luma-qp 0.5 + scene-qp) is unmeasured.
