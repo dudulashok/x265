@@ -698,6 +698,16 @@ void FrameEncoder::compressFrame(int layer)
 
     /* Clip slice QP to 0-51 spec range before encoding */
     slice->m_sliceQp = x265_clip3(-QP_BD_OFFSET, QP_MAX_SPEC, qp);
+
+    /* Reset the slice chroma QP offsets unconditionally every frame: Slice
+     * objects are recycled through the FrameData free list, and the
+     * hdr-chroma-qp block below ADDS to the current value. Without this
+     * reset (and with bHDR10Opt off, whose block assigns rather than adds),
+     * a recycled slice carries the previous frame's offset and the value
+     * accumulates frame over frame until it pins at the -12 clamp -- and the
+     * signaled pps+slice sum can then leave the spec's [-12, 12] range. */
+    slice->m_chromaQpOffset[0] = slice->m_chromaQpOffset[1] = 0;
+
     if (m_param->bHDR10Opt)
     {
         int qpCb = x265_clip3(-12, 0, (int)floor((m_top->m_cB * ((-.46) * qp + 9.26)) + 0.5 ));
@@ -725,7 +735,18 @@ void FrameEncoder::compressFrame(int layer)
         extraOffset = x265_clip3(-12, 0, extraOffset);
         slice->m_chromaQpOffset[0] = x265_clip3(-12, 0, slice->m_chromaQpOffset[0] + extraOffset);
         slice->m_chromaQpOffset[1] = x265_clip3(-12, 0, slice->m_chromaQpOffset[1] + extraOffset);
+        x265_log(m_param, X265_LOG_DEBUG,
+                 "hdr-chroma-qp: poc %d apl %.1f extra %+d slice cb/cr %+d/%+d\n",
+                 m_frame[layer]->m_poc, m_frame[layer]->m_lowres.hdrFrameAvgLuma, extraOffset,
+                 slice->m_chromaQpOffset[0], slice->m_chromaQpOffset[1]);
     }
+
+    /* Spec safety: slice_cb/cr_qp_offset and pps+slice must each stay inside
+     * [-12, 12] (HEVC 7.4.7.1); clamp whatever the blocks above composed. */
+    for (int c = 0; c < 2; c++)
+        slice->m_chromaQpOffset[c] = x265_clip3(X265_MAX(-12, -12 - slice->m_pps->chromaQpOffset[c]),
+                                                X265_MIN(12, 12 - slice->m_pps->chromaQpOffset[c]),
+                                                slice->m_chromaQpOffset[c]);
 
     /* Effective deblocking offsets for this frame. Assigned unconditionally
      * every frame: Slice objects are recycled through the FrameData free
