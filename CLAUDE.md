@@ -192,7 +192,7 @@ it against C.
 ## HDR tools project (branch `HDR`)
 
 The `HDR` branch carries an experimental set of VVC/JVET-inspired HDR coding tools,
-implemented strictly inside HEVC-conformant syntax (no decoder changes). Nine `x265_param`
+implemented strictly inside HEVC-conformant syntax (no decoder changes). Ten `x265_param`
 members / CLI options, all documented in `doc/reST/cli.rst`:
 
 - `--hdr-pq` — one-shot BT.2020/PQ VUI signalling + repeat-headers, SAO, chroma QP offsets.
@@ -229,6 +229,14 @@ members / CLI options, all documented in `doc/reST/cli.rst`:
   mapped through [0.10, 0.30]. NOTE the mapping direction: the probe FALSIFIED
   "chroma-rich keeps the offset" — what the offset costs tracks the chroma share of
   residual work, so high share ⇒ cancel. Requires nonzero base offsets and AQ/weightp.
+- `--hdr-sao-band <float>` — SAO banding-repair bias, added 2026-08-05 late-3
+  (X265_BUILD 222): per-CTU source-variance classifier inside `SAO::rdoSaoUnitCu`
+  scales the SAO RD lambda down in banding-prone CTUs so band/edge offsets survive
+  their rate cost. Requires SAO; deterministic (source pixels only, no cross-CTU
+  state). **Measured negative** (RESULTS.md late-3): engages hard but CAMBI does not
+  improve — SAO's per-class constant offsets cannot re-step a plateau inside a
+  32-code band, and EO touches only contour pixels. Off-by-default experiment, same
+  policy as `--hdr-wsse-rd`.
 
 Metric validation (wPSNR per JVET CTC, HDR-VDP-3 via Octave) against real HDR10 PQ content
 lives in `hdr-validation/` on this branch: encode sweep + metric scripts + results
@@ -349,18 +357,32 @@ All three priorities from the previous session executed; numbers in RESULTS.md
    +4.09% wPSNR-Y (too much floor left), 1.5 → +0.71% but chroma residual halves
    again (−1.5/−4.2). Docs updated.
 
+### 2026-08-05 (late-3) session log — `--hdr-sao-band` implemented and measured
+
+The SAO band-offset bias TODO executed same-day (user directive): implemented as
+`--hdr-sao-band <float>` (X265_BUILD 222, full 7-step checklist, default path
+byte-verified bit-identical), measured on band10 with the new CAMBI harness, and
+the verdict is **negative — see the [x] TODO entry and RESULTS.md late-3**. The
+one-line takeaway: SAO's operator space (one constant per class) cannot re-step a
+banded plateau; combined with the banding-protect result, HEVC-conformant
+encoder-side banding repair on dither-loss content is now a closed question —
+grain/dither preservation (FGC) or display-side debanding are the only levers left.
+
 ### Remaining next-session priorities
 
 1. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR
-   display (subjective pass also still owed to `--hdr-scaling-list`).
-2. **Anti-banding, correctly aimed**: the CAMBI harness + band10 exist now; the QP
-   tool is dead on arrival for dither-loss banding, so the next banding lever is the
-   **SAO band-offset bias** TODO (post-quantization repair) and, longer-term, the
-   film-grain/dither-preservation pipeline. A coarser-gradient variant of band10
+   display (subjective pass also still owed to `--hdr-scaling-list`) — user will run
+   this.
+2. **Exercise `--hdr-scene-qp`** (transient-rich segment) — the only tool in the
+   recommended stack never exercised by the corpus; add a rate-control-tests.txt
+   descriptor and check the ABR/VBV paths.
+3. **Anti-banding**: only the **film-grain/dither-preservation pipeline** (FGC SEI)
+   remains viable — plan it as its own project. A coarser-gradient band10 variant
    (undithered-clean, bands only through coarse quantization) would isolate the
-   QP-domain banding mode if banding-protect is ever redesigned.
-3. **Exercise `--hdr-scene-qp`** (transient-rich segment) — now the only tool in the
-   recommended stack never exercised by the corpus.
+   QP-domain banding mode if banding-protect is ever revisited, but nothing measured
+   so far motivates that.
+4. Next cheap wins from the TODO: **VTM HDR lambda tables** (existing harness measures
+   it directly) and **measured MaxCLL/MaxFALL → CLL SEI**.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -452,15 +474,17 @@ All three priorities from the previous session executed; numbers in RESULTS.md
       files today). Noise in PQ near-blacks is extremely expensive to code; large
       compression win on grainy masters. Non-supporting decoders simply show the denoised
       video. The grain-estimation stage is the real work; plan separately like MCTF.
-- [ ] **SAO banding-repair bias**: SAO band offsets can flatten a banding contour, but
-      x265's SSE-driven SAO RD barely notices 1-codeword steps that glare on a PQ
-      display. In banding-prone CTUs (classifier already exists in the lookahead for
-      `--hdr-banding-protect`), lower SAO lambda / bias toward band-offset mode so SAO
-      engages there — the post-quantization partner to the QP-side banding tool. Evaluate
-      with the CAMBI item. Small, contained change in the SAO cost path. PRIORITIZED
-      2026-08-05 late-2: the QP-side tool measured useless against dither-loss banding
-      (the dominant mode on the new band10 segment), so SAO band-offset repair is now
-      the lead anti-banding lever; the harness to judge it (cambi.py + band10) exists.
+- [x] **SAO banding-repair bias** — implemented 2026-08-05 late-3 as
+      `--hdr-sao-band <float>` (X265_BUILD 222), **measured negative, keep off**:
+      per-CTU SAO lambda bias in banding-prone CTUs (source-variance classifier in
+      `rdoSaoUnitCu`). Engages hard (+7..+26% rate) but CAMBI does not improve
+      (worse at low CRFs, noise at CRF34) — SAO's per-class constant offsets are the
+      wrong operator space: EO touches only 1-px contour pixels (plateau interiors
+      are the no-offset "flat" class), BO shifts whole plateaus without changing the
+      steps inside a 32-code band. With banding-protect and the CRF12 control this
+      CLOSES the conformant encoder-side banding question: neither QP nor SAO can
+      repair dither-loss banding — the levers are grain/dither preservation (FGC
+      pipeline) or display-side debanding. Full numbers in RESULTS.md late-3.
 - [x] **Luma-adaptive deblocking offsets** — implemented 2026-08-04 as
       `--hdr-deblock <float>` (`93610f195`): per-frame slice-header beta/tc overrides
       from `hdrFrameAvgLuma`, delta = round(strength · clip3(−2, 3, (400 − APL)/150)),

@@ -447,3 +447,55 @@ than CRF 34, and converging on the **undithered** source's 4.0.
   part of every config's distortion is the (perceptually invisible,
   metrically expensive) dither removal — treat those columns as
   rate-matching context, not quality.
+
+# 2026-08-05 (late-3) — `--hdr-sao-band`: the SAO banding-repair bias, measured
+
+The post-quantization partner to the QP-side banding tool, from the TODO:
+in banding-prone CTUs (same classifier definition as banding-protect, but
+evaluated per CTU from full-res source pixels inside `rdoSaoUnitCu`), the
+SAO mode decision runs with a reduced lambda (÷(1+2·strength) when fully
+prone), letting small-distortion band/edge offsets survive their rate
+cost. Standard SAO syntax, decoder-safe, deterministic; X265_BUILD 222.
+Default path verified bit-identical (byte-compare vs the pre-change
+binary's encode, only the version SEI differs).
+
+## Measured on band10 (vs anchor)
+
+| config | wPSNR-Y BD-rate | CAMBI mean (CRF 22/26/30/34) |
+|---|---|---|
+| anchor | — | 3.64 / 3.37 / 3.46 / 3.25 |
+| saoband10 (1.0) | +5.28% | 3.79 / 3.54 / 3.48 / 3.23 |
+| saoband30 (3.0) | +17.18% | 3.85 / 3.73 / 3.50 / 3.17 |
+
+## Verdict: negative — SAO cannot repair this banding either
+
+The bias engages hard (+7..+26% raw rate; SAO spends freely once lambda
+drops) yet CAMBI does not improve — it *worsens* at the lower CRFs and
+moves within noise at CRF 34. The mechanism, not a tuning failure: SAO
+applies one constant per class. Edge offsets touch only the 1-px contour
+pixels (plateau interiors are the "flat" EO class and receive no offset);
+band offsets shift whole plateaus and cannot re-step a gradient inside a
+32-code band. The plateau-step-plateau structure that reads (and measures)
+as banding survives any offset assignment — even the SSE-maximal one at
+lambda→0, which is as close to "restore the dithered source" as SAO's
+operator space gets.
+
+Combined with the banding-protect result and the CRF 12 control, this
+closes the question for HEVC-conformant encoder-side banding repair on
+dither-loss content: **neither QP allocation nor SAO can fix it. The
+remaining levers are dither/grain preservation (film-grain SEI pipeline)
+or display-side debanding.** Tool kept in-tree as an off-by-default
+experiment (`--hdr-sao-band`, warning in cli.rst), same policy as
+`--hdr-wsse-rd`.
+
+### Raw rate-quality rows (kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| saoband10 | 160 \| 62.24 \| 61.94 \| 60.89 \| 61.70 | 133 \| 60.71 \| 60.43 \| 58.89 \| 59.40 | 117 \| 58.61 \| 58.38 \| 56.15 \| 57.00 | 116 \| 56.06 \| 55.74 \| 54.08 \| 54.24 |
+| saoband30 | 188 \| 62.36 \| 62.04 \| 61.27 \| 62.18 | 150 \| 60.82 \| 60.50 \| 59.39 \| 59.95 | 131 \| 58.69 \| 58.44 \| 56.81 \| 58.08 | 127 \| 56.31 \| 55.99 \| 55.24 \| 55.79 |
+
+(Note the wPSNR/PSNR values are *higher* than anchor at each CRF — the
+extra SAO offsets do reduce SSE vs the dithered source — but the rate
+premium outweighs it in BD terms, and none of that SSE recovery lands on
+the banding structure.)
