@@ -7,7 +7,11 @@
   "psnr_cr": 45.779317265178776,
   "wpsnr_y": 42.711066762216454,
   "wpsnr_cb": 44.03285699804253,
-  "wpsnr_cr": 45.416698347175235
+  "wpsnr_cr": 45.416698347175235,
+  "cambi_mean": 1.3716,
+  "cambi_p95": 3.5198,
+  "cambi_max": 4.0052,
+  "cambi_frames": 192
  },
  "sol10_anchor_crf26": {
   "kbps": 20120.757,
@@ -37,7 +41,11 @@
   "psnr_cr": 42.012517304407886,
   "wpsnr_y": 35.99309054024538,
   "wpsnr_cb": 38.35370240413021,
-  "wpsnr_cr": 41.7592378148419
+  "wpsnr_cr": 41.7592378148419,
+  "cambi_mean": 1.7365,
+  "cambi_p95": 4.4425,
+  "cambi_max": 5.6986,
+  "cambi_frames": 192
  },
  "sol10_hdrluma_crf22": {
   "kbps": 37642.666,
@@ -247,7 +255,11 @@
   "psnr_cr": 55.20899182401925,
   "wpsnr_y": 51.78774805380739,
   "wpsnr_cb": 53.11449859022134,
-  "wpsnr_cr": 57.411411868534366
+  "wpsnr_cr": 57.411411868534366,
+  "cambi_mean": 5.6048,
+  "cambi_p95": 6.8603,
+  "cambi_max": 7.4327,
+  "cambi_frames": 300
  },
  "whale10_anchor_crf26": {
   "kbps": 3744.1776,
@@ -277,7 +289,11 @@
   "psnr_cr": 50.988349570413334,
   "wpsnr_y": 44.30902777590998,
   "wpsnr_cb": 48.655262657946366,
-  "wpsnr_cr": 53.320403134141344
+  "wpsnr_cr": 53.320403134141344,
+  "cambi_mean": 7.0169,
+  "cambi_p95": 7.6208,
+  "cambi_max": 8.2749,
+  "cambi_frames": 300
  },
  "whale10_hdrluma_crf22": {
   "kbps": 4698.830400000001,
@@ -1540,5 +1556,17 @@
   "cambi_p95": 3.7739,
   "cambi_max": 3.8167,
   "cambi_frames": 96
+ },
+ "whale10_source": {
+  "cambi_mean": 0.1521,
+  "cambi_p95": 0.8074,
+  "cambi_max": 2.509,
+  "cambi_frames": 300
+ },
+ "sol10_source": {
+  "cambi_mean": 0.3297,
+  "cambi_p95": 0.9035,
+  "cambi_max": 1.2142,
+  "cambi_frames": 192
  }
 }

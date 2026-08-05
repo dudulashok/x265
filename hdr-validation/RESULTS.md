@@ -499,3 +499,25 @@ experiment (`--hdr-sao-band`, warning in cli.rst), same policy as
 extra SAO offsets do reduce SSE vs the dithered source — but the rate
 premium outweighs it in BD terms, and none of that SSE recovery lands on
 the banding structure.)
+
+## Addendum: default x265 bands on the REAL corpus too, not just band10
+
+CAMBI on the real-clip sources and their `anchor` (default x265 + VUI
+only) encodes — measured 2026-08-06, values stored in results.json:
+
+| clip | CAMBI mean / p95 / max |
+|---|---|
+| whale10 source | 0.15 / 0.81 / 2.51 |
+| whale10 anchor CRF22 | **5.60 / 6.86 / 7.43** |
+| whale10 anchor CRF34 | **7.02 / 7.62 / 8.27** |
+| sol10 source | 0.33 / 0.90 / 1.21 |
+| sol10 anchor CRF22 | 1.37 / 3.52 / 4.01 |
+| sol10 anchor CRF34 | 1.74 / 4.44 / 5.70 |
+
+Both masters are CAMBI-clean; encoding introduces everything. On whale's
+smooth ocean gradients, plain default encoding sits **above the ~5
+clearly-visible threshold even at CRF 22**. This is the quantified
+problem statement for the film-grain/dither-preservation pipeline — the
+one lever the 2026-08-05 measurements left standing — and whale10 anchor
+is its ready-made success metric (target: CAMBI back toward the source's
+~0.2 at comparable rate).
