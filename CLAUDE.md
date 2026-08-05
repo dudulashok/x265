@@ -192,7 +192,7 @@ it against C.
 ## HDR tools project (branch `HDR`)
 
 The `HDR` branch carries an experimental set of VVC/JVET-inspired HDR coding tools,
-implemented strictly inside HEVC-conformant syntax (no decoder changes). Eight `x265_param`
+implemented strictly inside HEVC-conformant syntax (no decoder changes). Nine `x265_param`
 members / CLI options, all documented in `doc/reST/cli.rst`:
 
 - `--hdr-pq` — one-shot BT.2020/PQ VUI signalling + repeat-headers, SAO, chroma QP offsets.
@@ -220,6 +220,15 @@ members / CLI options, all documented in `doc/reST/cli.rst`:
   are assigned unconditionally every frame in `compressFrame()` (Slice objects are
   recycled via the FrameData free list). Force-disabled with `--no-deblock` — signalling
   overrides without encoder-side filtering would desync encoder and decoder.
+- `--hdr-chroma-adapt <float>` — per-frame content-adaptive scaling of the static PPS
+  cb/cr QP offsets (the `--hdr-pq` −2/−2), added 2026-08-05 (`862809aed`). The lookahead
+  HDR frame-stats scan (`hdrFrameStatsCu`, side-effect-free unlike `acEnergyCu`) measures
+  the chroma share of frame AC energy; low share (whale-like smooth natural chroma,
+  0.03-0.05) keeps the full offset, high share (sol-like flat-shaded animation, up to
+  0.4) cancels it via a positive slice-level delta relative to the PPS offsets. Share
+  mapped through [0.10, 0.30]. NOTE the mapping direction: the probe FALSIFIED
+  "chroma-rich keeps the offset" — what the offset costs tracks the chroma share of
+  residual work, so high share ⇒ cancel. Requires nonzero base offsets and AQ/weightp.
 
 Metric validation (wPSNR per JVET CTC, HDR-VDP-3 via Octave) against real HDR10 PQ content
 lives in `hdr-validation/` on this branch: encode sweep + metric scripts + results
@@ -268,39 +277,57 @@ file plus that repo are the reference points for continuing development.
 - `--hdr-deblock 1.0` is wPSNR-neutral-to-slightly-positive (+0.2 sol / −0.7 whale vs
   floor) with +2..+3 offsets engaged on dark content — no metric harm; value is
   subjective and still needs the HDR-display pass.
+- **2026-08-05 bugfixes (round-trip verification found both; recon-vs-ffmpeg-decode is
+  the test that catches them — ffmpeg's `trace_headers` bsf desyncs on these streams
+  and is NOT reliable ground truth, use the real decoder):**
+  (a) `--hdr-pq` at superfast/ultrafast emitted undecodable streams: the bHdrPq block
+  forces SAO on AFTER configure()'s selective-sao harmonization has run, leaving
+  bEnableSAO=1/selectiveSAO=0 (`3923cec8d`). Medium-preset streams (all sweeps) were
+  never affected.
+  (b) `hdr-chroma-qp` slice offsets accumulated across recycled Slice objects (only
+  the constructor zeroed them; the block ADDS) — drifted −6→−12 pinned, and with the
+  PPS −2 the signaled sum hit −14, outside the spec's [−12,12] (`71a593188`). Any
+  slice-level chroma-offset writer must reset the fields unconditionally per frame,
+  exactly like the hdr-deblock overrides.
 
-### Agreed next-session plan (noted 2026-08-05 — start here)
+### 2026-08-05 session log (items 1+2 of the agreed plan executed)
 
-Priority order agreed after the 2026-08-05 sweep:
+1. **`--hdr-luma-qp` strength sweep ran** (40 encodes, `lumaq025..lumaq15` configs,
+   pure model on anchor VUI without `--hdr-pq`); wPSNR metrics + BD-rate in
+   `hdr-validation/` (`RESULTS.md` for the verdict and chosen default).
+2. **Content-adaptive chroma offsets implemented** as `--hdr-chroma-adapt <float>`
+   (`862809aed`, X265_BUILD 221; decided as a new param, not an `--hdr-pq` revision, so
+   the validated floor stays A/B-comparable). `chromaadapt` config added to the harness.
+   Success criterion stands: cut sol10's +7.1% wPSNR-Y floor cost to < +3% while keeping
+   the bulk of the −17..−23% chroma gains.
+3. **Two pre-existing bugs found and fixed during verification** (details in the
+   validation-established section): `--hdr-pq` at superfast/ultrafast produced
+   undecodable streams (`3923cec8d`), and `hdr-chroma-qp` slice offsets accumulated
+   across recycled Slice objects (`71a593188`).
 
-1. **`--hdr-luma-qp` strength sweep first** (cheapest, runs unattended): configs
-   `anchor-VUI + --hdr-luma-qp S` for S ∈ {0.25, 0.5, 0.75, 1.0, 1.5} *without*
-   `--hdr-pq`, so the model is measured pure instead of on top of the +7% floor.
-   2 clips × 4 CRFs × 5 strengths = 40 encodes — launch detached (thermal throttling
-   makes this an overnight job; see ops notes) and pick the BD-optimal default.
-2. **Content-adaptive chroma offsets** (highest value): make `--hdr-pq`'s fixed −2/−2
-   cb/cr offsets per-frame adaptive. Extend the APL scan in `calcAdaptiveQuantFrame()`
-   with frame chroma-energy/saturation stats; map (APL, chroma energy) → per-frame
-   slice cb/cr offsets in `compressFrame()` (the `hdr-chroma-qp` block is the template;
-   compose with it, clip to [−12, 0]). Success = cut sol10's +7.1% wPSNR-Y floor cost
-   to < +3% while keeping the bulk of the −17..−23% chroma gains. New param or an
-   `--hdr-pq` behavior revision — decide during design; 7-step checklist either way.
-3. **CAMBI into the harness + banding segment**: build/obtain libvmaf with CAMBI
+### Remaining next-session priorities
+
+1. **CAMBI into the harness + banding segment**: build/obtain libvmaf with CAMBI
    (no-reference — runs on the decode alone), add a gradient-heavy PQ segment
    (sunset/sky or synthetic ramp), then tune `--hdr-banding-protect` SCALE/clamp and
    judge `--hdr-scaling-list` / the SAO banding item with it.
-4. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR display.
+2. Standing item: **subjective dark-frame pass for `--hdr-deblock`** on an HDR display.
+3. If `--hdr-chroma-adapt 1.0` measures well, consider strength sweep + making it part
+   of the `--hdr-pq` recommendation in the docs.
 
 ### TODO — HDR quality / efficiency investigation
 
-- [ ] **Strength sweeps** for `--hdr-luma-qp` (0.25/0.5/0.75/1.0/1.5) on both clips;
-      pick a BD-rate-optimal default instead of the untested 1.0.
-- [ ] **Content-adaptive chroma offsets** (RE-SCOPED 2026-08-05, was "content-adaptive
-      luma-dQP" — the +7.3% Sol Levante cost decomposed to `--hdr-pq`'s fixed −2/−2
-      chroma offsets, not the luma model): scale the hdr-pq cb/cr offsets per frame from
-      APL/chroma-energy so dark or chroma-flat content doesn't pay +7% luma for chroma
-      bits it can't use. `hdr-chroma-qp` already has the frame-level plumbing; this is
-      about making the *baseline* −2/−2 adaptive rather than adding more on top.
+- [x] **Strength sweeps** for `--hdr-luma-qp` — encodes ran 2026-08-05 (lumaq configs);
+      BD-rate verdict and chosen default in `hdr-validation/RESULTS.md`.
+- [x] **Content-adaptive chroma offsets** — implemented 2026-08-05 as
+      `--hdr-chroma-adapt <float>` (`862809aed`). Design differs from the sketch in one
+      key way: the probe FALSIFIED "scale by chroma energy so chroma-flat frames drop
+      the offset" — whale10 (where −2/−2 is cheap and valuable) is the chroma-FLAT clip
+      (share 0.03-0.05) and sol10 (where it costs +7%) the chroma-heavy one (up to
+      0.4): the offset's cost tracks the chroma share of residual-coding work. So the
+      mapping is inverted: low share keeps the offset, high share cancels it (share
+      through [0.10, 0.30], slice-level delta vs the PPS offsets). BD-rate measurement
+      pending (`chromaadapt` harness config).
 - [ ] **CAMBI into the harness** (libvmaf ships it) and a gradient-heavy PQ test segment
       (sunset/sky); then actually tune banding-protect's SCALE/clamp — its current ±6 QP
       at strength 1.0 costs 4 dB wPSNR-Y and is unjustified until banding is measured.

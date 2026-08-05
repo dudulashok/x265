@@ -26,6 +26,9 @@ WSSE05=(--hdr-pq --hdr-wsse-rd 0.5)
 WSSE10=(--hdr-pq --hdr-wsse-rd 1.0)
 WSSE15=(--hdr-pq --hdr-wsse-rd 1.5)
 DBK10=(--hdr-pq --hdr-deblock 1.0)
+# 2026-08-05 plan item 2: content-adaptive chroma offsets on top of the hdr-pq
+# floor (needs the post-862809aed binary)
+CHROMAADAPT=(--hdr-pq --hdr-chroma-adapt 1.0)
 
 for crf in 22 26 30 34; do
     for clipfps in "sol10.yuv 24" "whale10.yuv 60"; do
@@ -46,6 +49,7 @@ for crf in 22 26 30 34; do
         encode "$1" "$2" wsse10   "$crf" "${WSSE10[@]}"
         encode "$1" "$2" wsse15   "$crf" "${WSSE15[@]}"
         encode "$1" "$2" dbk10    "$crf" "${DBK10[@]}"
+        encode "$1" "$2" chromaadapt "$crf" "${CHROMAADAPT[@]}"
     done
 done
 echo ALL_ENCODES_DONE

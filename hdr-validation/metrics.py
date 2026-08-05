@@ -15,7 +15,7 @@ W, H = 3840, 2160
 CLIPS = {"sol10": {"fps": 24.0, "frames": 192, "vdp_frames": [24, 72, 120, 168]},
          "whale10": {"fps": 60.0, "frames": 300, "vdp_frames": [37, 112, 187, 262]}}
 CONFIGS = ["anchor", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
-           "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15"]
+           "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15", "chromaadapt"]
 CRFS = [22, 26, 30, 34]
 
 results = {}
