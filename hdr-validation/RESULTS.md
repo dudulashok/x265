@@ -769,3 +769,41 @@ status is:
    temporal-layer QP/lambda cascade are the cheapest of these and measure
    directly on this harness — rather than further tuning of the existing
    allocation knobs.
+
+### Absolute rate-quality tables (pre-rebase layout)
+
+The same layout as the 2026-08-03 tables above, for the three post-rebase
+arms. All values are **absolute scores of each encode against the
+uncompressed master** — wPSNR and Q_JOD are full-reference metrics, so the
+reference is `sol10.yuv` / `whale10.yuv`, not the anchor. The anchor is only
+the baseline for the *delta* tables. Regenerate with `python abs_table.py`
+(takes config names as arguments to table any other arms).
+
+kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD
+
+#### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 33493 \| 43.70 \| 42.71 \| 44.03 \| 45.42 \| 9.13 | 20121 \| 41.27 \| 40.28 \| 41.78 \| 43.92 \| 8.86 | 11466 \| 39.00 \| 38.00 \| 39.70 \| 42.69 \| 8.54 | 6487 \| 37.02 \| 35.99 \| 38.35 \| 41.76 \| 8.17 |
+| hdr10opt | 44035 \| 44.00 \| 43.39 \| 47.56 \| 47.65 \| 9.28 | 28219 \| 41.49 \| 40.86 \| 45.75 \| 46.33 \| 9.08 | 18342 \| 39.19 \| 38.50 \| 44.54 \| 45.41 \| 8.81 | 11834 \| 37.23 \| 36.43 \| 43.31 \| 44.60 \| 8.50 |
+| prodstack | 34219 \| 43.65 \| 42.84 \| 44.32 \| 45.54 \| 9.16 | 20453 \| 41.18 \| 40.37 \| 41.95 \| 44.00 \| 8.89 | 11660 \| 38.90 \| 38.05 \| 39.86 \| 42.78 \| 8.57 | 6551 \| 36.93 \| 36.01 \| 38.44 \| 41.84 \| 8.19 |
+
+#### whale (3840x2160p60, frames 100-399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 6159 \| 49.96 \| 51.79 \| 53.11 \| 57.41 \| 8.49 | 3744 \| 47.77 \| 49.45 \| 51.64 \| 55.76 \| 8.35 | 2292 \| 45.41 \| 46.92 \| 50.02 \| 53.93 \| 8.22 | 1435 \| 42.95 \| 44.31 \| 48.66 \| 53.32 \| 8.02 |
+| hdr10opt | 5032 \| 48.69 \| 50.59 \| 54.00 \| 58.34 \| 8.47 | 3071 \| 46.38 \| 48.10 \| 52.96 \| 57.02 \| 8.34 | 1860 \| 43.95 \| 45.47 \| 52.05 \| 55.96 \| 8.17 | 1099 \| 41.52 \| 42.81 \| 50.98 \| 55.19 \| 7.98 |
+| prodstack | 5420 \| 49.33 \| 51.19 \| 53.36 \| 57.66 \| 8.47 | 3282 \| 47.08 \| 48.77 \| 51.82 \| 56.09 \| 8.33 | 1987 \| 44.66 \| 46.18 \| 50.37 \| 54.32 \| 8.11 | 1205 \| 42.18 \| 43.52 \| 48.69 \| 53.01 \| 7.95 |
+
+**Comparing these against the 2026-08-03 pre-rebase tables:** the kbps and
+wPSNR columns for `anchor` and `hdr10opt` match to the printed precision, so
+the rebase and the re-encode left the baselines where they were. The **Q_JOD
+column does not, and should not** — those numbers are a 12-frame mean here
+against a 4-frame mean there (anchor sol10 reads 9.13/8.86/8.54/8.17 vs the
+old 9.18/8.92/8.58/8.20, and whale10 CRF34 8.02 vs 7.97). That shift is
+sampling, not the encoder: it is the same size as the per-frame spread the
+4-frame mean could not resolve, which is exactly why the sampling was
+deepened. **Do not mix Q_JOD values across the two sampling depths in one
+comparison.**

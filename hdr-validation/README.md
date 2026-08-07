@@ -125,6 +125,11 @@ python merge_vdp.py        # fold per-frame Q_JODs into results.json
 # BD-rate tables (all configs vs anchor)
 python bdrate.py
 
+# Absolute rate-quality tables in the RESULTS.md layout (config x CRF grid,
+# cells "kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD")
+python abs_table.py                          # the three-way arms
+python abs_table.py anchor hdrpq prodstack   # or any configs you name
+
 # Three-way report: default vs --hdr10-opt vs the production stack
 python report_3way.py        # operating points + BD-rate, both clips
 python rate_matched.py       # EQUAL-BITRATE score deltas -- see below
