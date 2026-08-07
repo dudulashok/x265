@@ -440,13 +440,47 @@ project** (film-grain/dither-preservation pipeline) after the HDR improvement
 feature is finished. Don't pick banding items from the TODO until then; the
 CAMBI harness + band10 + the whale10 problem statement are ready when it starts.
 
-1. **NEXT SESSION: exercise `--hdr-scene-qp`** (transient-rich segment) — the only
-   tool in the recommended production stack never exercised by the corpus; add a
-   rate-control-tests.txt descriptor and check the ABR/VBV paths.
-2. **User is running the subjective HDR-display pass** for `--hdr-deblock` and
+**Re-ordered 2026-08-07 (user directive)** after the three-way report showed that
+nothing in the current tool set moves luma wPSNR or Q_JOD at equal bitrate — the
+allocation knobs are close to exhausted, so the next work must be *coding
+efficiency*, not more allocation tuning. `--hdr-scene-qp` is explicitly deferred.
+
+1. **NEXT SESSION (a): VTM HDR lambda tables.** Try VTM's PQ-tuned QP-to-lambda
+   and chroma lambda weighting in x265's lambda setup, plus the temporal-layer
+   lambda/QP cascade models (x265's fixed ipratio/pbratio vs VTM's QP-adaptive
+   ones). The existing wPSNR harness measures this directly and both baseline arms
+   are already in `results.json`, so it is encode-and-measure only. Reimplement the
+   concept, do not port code (BSD→GPLv2 is fine, but the commercial dual-license
+   makes copied code a relicensing problem).
+2. **NEXT SESSION (b): post-mortem on why `--hdr-wsse-rd` does not help.** Measured
+   negative 2026-08-05 (whale +1.5/+5.4/+12.1% wPSNR-Y at 0.5/1.0/1.5, damage
+   growing with strength). Working diagnosis to test, not assume: RD optimality
+   needs lambda to equal the local −dD/dR *of the quantizer actually in use*, so
+   scaling lambda while leaving the quantizer step untouched selects points off the
+   convex hull, and the mismatch grows with the scale factor — which matches the
+   monotone-with-strength damage. Whale is the clean case (uniform dark APL ⇒
+   uniform mismatch, no redistribution benefit to mask it). Two candidate fixes to
+   evaluate: (a) convert the wSSE weight into a matching **QP offset** so lambda and
+   quantizer step move together — this is what `--hdr-luma-qp` already does, and it
+   stays on-hull, which is itself evidence for the diagnosis; (b) apply the weight
+   **only to the distortion term in mode decision**, leaving RDOQ and ME lambdas
+   consistent with the quantizer. Worth confirming the mechanism before writing
+   code — a cheap diagnostic is to sweep a pure QP-offset tool and a pure
+   lambda-scale tool to the same average rate and compare hull positions.
+3. **User is running the subjective HDR-display pass** for `--hdr-deblock` and
    `--hdr-scaling-list` in parallel — fold the outcome into the docs when it lands.
-3. Then the cheap wins from the TODO: **VTM HDR lambda tables** (existing harness
-   measures it directly) and **measured MaxCLL/MaxFALL → CLL SEI**.
+4. **Deferred: exercise `--hdr-scene-qp`** (transient-rich segment; the only tool in
+   the production stack never exercised by the corpus; needs a
+   rate-control-tests.txt descriptor and the ABR/VBV paths checked). Still on the
+   list, just not next.
+5. Then **measured MaxCLL/MaxFALL → CLL SEI** from the TODO.
+
+**Pending overnight (2026-08-07):** `decompose_jod_detached.sh` is computing
+12-frame Q_JOD for `hdrpq` and `hdrluma` (metric-only; encodes exist) to attribute
+the production stack's Q_JOD position to either chroma allocation or the
+`--hdr-luma-qp` 1.0→0.5 strength drop. Read `decompose_jod.out` first thing —
+the analysis it settles is written up in RESULTS.md under "Observation:
+the pre-rebase Q_JOD sat closer to hdr10opt at lower kbps".
 
 ### TODO — HDR quality / efficiency investigation
 

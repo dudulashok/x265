@@ -807,3 +807,56 @@ sampling, not the encoder: it is the same size as the per-frame spread the
 4-frame mean could not resolve, which is exactly why the sampling was
 deepened. **Do not mix Q_JOD values across the two sampling depths in one
 comparison.**
+
+### Observation: "the pre-rebase Q_JOD sat closer to hdr10opt at lower kbps" — why, and is `--hdr-chroma-adapt` responsible?
+
+Raised on review of the tables above: in the 2026-08-03 pre-rebase results the
+HDR arm's Q_JOD came close to `hdr10opt` while spending fewer bits, and the
+2026-08-07 tables no longer show that. Hypothesis offered: `--hdr-chroma-adapt`
+is the cause. **The tool is involved, but the direction is inverted — the new
+configuration is better positioned on Q_JOD per bit, not worse.** Three
+independent reasons:
+
+**1. HDR-VDP-3 has no chromatic channel, so chroma QP cannot directly cost
+Q_JOD.** From the metric's own source, `hdrvdp_visual_pathway.m` sums the cone
+and rod responses into a single achromatic signal (`P = P_C + P_R`) and runs
+the entire multi-scale decomposition on that one channel; `Q` and `Q_JOD` are
+computed from its per-band errors. A chroma-only change reaches Q_JOD solely
+through non-constant-luminance leakage (a Cb/Cr error perturbs linear R,G,B and
+hence luminance) — second-order by construction.
+
+**2. What chroma-adapt actually changes is the bitrate, and absolute Q_JOD
+follows bitrate.** On sol10 it cancels the `--hdr-pq` −2/−2 offsets, taking the
+encode from 36027 kbps (the `hdrpq` floor) to 34219 kbps with luma untouched. A
+cheaper encode scores a lower absolute Q_JOD. That is arithmetic, not damage —
+and since Q_JOD barely rewards those chroma bits, removing them *improves*
+Q_JOD-per-bit.
+
+**3. Normalised for rate, the new arm beats the old one.** Interpolating each
+round's own anchor to the config's own bitrate (`rate_matched.py` method):
+
+| Round | Config | rate vs anchor | rate-matched ΔQ_JOD, sol10, CRF 22/26/30/34 |
+|---|---|---|---|
+| pre-rebase (4-frame) | hdrluma | +12% | −0.008 / −0.022 / −0.029 / −0.032 |
+| post-rebase (12-frame) | prodstack | +1–2% | **+0.015 / +0.017 / +0.021 / +0.018** |
+
+The pre-rebase arm was in fact *slightly below* the plain anchor on Q_JOD at
+every matched-rate operating point. It looked competitive with `hdr10opt` only
+because it spent 12% more bits than the anchor while `hdr10opt` spent 31–82%
+more. Today's stack reaches a consistently positive rate-matched delta while
+spending almost nothing extra.
+
+**Two confounds inflate the apparent change**, both artifacts rather than
+encoder behaviour: the Q_JOD sampling moved from 4 frames to 12 (and the
+pre-rebase config gaps of 0.02–0.09 JOD were explicitly inside the noise the
+4-frame mean could not resolve), and `prodstack` differs from `hdrluma` in
+**two** ways — it adds `--hdr-chroma-adapt 1.0` *and* drops `--hdr-luma-qp`
+from 1.0 to 0.5. Since Q_JOD is luma-driven, the strength drop is the more
+plausible lever of the two.
+
+**Decomposition queued** (`decompose_jod_detached.sh`, metric-only — the
+encodes already exist): 12-frame Q_JOD for `hdrpq` (chroma floor alone, luma
+untouched) and `hdrluma` (pre-rebase arm at luma-qp 1.0), then
+`rate_matched_decomp.py` tables all four arms against the anchor at matched
+bitrate. That separates "chroma allocation" from "luma-qp strength" cleanly.
+Output: `decompose_jod.out`.
