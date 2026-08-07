@@ -20,3 +20,11 @@ vdp_jobs.txt
 # KEEP IT INSTALLED -- restore commands are in README.md.
 hdrvdp-3.0.7/
 hdrvdp-3.0.7.zip
+*.hevc.prev
+*.enclog
+prodstack_rerun.out
+prodstack_metrics.out
+verify_identity.out
+verify_identity.marker
+prodstack_rerun_done.marker
+prodstack_metrics_done.marker

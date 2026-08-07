@@ -372,28 +372,60 @@ grain/dither preservation (FGC) or display-side debanding are the only levers le
 
 Closed the last open validation gap: the production stack had never been measured
 on HDR-VDP-3 and `--hdr10-opt` had no post-rebase Q_JOD data. Full numbers in
-RESULTS.md "2026-08-07"; report scripts `report_3way.py`, `paired_jod.py`,
-`bootstrap_jod_bd.py` (saved output `report_3way_2026-08-07.txt`).
+RESULTS.md "2026-08-07" (read the **Addendum** section — it carries the corrected
+provenance and the equal-bitrate verdict); report scripts `report_3way.py`,
+`rate_matched.py`, `paired_jod.py`, `bootstrap_jod_bd.py`, `verify_binary_identity.sh`
+(saved output `report_3way_2026-08-07.txt`).
 
 1. **Verdict: HDR-VDP-3 confirms the wPSNR recommendation, it does not overturn
-   it.** The production stack (`--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5
+   it — but "confirms" means "agrees it is free", not "agrees it is better".** The
+   production stack (`--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5
    --hdr-scene-qp 1.0`) is the only arm luma-efficient on BOTH clips (wPSNR-Y
-   −0.16% sol10 / −0.26% whale10) and is Q_JOD-neutral-to-slightly-positive.
+   −0.16% sol10 / −0.26% whale10) and is Q_JOD-neutral-to-slightly-positive. At
+   equal bitrate it is luma-neutral with a small free chroma gain — see item 3,
+   which is the honest reading of whether the target scores improved.
 2. **`--hdr10-opt` buys bits, not perceptual quality**: its significant sol10 Q_JOD
    gain (+0.15…+0.33 JOD) costs **+31…+82% bitrate at the same CRF**; rate-normalised
    it is Q_JOD-neutral (+0.40%) while costing +33.1% wPSNR-Y. On whale it is
    Q_JOD-indistinguishable from default at every CRF while spending ~18–23% fewer bits.
    The production stack dominates it on every luminance column of both clips.
-3. **New methodology rule — read the paired per-CRF ΔQ_JOD, not the Q_JOD BD-rate**
-   (see the deepened-HDR-VDP TODO entry for why). Report the paired delta + p-value.
-4. wPSNR reproduced the archived pre-rebase `hdr10opt` numbers (+33.1 / +6.4 wPSNR-Y)
+3. **New methodology rule — read the EQUAL-BITRATE deltas (`rate_matched.py`).**
+   Fixed-CRF tables are rate-confounded and Q_JOD BD-rate has a CI wider than any
+   effect we can measure, which is exactly why the first pass of this report read as
+   ambiguous. The decision view interpolates the anchor curve to the config's own
+   bitrate and reports the score difference there (Q_JOD per-frame, so the pairing
+   and a t-test survive; extrapolated rows flagged). Read at equal bitrate:
+   **neither arm significantly improves wPSNR-Y or Q_JOD.** hdr10opt *loses*
+   0.25–1.69 dB wPSNR-Y to buy +1.4…+3.5 dB chroma; the production stack is
+   luma-neutral (±0.03 dB sol10, 0.00…+0.19 whale10) with a small free chroma gain
+   (+0.06…+0.83 dB) and a consistent-but-ns +0.015…+0.021 Q_JOD on sol10. All ΔQ_JOD
+   are ~2 orders of magnitude below the 1-JOD noticeability unit — on this corpus the
+   three configs are perceptually the same picture. **The production stack is the right
+   default because it costs nothing, not because it is a measurable quality win.**
+   Consequence: chroma-QP allocation is close to exhausted; raising the target scores
+   needs the untried coding-efficiency items (VTM PQ lambda tables / temporal-layer
+   QP-lambda cascade are cheapest and measure directly on this harness).
+4. **Binary provenance must be VERIFIED, not assumed** (`verify_binary_identity.sh`):
+   re-encode one CRF point per arm with the current binary and compare bitstream MD5s.
+   Differences confined to the first ~400 bytes are the version-string SEI and are
+   cosmetic; deeper differences are real. This caught that the 2026-08-05 `prodstack`
+   encodes were NOT reproducible with the current binary (10 bytes of coded data),
+   because the working-tree build contained the later `--hdr-sao-band` change, which
+   perturbs SAO RD on configs that force SAO on (`--hdr-pq` does; the anchor does not).
+   **The trap: `x265 --version` was stale** (`4.2+119-808cbae9e` while containing later
+   code, because cmake had not been re-run) so the git log said "docs-only, impossible".
+   prodstack was re-encoded and re-measured on the current binary; the effect on the
+   numbers was ~1e-5 dB wPSNR, so no conclusion changed — but all three arms are now
+   provably one binary. Rebuild via cmake after any feature commit to keep the version
+   string honest.
+5. wPSNR reproduced the archived pre-rebase `hdr10opt` numbers (+33.1 / +6.4 wPSNR-Y)
    to two decimals — independent confirmation the re-encoded baseline is consistent.
-5. **Toolchain note (user directive): the HDR-VDP-3 setup must stay installed.**
+6. **Toolchain note (user directive): the HDR-VDP-3 setup must stay installed.**
    Octave 11.3.0 (`x265/octave-11.3.0-w64/`) and `hdr-validation/hdrvdp-3.0.7/` had
    both been deleted before this session and cost ~500 MB of re-download; restore
    commands are now in the harness README. `vdp/*.f32` frame dumps are regenerable
    scratch and may be deleted; those two trees may not.
-6. **Baseline arms are measured once (user directive)**: `anchor` and `hdr10opt`
+7. **Baseline arms are measured once (user directive)**: `anchor` and `hdr10opt`
    depend on no HDR-branch code — reuse their rows, re-measure only after an upstream
    rebase or a metric-sampling change. Both drivers already skip completed keys.
    `run_hdr10opt_detached.sh` re-creates the hdr10opt arm if a rebase invalidates it.

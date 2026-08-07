@@ -678,3 +678,94 @@ dominates the per-config sem of 0.07-0.21 — cancels, leaving a sem of
 - Reproduce: `python report_3way.py`, `python paired_jod.py`,
   `python bootstrap_jod_bd.py` (saved output:
   `report_3way_2026-08-07.txt`).
+
+## Addendum (same day): binary provenance fixed, and the equal-bitrate view
+
+Two corrections to the report above, both prompted by review.
+
+### 1. All three arms are now provably from ONE post-rebase binary
+
+The report above mixed builds. `verify_binary_identity.sh` (new) re-encodes one
+cheap CRF point per arm with the current binary and compares bitstream MD5s:
+
+| Arm | Result |
+|---|---|
+| anchor | **coded data byte-identical**; 12 differing bytes, all inside the version-string SEI (offsets 133-154) — valid as stored |
+| hdr10opt | **identical** (encoded today with the current binary) |
+| prodstack | **DIFFERS in coded data** — 10 bytes at offsets 438657-438678 |
+
+The prodstack mismatch was not a fluke: three consecutive encodes with the
+current binary produced the same MD5, so the encoder is deterministic and the
+2026-08-05 bitstreams genuinely came from different code. The cause is a trap
+worth remembering — **the binary's version string was stale**. It reports
+`4.2+119-808cbae9e`, but the git range `862809aed..808cbae9e` contains only
+docs/harness commits, so a code difference was impossible on that reading. In
+fact the working-tree build also contained the *later* `--hdr-sao-band` change
+(cmake had not been re-run, so `git describe` was frozen), and that change
+perturbs the SAO RD decision for any config that forces SAO on — `--hdr-pq`
+does, the anchor does not. Never trust `x265 --version` as provenance; use the
+MD5 re-encode check.
+
+`prodstack` was therefore re-encoded on the current binary (all 8 points, each
+differing from the stored bitstream at *identical* file size) and its wPSNR and
+Q_JOD were recomputed from scratch. **The measured effect is ~1e-5 dB wPSNR and
+<0.001 Q_JOD** — every conclusion in the report above stands numerically. The
+tables above are the post-re-encode numbers.
+
+### 2. Equal-bitrate deltas — the view that removes the ambiguity
+
+The fixed-CRF table and the BD-rate table disagreed in ways that made the
+result hard to read, because neither answers "does the tool raise the score?".
+Fixed-CRF is rate-confounded (hdr10opt at CRF 22 scores higher partly because
+it spends 31% more bits); Q_JOD BD-rate has a CI wider than the effect. The
+decision view interpolates the **anchor curve to the config's own bitrate**
+and reports the score difference there (`rate_matched.py`; Q_JOD per-frame so
+the pairing and a t-test survive; `!` = bitrate outside the anchor's measured
+range, so the anchor value is extrapolated):
+
+| Clip | Config | CRF | kbps | ΔwPSNR-Y | ΔwP-Cb | ΔwP-Cr | ΔQ_JOD | p |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| sol10 | hdr10opt | 22 | 44035.4 | −0.6303 | +2.3208 | +1.4334 | +0.0023 | ns ! |
+| sol10 | hdr10opt | 26 | 28218.7 | −1.0312 | +2.4725 | +1.4151 | +0.0332 | ns |
+| sol10 | hdr10opt | 30 | 18342.5 | −1.3999 | +3.1022 | +1.6892 | +0.0018 | ns |
+| sol10 | hdr10opt | 34 | 11833.7 | −1.6946 | +3.4904 | +1.8444 | −0.0541 | ns |
+| sol10 | prodstack | 22 | 34218.7 | +0.0254 | +0.1941 | +0.0581 | +0.0151 | ns ! |
+| sol10 | prodstack | 26 | 20452.6 | +0.0187 | +0.0917 | +0.0373 | +0.0171 | ns |
+| sol10 | prodstack | 30 | 11659.6 | −0.0129 | +0.0895 | +0.0528 | +0.0212 | ns |
+| sol10 | prodstack | 34 | 6551.0 | −0.0146 | +0.0628 | +0.0693 | +0.0182 | ns |
+| whale10 | hdr10opt | 22 | 5031.5 | −0.2527 | +1.4878 | +1.6044 | +0.0329 | ns |
+| whale10 | hdr10opt | 26 | 3070.9 | −0.3290 | +1.9721 | +2.0068 | +0.0480 | ns |
+| whale10 | hdr10opt | 30 | 1859.8 | −0.2890 | +2.6375 | +2.2995 | +0.0370 | ns |
+| whale10 | hdr10opt | 34 | 1099.0 | −0.0108 | +3.1006 | +2.2122 | +0.0743 | ** ! |
+| whale10 | prodstack | 22 | 5420.1 | +0.0016 | +0.6299 | +0.6774 | +0.0165 | ns |
+| whale10 | prodstack | 26 | 3281.8 | +0.0002 | +0.6144 | +0.8295 | +0.0123 | ns |
+| whale10 | prodstack | 30 | 1986.8 | +0.0570 | +0.7676 | +0.5774 | −0.0486 | ns |
+| whale10 | prodstack | 34 | 1204.7 | +0.1856 | +0.5463 | −0.0827 | +0.0041 | ns ! |
+
+### What this says about the project's aim
+
+The aim is to raise wPSNR and HDR-VDP. Read at equal bitrate, the honest
+status is:
+
+1. **Neither arm significantly improves the two target scores.** Every ΔQ_JOD
+   except one is statistically indistinguishable from zero, and the ones that
+   are nominally positive are ~+0.02-0.07 JOD — two orders of magnitude below
+   the 1-JOD unit at which half of viewers would notice a difference. On this
+   corpus all three configurations are perceptually the same picture.
+2. **`--hdr10-opt` is a large luma-for-chroma trade, not a quality gain.** At
+   equal bitrate it *loses* 0.25-1.69 dB wPSNR-Y (worst at low rate on sol10)
+   and buys +1.4 to +3.5 dB of chroma, with Q_JOD flat. That is an allocation
+   choice, and an aggressive one.
+3. **The production stack is luma-neutral with a small free chroma gain.**
+   ΔwPSNR-Y sits within ±0.03 dB on sol10 and 0.00 to +0.19 dB on whale10,
+   while chroma gains +0.06 to +0.83 dB, and ΔQ_JOD trends slightly positive on
+   sol10 (+0.015 to +0.021 at every CRF — consistent in sign, individually ns).
+   It is the right default *because it costs nothing*, not because it is a
+   measurable quality win.
+4. **Consequence for planning:** the tools built so far have largely exhausted
+   what chroma-QP allocation can deliver, and none of them move luma wPSNR or
+   Q_JOD at equal rate. Raising the target scores needs the untried
+   coding-efficiency items from the TODO — VTM's PQ-tuned lambda tables and the
+   temporal-layer QP/lambda cascade are the cheapest of these and measure
+   directly on this harness — rather than further tuning of the existing
+   allocation knobs.

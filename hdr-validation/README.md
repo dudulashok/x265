@@ -125,6 +125,12 @@ python merge_vdp.py        # fold per-frame Q_JODs into results.json
 # BD-rate tables (all configs vs anchor)
 python bdrate.py
 
+# Three-way report: default vs --hdr10-opt vs the production stack
+python report_3way.py        # operating points + BD-rate, both clips
+python rate_matched.py       # EQUAL-BITRATE score deltas -- see below
+python paired_jod.py         # paired per-frame Q_JOD delta at matched CRF
+python bootstrap_jod_bd.py   # bootstrap CI for the Q_JOD BD-rate
+
 ## Metrics
 
 - **wPSNR** (`wpsnr.py`) — JVET HDR CTC luma-weighted PSNR: per-pixel weight
@@ -146,6 +152,26 @@ python bdrate.py
   metric over the overlapping quality interval. Negative = bitrate saving
   at equal quality.
 
+### Which comparison answers "did the tool improve the score?"
+
+Three views of the same data, and only one of them answers that question
+directly — a lesson from the 2026-08-07 three-way report, where the first two
+views looked contradictory:
+
+1. **Fixed-CRF table** (`report_3way.py`) — rate-confounded. A config that
+   spends 31% more bits at the same CRF *should* score higher; that is not an
+   improvement. Use it to read operating points, not to judge a tool.
+2. **BD-rate** — rate-normalised, but collapses the curve to one number, and
+   on Q_JOD its bootstrap CI is wider than any effect we can measure
+   (`bootstrap_jod_bd.py`). Trustworthy for wPSNR, not for Q_JOD.
+3. **Equal-bitrate deltas** (`rate_matched.py`) — **the decision view.** The
+   anchor curve is interpolated to the config's own bitrate and the score
+   difference reported there, per operating point. A genuine improvement shows
+   positive Δ on the metric of interest across the CRF range. Q_JOD is
+   computed per-frame so the pairing survives and a paired t-test is
+   available; rows whose bitrate falls outside the anchor's measured range are
+   flagged `!` as extrapolated.
+
 ## Reproducing
 
 ```sh
@@ -159,6 +185,29 @@ Requires: the HDR-branch x265 build, ffmpeg, Python 3 + numpy, GNU Octave
 (image + statistics packages), and HDR-VDP-3.0.7 unzipped as
 `hdrvdp-3.0.7/` (SourceForge; not vendored here — BSD-like research
 license, see its `license.txt`).
+
+## Every arm of a comparison must come from ONE binary — verify, don't assume
+
+Encodes accumulate over sessions, so a comparison table can silently mix
+bitstreams produced by different builds. `verify_binary_identity.sh` re-encodes
+one cheap CRF point per arm with the *current* binary and compares bitstream
+MD5s against the stored files. Run it before publishing any cross-arm table.
+
+Interpreting a mismatch: dump the differing byte offsets. x265 embeds its
+version string in a header SEI, so **differences confined to the first ~400
+bytes are cosmetic** (the coded video is identical and the stored encode is
+still valid). Differences deeper in the stream are real coding differences and
+that arm must be re-encoded.
+
+This is not hypothetical — on 2026-08-07 it caught that the `prodstack`
+encodes from 2026-08-05 were *not* reproducible with the current binary
+(10 bytes of coded data differed), because the working-tree build contained
+the later `--hdr-sao-band` change, which perturbs the SAO RD decision on any
+config that forces SAO on (`--hdr-pq` does). `anchor` was unaffected. Note the
+trap that hid it: the binary's **version string was stale** — it reported
+`4.2+119-808cbae9e` while containing code from a later commit, because cmake
+had not been re-run. Do not trust `x265 --version` alone as provenance; the
+MD5 re-encode check is the reliable test.
 
 ## Baseline arms are measured ONCE — reuse them, don't re-measure
 
