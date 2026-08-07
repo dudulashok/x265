@@ -9,3 +9,14 @@ sweep_done.marker
 metrics_progress.out
 metrics_done.marker
 __pycache__/
+hdr10opt_progress.out
+hdr10opt_done.marker
+vdp_progress.out
+vdp_progress_par5.out
+wpsnr_hdr10opt.out
+vdp_jobs.txt
+
+# HDR-VDP-3 itself: third-party, BSD-like research license, not vendored.
+# KEEP IT INSTALLED -- restore commands are in README.md.
+hdrvdp-3.0.7/
+hdrvdp-3.0.7.zip

@@ -27,11 +27,11 @@ def series(clip, cfg, field):
     return (np.array([res[k]["kbps"] for k in keys]),
             np.array([res[k][field] for k in keys]))
 
-CFGS = {"sol10": ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
-                  "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
+CFGS = {"sol10": ["hdr10opt", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15",
+                  "dbk10", "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
                   "chromaadapt", "chromaadapt05", "chromaadapt15", "prodstack"],
-        "whale10": ["hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
-                    "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
+        "whale10": ["hdr10opt", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15",
+                    "dbk10", "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
                     "chromaadapt", "prodstack"],
         "band10": ["bandp05", "bandp10", "slist", "saoband10", "saoband30"]}
 

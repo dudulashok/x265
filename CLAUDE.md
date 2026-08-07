@@ -368,6 +368,36 @@ banded plateau; combined with the banding-protect result, HEVC-conformant
 encoder-side banding repair on dither-loss content is now a closed question —
 grain/dither preservation (FGC) or display-side debanding are the only levers left.
 
+### 2026-08-07 session log — three-way HDR-VDP-3 report (default vs hdr10opt vs prodstack)
+
+Closed the last open validation gap: the production stack had never been measured
+on HDR-VDP-3 and `--hdr10-opt` had no post-rebase Q_JOD data. Full numbers in
+RESULTS.md "2026-08-07"; report scripts `report_3way.py`, `paired_jod.py`,
+`bootstrap_jod_bd.py` (saved output `report_3way_2026-08-07.txt`).
+
+1. **Verdict: HDR-VDP-3 confirms the wPSNR recommendation, it does not overturn
+   it.** The production stack (`--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5
+   --hdr-scene-qp 1.0`) is the only arm luma-efficient on BOTH clips (wPSNR-Y
+   −0.16% sol10 / −0.26% whale10) and is Q_JOD-neutral-to-slightly-positive.
+2. **`--hdr10-opt` buys bits, not perceptual quality**: its significant sol10 Q_JOD
+   gain (+0.15…+0.33 JOD) costs **+31…+82% bitrate at the same CRF**; rate-normalised
+   it is Q_JOD-neutral (+0.40%) while costing +33.1% wPSNR-Y. On whale it is
+   Q_JOD-indistinguishable from default at every CRF while spending ~18–23% fewer bits.
+   The production stack dominates it on every luminance column of both clips.
+3. **New methodology rule — read the paired per-CRF ΔQ_JOD, not the Q_JOD BD-rate**
+   (see the deepened-HDR-VDP TODO entry for why). Report the paired delta + p-value.
+4. wPSNR reproduced the archived pre-rebase `hdr10opt` numbers (+33.1 / +6.4 wPSNR-Y)
+   to two decimals — independent confirmation the re-encoded baseline is consistent.
+5. **Toolchain note (user directive): the HDR-VDP-3 setup must stay installed.**
+   Octave 11.3.0 (`x265/octave-11.3.0-w64/`) and `hdr-validation/hdrvdp-3.0.7/` had
+   both been deleted before this session and cost ~500 MB of re-download; restore
+   commands are now in the harness README. `vdp/*.f32` frame dumps are regenerable
+   scratch and may be deleted; those two trees may not.
+6. **Baseline arms are measured once (user directive)**: `anchor` and `hdr10opt`
+   depend on no HDR-branch code — reuse their rows, re-measure only after an upstream
+   rebase or a metric-sampling change. Both drivers already skip completed keys.
+   `run_hdr10opt_detached.sh` re-creates the hdr10opt arm if a rebase invalidates it.
+
 ### Remaining next-session priorities (agreed with user 2026-08-06)
 
 **Anti-banding is CLOSED within this project.** The user decided (2026-08-06) that
@@ -415,8 +445,16 @@ CAMBI harness + band10 + the whale10 problem statement are ready when it starts.
       convex ramp; compare against HM's default intra lists as a baseline.
 - [ ] **Cross-check wPSNR** against HDRTools/VTM's implementation (VTM checkout exists at
       `C:\VVCSoftware_VTM`); add DeltaE-ITP (BT.2124) as a color-aware metric.
-- [ ] **Deepen HDR-VDP-3**: more sampled frames (16+), full-frame instead of 1080p crop,
-      on a machine/runtime that tolerates it — current deltas are unusable for tuning.
+- [x] **Deepen HDR-VDP-3** — done 2026-08-07 (4 → 12 frames/encode, 288 evals). The
+      conclusion is a *methodology* result: deepening did NOT rescue the Q_JOD
+      **BD-rate**, and can't — bootstrap 95% CIs over frames straddle zero for every
+      arm (e.g. whale10 hdr10opt −10.19% with CI [−27.9, +6.1]) because Q_JOD spans
+      only ~0.5–1.0 JOD across a 4–5x rate range, so the cubic fit amplifies ±0.03 JOD
+      into double-digit percentages. **Do not tune on Q_JOD BD-rate.** What the deeper
+      sampling *did* fix is the **paired per-CRF ΔQ_JOD** (same frames, same reference,
+      so content variance cancels): sem drops 0.07–0.21 → 0.01–0.05 and differences
+      become significant. Use `paired_jod.py` + `bootstrap_jod_bd.py`; full-frame and
+      16+ frames remain optional refinements, not blockers.
 - [ ] **cu-tree interaction**: verify the HDR per-QG offsets seeded into `qpCuTreeOffset`
       aren't double-propagated by cu-tree; test `--aq-mode 1` vs `3` with the tools on.
 - [ ] **Corpus expansion**: probe `Regatta_3840x2160_HDR10_420_60p.yuv` (frame size is

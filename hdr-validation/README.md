@@ -159,3 +159,60 @@ Requires: the HDR-branch x265 build, ffmpeg, Python 3 + numpy, GNU Octave
 (image + statistics packages), and HDR-VDP-3.0.7 unzipped as
 `hdrvdp-3.0.7/` (SourceForge; not vendored here — BSD-like research
 license, see its `license.txt`).
+
+## Baseline arms are measured ONCE — reuse them, don't re-measure
+
+`anchor` (default x265 + VUI signalling) and `hdr10opt` (anchor +
+`--hdr10-opt`) are **fixed reference arms**. Neither depends on any
+HDR-branch code, so their numbers only change when the *upstream encoder
+core* changes. Once they are in `results.json`, reuse them: re-run metrics
+only for configs whose code you modified, or for a newly added tool.
+`metrics.py` and `vdp_evals.sh` are both resumable and skip any key that
+already carries the metric, so the default behaviour is already "don't
+recompute" — just don't delete the rows.
+
+Re-measure a baseline arm only when:
+
+- the encoder core is rebased onto a new upstream release (this is what
+  invalidated the pre-rebase `hdr10opt` numbers archived in
+  `results-2026-08-03-prerebase.json`), or
+- the sampling changes for a metric (e.g. the 2026-08-07 HDR-VDP-3 deepening
+  from 4 to 12 frames per clip re-ran Q_JOD for every arm — wPSNR/PSNR rows
+  were untouched and reused).
+
+If a baseline arm is missing after a rebase, encode it once and keep it:
+`run_hdr10opt_detached.sh` does exactly that for the `hdr10opt` arm.
+
+## HDR-VDP-3 toolchain — KEEP INSTALLED, do not delete
+
+The metric needs two large third-party trees that are **gitignored but must
+stay on disk** — they were deleted at some point before 2026-08-07 and had to
+be re-downloaded, which costs ~500 MB of transfer and ~10 min before any
+measurement can start:
+
+| Tree | Path | Size |
+|---|---|---|
+| GNU Octave 11.3.0 (w64) | `../octave-11.3.0-w64/` (i.e. `x265/octave-11.3.0-w64/`) | ~1.5 GB |
+| HDR-VDP-3.0.7 | `hdrvdp-3.0.7/` (next to these scripts) | ~30 MB |
+
+`vdp_evals.sh` hard-codes the Octave path as
+`$(cd .. && pwd)/octave-11.3.0-w64/mingw64/bin/octave-cli.exe`, so the
+version directory name matters. To restore both from scratch:
+
+```sh
+# Octave (7-Zip needed; the .7z extracts to octave-11.3.0-w64/)
+cd /c/x265_github/x265
+curl -L -o octave-11.3.0-w64.7z \
+  https://mirrors.hopbox.net/gnu/octave/windows/octave-11.3.0-w64.7z
+"/c/Program Files/7-Zip/7z.exe" x -y -o. octave-11.3.0-w64.7z
+
+# HDR-VDP-3.0.7
+cd hdr-validation
+curl -L -o hdrvdp-3.0.7.zip \
+  https://sourceforge.net/projects/hdrvdp/files/hdrvdp/3.0.7/hdrvdp-3.0.7.zip/download
+"/c/Program Files/7-Zip/7z.exe" x -y hdrvdp-3.0.7.zip
+```
+
+The `vdp/*.f32` linear-light frame dumps are regenerable scratch
+(`prep_frames.py`, ~25 MB per 1080p frame) and *may* be deleted to reclaim
+space; the two trees above should not be.

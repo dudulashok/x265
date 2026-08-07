@@ -12,12 +12,17 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(HERE)
 OCTAVE = os.path.join(HERE, "..", "octave-11.3.0-w64", "mingw64", "bin", "octave-cli.exe")
 W, H = 3840, 2160
-COMMON = ["anchor", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15", "dbk10",
-          "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15", "chromaadapt",
-          "prodstack"]
-CLIPS = {"sol10": {"fps": 24.0, "frames": 192, "vdp_frames": [24, 72, 120, 168],
+COMMON = ["anchor", "hdr10opt", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15",
+          "dbk10", "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
+          "chromaadapt", "prodstack"]
+# 2026-08-07: vdp_frames deepened 4 -> 12 per clip (supersets of the original
+# grids sol10 24/72/120/168, whale10 37/112/187/262) so the config-to-config
+# Q_JOD deltas clear the sampling noise that made the first round unusable.
+CLIPS = {"sol10": {"fps": 24.0, "frames": 192,
+                   "vdp_frames": [8, 24, 40, 56, 72, 88, 104, 120, 136, 152, 168, 184],
                    "configs": COMMON + ["chromaadapt05", "chromaadapt15"]},
-         "whale10": {"fps": 60.0, "frames": 300, "vdp_frames": [37, 112, 187, 262],
+         "whale10": {"fps": 60.0, "frames": 300,
+                     "vdp_frames": [12, 37, 62, 87, 112, 137, 162, 187, 212, 237, 262, 287],
                      "configs": COMMON},
          # synthetic banding segment: judged with CAMBI (no HDR-VDP -- the
          # 4-frame Q_JOD sampling is noise on content this uniform)

@@ -35,3 +35,9 @@
 build/
 
 /.*/
+
+# HDR-VDP-3 metric toolchain: large third-party trees kept on disk but never
+# committed. KEEP THESE INSTALLED -- see hdr-validation/README.md for the
+# restore commands; deleting them costs ~500 MB of re-download.
+octave-11.3.0-w64/
+octave-*.7z

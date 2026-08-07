@@ -521,3 +521,160 @@ problem statement for the film-grain/dither-preservation pipeline — the
 one lever the 2026-08-05 measurements left standing — and whale10 anchor
 is its ready-made success metric (target: CAMBI back toward the source's
 ~0.2 at comparable rate).
+
+---
+
+# 2026-08-07 — Three-way HDR-VDP-3 report: default vs `--hdr10-opt` vs the production stack
+
+Closes the loop the 2026-08-05 sessions left open: the recommended
+production stack had never been measured on HDR-VDP-3, and the in-tree
+`--hdr10-opt` baseline had no post-rebase Q_JOD numbers at all (its only
+Q_JOD data was pre-rebase, from a different binary, in
+`results-2026-08-03-prerebase.json`).
+
+Configs, both real clips, CRF {22, 26, 30, 34}, preset medium:
+
+| Arm | Command |
+|---|---|
+| default (anchor) | VUI signalling only, no HDR coding tools |
+| `--hdr10-opt` | anchor + the in-tree fixed JCTVC luma-dQP staircase |
+| prod stack | `--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0` |
+
+**HDR-VDP-3 sampling deepened 4 to 12 frames per encode** (288 evals,
+0 failures), acting on the standing TODO that 4-frame Q_JOD was unusable.
+The 12-frame grids are supersets of the original 4-frame grids, so the
+earlier numbers remain comparable. wPSNR/PSNR rows for `anchor` and
+`prodstack` were **reused unchanged** from the 2026-08-05 sweep; only the
+missing `hdr10opt` arm was encoded and measured.
+
+## Operating points (kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD)
+
+### Sol Levante (sol10, 3840x2160p24, 192 frames)
+
+| Config | CRF | kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| default | 22 | 33493.3 | 43.7049 | 42.7111 | 44.0329 | 45.4167 | 9.1335 |
+| default | 26 | 20120.8 | 41.2693 | 40.2759 | 41.7818 | 43.9182 | 8.8619 |
+| default | 30 | 11465.8 | 38.9979 | 37.9969 | 39.7045 | 42.6897 | 8.5364 |
+| default | 34 | 6487.3 | 37.0171 | 35.9931 | 38.3537 | 41.7592 | 8.1697 |
+| `--hdr10-opt` | 22 | 44035.4 | 44.0049 | 43.3884 | 47.5625 | 47.6548 | 9.2817 |
+| `--hdr10-opt` | 26 | 28218.7 | 41.4916 | 40.8610 | 45.7484 | 46.3279 | 9.0753 |
+| `--hdr10-opt` | 30 | 18342.5 | 39.1913 | 38.5011 | 44.5422 | 45.4053 | 8.8101 |
+| `--hdr10-opt` | 34 | 11833.7 | 37.2327 | 36.4303 | 43.3116 | 44.6031 | 8.5006 |
+| prod stack | 22 | 34218.7 | 43.6468 | 42.8389 | 44.3216 | 45.5378 | 9.1600 |
+| prod stack | 26 | 20452.6 | 41.1824 | 40.3728 | 41.9457 | 44.0036 | 8.8877 |
+| prod stack | 30 | 11659.6 | 38.8972 | 38.0519 | 39.8558 | 42.7791 | 8.5673 |
+| prod stack | 34 | 6551.0 | 36.9286 | 36.0129 | 38.4397 | 41.8445 | 8.1942 |
+
+### whale (whale10, 3840x2160p60, 300 frames)
+
+| Config | CRF | kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| default | 22 | 6159.0 | 49.9555 | 51.7877 | 53.1145 | 57.4114 | 8.4941 |
+| default | 26 | 3744.2 | 47.7728 | 49.4494 | 51.6366 | 55.7563 | 8.3471 |
+| default | 30 | 2291.9 | 45.4053 | 46.9203 | 50.0226 | 53.9261 | 8.2222 |
+| default | 34 | 1434.7 | 42.9515 | 44.3090 | 48.6553 | 53.3204 | 8.0205 |
+| `--hdr10-opt` | 22 | 5031.5 | 48.6872 | 50.5851 | 54.0020 | 58.3434 | 8.4672 |
+| `--hdr10-opt` | 26 | 3070.9 | 46.3800 | 48.0989 | 52.9569 | 57.0240 | 8.3446 |
+| `--hdr10-opt` | 30 | 1859.8 | 43.9533 | 45.4667 | 52.0503 | 55.9555 | 8.1692 |
+| `--hdr10-opt` | 34 | 1099.0 | 41.5231 | 42.8125 | 50.9779 | 55.1880 | 7.9800 |
+| prod stack | 22 | 5420.1 | 49.3293 | 51.1890 | 53.3650 | 57.6639 | 8.4729 |
+| prod stack | 26 | 3281.8 | 47.0765 | 48.7706 | 51.8176 | 56.0944 | 8.3258 |
+| prod stack | 30 | 1986.8 | 44.6644 | 46.1812 | 50.3733 | 54.3188 | 8.1120 |
+| prod stack | 34 | 1204.7 | 42.1776 | 43.5206 | 48.6916 | 53.0118 | 7.9493 |
+
+## BD-rate vs default anchor (%, negative = bits saved at equal quality)
+
+| Clip | Config | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | Q_JOD |
+|---|---|---:|---:|---:|---:|---:|
+| sol10 | `--hdr10-opt` | +42.41 | +33.11 | -56.27 | -49.62 | +0.40 |
+| sol10 | prod stack | +3.90 | **-0.16** | -2.85 | -2.35 | -3.12 |
+| whale10 | `--hdr10-opt` | +8.99 | +6.39 | -56.25 | -49.43 | -10.19 |
+| whale10 | prod stack | +0.90 | **-0.26** | **-19.59** | **-20.59** | +4.99 |
+
+The wPSNR columns reproduce the archived pre-rebase `hdr10opt` numbers
+(+33.1 / +6.4 wPSNR-Y) to two decimals — an independent check that the new
+encodes are consistent with the historical baseline.
+
+## The Q_JOD BD-rates are NOT decision-grade — read the paired test instead
+
+Bootstrap over the 12 evaluated frames (4000 paired resamples,
+`bootstrap_jod_bd.py`, fixed seed):
+
+| Clip | Config | Q_JOD BD-rate | 95% CI | P(BD < 0) |
+|---|---|---:|---:|---:|
+| sol10 | `--hdr10-opt` | +0.40 | [-9.51, +13.60] | 0.50 |
+| sol10 | prod stack | -3.12 | [-7.37, +3.00] | 0.87 |
+| whale10 | `--hdr10-opt` | -10.19 | [-27.94, +6.06] | 0.89 |
+| whale10 | prod stack | +4.99 | [-9.55, +19.14] | 0.23 |
+
+**Every interval straddles zero.** Deepening 4 to 12 frames did *not* rescue
+Q_JOD BD-rate, and the reason is structural rather than statistical: Q_JOD
+spans only ~0.5 JOD (whale) to ~1.0 JOD (sol) across a 4-5x bitrate range,
+so the cubic rate-vs-quality fit amplifies a +/-0.03 JOD error into a
+double-digit BD-rate percentage. **Do not tune on Q_JOD BD-rate.**
+
+What the deeper sampling *did* fix is the **paired per-CRF** comparison
+(`paired_jod.py`). Every config is evaluated on identical frames against an
+identical reference, so the frame-to-frame content variance — which
+dominates the per-config sem of 0.07-0.21 — cancels, leaving a sem of
+0.01-0.05:
+
+| Clip | Config | CRF | dQ_JOD vs anchor | sem | p | rate vs anchor |
+|---|---|---:|---:|---:|---:|---:|
+| sol10 | `--hdr10-opt` | 22 | +0.1482 | 0.0295 | 3.9e-04 *** | +31.5% |
+| sol10 | `--hdr10-opt` | 26 | +0.2135 | 0.0372 | 1.3e-04 *** | +40.2% |
+| sol10 | `--hdr10-opt` | 30 | +0.2737 | 0.0526 | 3.0e-04 *** | +60.0% |
+| sol10 | `--hdr10-opt` | 34 | +0.3309 | 0.0458 | 1.7e-05 *** | +82.4% |
+| sol10 | prod stack | 22 | +0.0266 | 0.0119 | 4.7e-02 * | +2.2% |
+| sol10 | prod stack | 26 | +0.0258 | 0.0177 | 0.17 ns | +1.6% |
+| sol10 | prod stack | 30 | +0.0309 | 0.0190 | 0.13 ns | +1.7% |
+| sol10 | prod stack | 34 | +0.0245 | 0.0180 | 0.20 ns | +1.0% |
+| whale10 | `--hdr10-opt` | 22 | -0.0269 | 0.0303 | 0.39 ns | -18.3% |
+| whale10 | `--hdr10-opt` | 26 | -0.0024 | 0.0414 | 0.95 ns | -18.0% |
+| whale10 | `--hdr10-opt` | 30 | -0.0529 | 0.0372 | 0.18 ns | -18.9% |
+| whale10 | `--hdr10-opt` | 34 | -0.0405 | 0.0266 | 0.16 ns | -23.4% |
+| whale10 | prod stack | 22 | -0.0212 | 0.0145 | 0.17 ns | -12.0% |
+| whale10 | prod stack | 26 | -0.0213 | 0.0300 | 0.49 ns | -12.3% |
+| whale10 | prod stack | 30 | -0.1101 | 0.0351 | 9.4e-03 ** | -13.3% |
+| whale10 | prod stack | 34 | -0.0711 | 0.0180 | 2.3e-03 ** | -16.0% |
+
+## Findings
+
+1. **`--hdr10-opt` does not buy perceptual quality — it buys bits.** Its
+   Sol Levante Q_JOD gain (+0.15 ... +0.33 JOD, highly significant) is paid
+   for with **+31% to +82% more bitrate at the same CRF**. Rate-normalised
+   it is Q_JOD-neutral (+0.40%, CI straddling zero) while costing +33.1%
+   wPSNR-Y. On whale it is Q_JOD-*indistinguishable* from default at every
+   CRF (all ns) while spending 18-23% fewer bits — the one place it looks
+   genuinely efficient (-10.19%, but CI [-27.9, +6.1]).
+2. **The production stack is the only arm that is luma-efficient on both
+   clips** (-0.16% / -0.26% wPSNR-Y) and it is Q_JOD-neutral-to-slightly-
+   positive: on sol10 it gains a small but consistent +0.02...+0.03 JOD for
+   +1-2% rate; on whale10 it gives up 0.02-0.11 JOD for 12-16% fewer bits.
+   Its whale10 chroma gains (-19.6 / -20.6%) are intact.
+3. **Head-to-head, the production stack dominates `--hdr10-opt` on every
+   luminance column of both clips** (wPSNR-Y -0.16 vs +33.11 on sol10,
+   -0.26 vs +6.39 on whale10) at comparable Q_JOD. The `--hdr10-opt` arm's
+   only advantage is chroma (-56% vs -2.9% on sol10), bought by moving a
+   very large number of bits into chroma — the same allocation trade
+   `--hdr-chroma-adapt` was built to make *adaptive* rather than fixed.
+4. **HDR-VDP-3 confirms the wPSNR verdict rather than overturning it.**
+   No arm is perceptually separated from default by more than ~0.1 JOD at
+   matched CRF once rate is accounted for. The recommendation from
+   2026-08-05 stands unchanged.
+5. **Methodology result worth keeping:** for HDR-VDP-3 on this corpus, the
+   paired per-CRF dQ_JOD is the decision-grade statistic; the BD-rate
+   fit over Q_JOD is not, at any frame count we can afford. Future Q_JOD
+   comparisons should report the paired delta and its p-value.
+
+## Caveats
+
+- 12 frames per encode, 1920x1080 centre crop, 62 ppd — as before, this is
+  a crop-and-sample estimate of a full-sequence perceptual score.
+- The paired test is per-CRF, so it does not by itself normalise rate; read
+  it together with the "rate vs anchor" column.
+- CRF only. ABR/VBV remain unmeasured for every arm.
+- Reproduce: `python report_3way.py`, `python paired_jod.py`,
+  `python bootstrap_jod_bd.py` (saved output:
+  `report_3way_2026-08-07.txt`).
