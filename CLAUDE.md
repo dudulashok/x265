@@ -406,18 +406,23 @@ provenance and the equal-bitrate verdict); report scripts `report_3way.py`,
    needs the untried coding-efficiency items (VTM PQ lambda tables / temporal-layer
    QP-lambda cascade are cheapest and measure directly on this harness).
 4. **Binary provenance must be VERIFIED, not assumed** (`verify_binary_identity.sh`):
-   re-encode one CRF point per arm with the current binary and compare bitstream MD5s.
-   Differences confined to the first ~400 bytes are the version-string SEI and are
-   cosmetic; deeper differences are real. This caught that the 2026-08-05 `prodstack`
-   encodes were NOT reproducible with the current binary (10 bytes of coded data),
-   because the working-tree build contained the later `--hdr-sao-band` change, which
-   perturbs SAO RD on configs that force SAO on (`--hdr-pq` does; the anchor does not).
-   **The trap: `x265 --version` was stale** (`4.2+119-808cbae9e` while containing later
-   code, because cmake had not been re-run) so the git log said "docs-only, impossible".
-   prodstack was re-encoded and re-measured on the current binary; the effect on the
-   numbers was ~1e-5 dB wPSNR, so no conclusion changed — but all three arms are now
-   provably one binary. Rebuild via cmake after any feature commit to keep the version
-   string honest.
+   re-encode one CRF point per arm with the current binary and compare **decoded
+   pixels** (`ffmpeg -f md5`). **2026-08-08 CORRECTION: do NOT compare bitstream
+   bytes and do NOT use the "first ~400 bytes are SEI" rule** — the version SEI
+   repeats at every keyframe, so its second copy sits hundreds of KB in and gets
+   mislabelled as coded data. That mistake produced the "coded data differs"
+   findings in this item and in the 2026-08-08 rebuild item; both were
+   metadata-only. Decoded pixels are the ground truth. The byte-level check is what
+   flagged the 2026-08-05 `prodstack` encodes as "not reproducible (10 bytes of coded
+   data)", attributed to the later `--hdr-sao-band` change perturbing SAO RD on configs
+   that force SAO on. **That attribution is unsupported**: the archived pre-rebuild
+   binary (which contains the sao-band change) decodes prodstack to pixels identical to
+   both later builds, so for this arm the difference was metadata. Re-encoding changed
+   the numbers by ~1e-5 dB wPSNR, i.e. nothing. What DID survive as a real lesson is
+   the adjacent one: **`x265 --version` can be stale** (`4.2+119-808cbae9e` while the
+   binary contains later code, because cmake had not been re-run), so the version string
+   is not evidence of what a binary contains — rebuild via cmake after any feature commit
+   to keep it honest.
 5. wPSNR reproduced the archived pre-rebase `hdr10opt` numbers (+33.1 / +6.4 wPSNR-Y)
    to two decimals — independent confirmation the re-encoded baseline is consistent.
 6. **Toolchain note (user directive): the HDR-VDP-3 setup must stay installed.**
@@ -446,6 +451,26 @@ allocation knobs are close to exhausted, so the next work must be *coding
 efficiency*, not more allocation tuning. `--hdr-scene-qp` is explicitly deferred.
 
 ### 2026-08-08 session log — item 0 settled, VTM tools implemented
+
+**Item 0's PREMISE WAS WRONG — the binaries were never differing in coded data.**
+Read this before trusting any byte-level provenance claim in this file. x265
+emits the version-string SEI **once per keyframe**, so a 300-frame clip at
+keyint 250 carries two copies, the second one ~440 KB into the file. The
+identity check's heuristic ("differences confined to the first ~400 bytes are
+the SEI and cosmetic; deeper differences are real") therefore mislabelled the
+*second SEI copy* as coded data. Measured 2026-08-08 with decoded-pixel MD5s:
+the archived `4.2+119` pre-rebuild binary, `4.2+128-fb6839767` and
+`4.2+131-96275df9c` all decode whale10 prodstack CRF34 to **identical pixels**
+(MD5 `66746bc96f163ab24aed7ee14aacd42a`); the only differing bytes are the two
+12-byte SEI regions (offsets 136–157 and 438658–438679), and a same-binary
+double encode is byte-identical, so nothing is nondeterministic either.
+Consequences: the "pre-rebuild binary must have been built from uncommitted
+work" theory is unsupported and should not be re-derived; `--hdr-sao-band`
+perturbing prodstack's SAO RD (the 2026-08-07 claim) is also unsupported for
+this arm; and **provenance must be checked on decoded pixels**
+(`ffmpeg -f md5`), which `verify_binary_identity.sh` now does. The re-encode
+below was therefore unnecessary — harmless, and it did independently confirm
+every number is unchanged, but the cost was avoidable.
 
 **Item 0 is DONE (user chose re-encode).** `hdr10opt` and `prodstack` were
 re-encoded on the committed-source binary `4.2+128-fb6839767` (16 encodes,

@@ -998,3 +998,41 @@ new parameter — the exact trap the comment on that line documents for
 `hdr-chroma-qp`. **Any new writer of `slice->m_chromaQpOffset` must be added to
 that flag.** (Chroma *deblocking* deliberately uses PPS-only offsets per spec
 8.7.2.5.5, so that asymmetry is correct, not a bug.)
+
+### CORRECTION: the "coded data differs between binaries" findings were the SEI
+
+The provenance work above rests on comparing bitstream bytes, and that method is
+**wrong**. x265 emits the version-string SEI **once per keyframe**. whale10 is
+300 frames at the default keyint 250, so every encode carries two copies — the
+second roughly 440 KB into the file. The rule the harness used ("differences
+confined to the first ~400 bytes are the version SEI and cosmetic; deeper
+differences are real") therefore mislabelled the second SEI copy as coded data.
+
+Measured 2026-08-08 on whale10 prodstack CRF34, comparing **decoded pixels**:
+
+| binary | decoded MD5 |
+|---|---|
+| archived `4.2+119-808cbae9e` (pre-rebuild) | `66746bc96f163ab24aed7ee14aacd42a` |
+| `4.2+128-fb6839767` (the stored encode) | `66746bc96f163ab24aed7ee14aacd42a` |
+| `4.2+131-96275df9c` (with the three new tools) | `66746bc96f163ab24aed7ee14aacd42a` |
+
+All three produce **identical coded video**. The differing bytes are exactly two
+12-byte regions, at offsets 136–157 and 438658–438679 — the two SEI copies. A
+double encode with one binary is byte-identical, so nothing is nondeterministic
+either.
+
+What this retracts:
+- **"The pre-rebuild binary must have been built from uncommitted work"** (item 0
+  of the next-session list) — unsupported. There was no coded-data difference to
+  explain.
+- **"`--hdr-sao-band` perturbs prodstack's SAO RD"** (2026-08-07 item 4) —
+  unsupported for this arm; the binary containing that change decodes to the same
+  pixels.
+
+What survives:
+- The re-encode itself was harmless and independently confirmed every number.
+- The adjacent lesson is still real and still bites: **`x265 --version` can be
+  stale** when cmake has not been re-run, so the version string is not evidence
+  of what a binary contains.
+- **Check provenance on decoded pixels** (`ffmpeg -f md5`), never on bitstream
+  bytes. `verify_binary_identity.sh` now does this.
