@@ -1099,3 +1099,56 @@ keeping — `fixed12` (a FIXED −1/−2, i.e. cqpmap025's mean depth, separatin
 shape is better" from "it is merely shallower") and `prodmap` (the production
 stack with the ramp swapped in for `--hdr-pq`'s fixed offsets). Read them with
 `bdrate.py` against `hdrpq`, `cqpmap025` and `prodstack`.
+
+### The two deciding arms (`fixed12`, `prodmap`) — the ramp is a mild win in trade
+### efficiency, and it does improve the production stack
+
+| clip | config | PSNR-Y | wPSNR-Y | wP-Cb | wP-Cr |
+|---|---|---|---|---|---|
+| sol10 | hdrpq (fixed −2/−2) | 7.14 | 7.14 | −18.81 | −19.53 |
+| sol10 | fixed12 (fixed −1/−2) | 4.22 | 4.22 | −9.21 | −20.90 |
+| sol10 | cqpmap025 (ramp) | 5.47 | 5.49 | −14.29 | −19.78 |
+| sol10 | prodstack | 3.90 | −0.16 | −2.85 | −2.35 |
+| sol10 | **prodmap** | 3.68 | **−0.35** | −2.09 | −2.89 |
+| whale10 | hdrpq | 1.38 | 1.37 | −17.49 | −22.92 |
+| whale10 | fixed12 | 0.88 | 0.87 | −9.80 | −18.16 |
+| whale10 | cqpmap025 | 0.97 | 0.96 | −15.36 | −23.56 |
+| whale10 | prodstack | 0.90 | −0.26 | −19.59 | −20.59 |
+| whale10 | **prodmap** | 0.66 | **−0.58** | −16.74 | −21.90 |
+
+**1. Shape vs depth: neither dominates, so the honest answer is "the earlier win
+over `hdrpq` was mostly depth, and the ramp adds a modest trade-efficiency gain
+on top".** A fixed −1/−2 has the *lowest* absolute luma cost (+4.22 sol10 /
++0.87 whale10, against the ramp's +5.49 / +0.96), so anyone who only wants
+cheaper luma should just use a shallower fixed offset. What the ramp buys is a
+better exchange rate. Measured as luma BD-rate saved per point of Cb given up,
+relative to the `hdrpq` floor:
+
+| | sol10 | whale10 |
+|---|---|---|
+| fixed −1/−2 | 2.92 / 9.60 = **0.30** | 0.50 / 7.69 = **0.07** |
+| ramp at 0.25 | 1.65 / 4.52 = **0.37** | 0.41 / 2.13 = **0.19** |
+
+and on whale10 the difference is qualitative, not just numeric: the ramp *keeps*
+Cr (−23.56, better than the floor's −22.92) while the fixed offset loses 4.8
+points of it (−18.16). Signalling the offset where the quantizer is coarse and
+withdrawing it where it is fine is doing real work — but it is a second-order
+effect, roughly a third of the size of simply choosing the right depth.
+
+**2. `prodmap` beats `prodstack` on luma on both clips, and is the first
+improvement to the recommended configuration since 2026-08-05.**
+`--hdr-pq --hdr-chroma-qp-map 0.25 --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5
+--hdr-scene-qp 1.0` gives wPSNR-Y **−0.35% (sol10) and −0.58% (whale10)** against
+prodstack's −0.16% / −0.26%, with PSNR-Y also better on both (3.68 vs 3.90;
+0.66 vs 0.90). The cost is 2.9 points of whale10 Cb (−16.74 vs −19.59), partly
+returned as Cr (−21.90 vs −20.59). Given that this project has established that
+chroma gains at equal bitrate are perceptually unmeasurable while luma is the
+declared target, trading a little Cb for luma on both clips is the right
+direction — so `prodmap` is the recommended stack going forward, pending the
+usual caveat that these are ~0.3–0.6% effects.
+
+**What is NOT established:** `prodmap` has no HDR-VDP-3 numbers yet, and the
+sol10 chroma columns are small enough (−2.09 / −2.89) that the chroma-adapt
+moderation is doing most of the work there rather than the ramp. A Q_JOD pass on
+`prodmap` plus the rate-matched view is the natural next measurement, and by the
+2026-08-07 rule it must be read at equal bitrate, not at fixed CRF.

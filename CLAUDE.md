@@ -572,13 +572,22 @@ whichever arm wins, per the 2026-08-07 methodology rule.
    with Cr *better*). `--hdr-chroma-adapt` moderates the deep map exactly as
    designed (sol10 +37.6 → +5.8) but the moderated point does not dominate
    cqpmap025 — not going too deep beats scaling back a too-deep offset.
-   **Left running at session end: `run_cqpmap_followup.sh`** — `fixed12` (fixed
-   −1/−2, the control separating "ramp shape" from "merely shallower") and
-   `prodmap` (production stack with the ramp swapped in for `--hdr-pq`'s fixed
-   offsets). START NEXT SESSION BY READING `cqpmap_followup.out` and
-   `python bdrate.py`: if `cqpmap025` beats `fixed12`, the QP-adaptive shape is
-   real and `prodmap` is the candidate new recommended stack; if not, the win was
-   only depth and the right change is simply a shallower fixed offset.
+   **The two deciding arms also ran (2026-08-08 23:47, `run_cqpmap_followup.sh`).**
+   `fixed12` (a fixed −1/−2) has the LOWEST absolute luma cost (+4.22 sol10 /
+   +0.87 whale10 vs the ramp's +5.49/+0.96), so **the ramp's win over the −2/−2
+   floor was mostly DEPTH, not shape**. What the ramp adds is a better exchange
+   rate — luma saved per point of Cb given up, relative to the floor, is 0.37 vs
+   0.30 (sol10) and 0.19 vs 0.07 (whale10) — and on whale10 it *keeps* Cr
+   (−23.56, better than the floor) where the fixed offset loses 4.8 points of it.
+   Real, but second-order next to choosing the right depth.
+   **`prodmap` is the new recommended stack:** `--hdr-pq --hdr-chroma-qp-map 0.25
+   --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0` gives wPSNR-Y
+   **−0.35% (sol10) / −0.58% (whale10)** against prodstack's −0.16%/−0.26%, PSNR-Y
+   better on both, for 2.9 points of whale10 Cb (partly returned as Cr). First
+   improvement to the recommended configuration since 2026-08-05. **Not yet
+   measured: Q_JOD on `prodmap`** — that is the natural next measurement, read at
+   equal bitrate per the 2026-08-07 rule, and cli.rst still recommends the old
+   prodstack until it lands.
 2. **LARGELY ANSWERED 2026-08-08 by `--hdr-vtm-lambda` (see item 1), and VTM
    shows the fix.** The global-lambda arm is neutral while the per-CTU arm cost
    +1.5…+12.1%, so the mechanism is per-block *inconsistency*, not
