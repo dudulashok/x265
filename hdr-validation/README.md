@@ -302,3 +302,26 @@ curl -L -o hdrvdp-3.0.7.zip \
 The `vdp/*.f32` linear-light frame dumps are regenerable scratch
 (`prep_frames.py`, ~25 MB per 1080p frame) and *may* be deleted to reclaim
 space; the two trees above should not be.
+
+### Q_JOD pass on a new arm (next session: `prodmap`)
+
+Encodes already exist, so this is metric work only. From `hdr-validation/`:
+
+```sh
+CFGS="prodmap" PAR=4 bash vdp_evals.sh   # 96 evals: 2 clips x 4 CRFs x 12 frames
+python merge_vdp.py
+awk '{c[$1]++} END {for (k in c) if (k ~ /prodmap/) print k, c[k]}' vdp_results.txt
+python rate_matched.py                   # THE decision view -- equal bitrate
+python paired_jod.py                     # paired per-CRF, rate-confounded
+```
+
+Three rules that cost time when ignored:
+
+1. **Read `rate_matched.py`, not the fixed-CRF table.** Fixed CRF is
+   rate-confounded, and Q_JOD BD-rate has a CI wider than any effect here.
+2. **Check every key has 12 frames** (the `awk` line above) before trusting a
+   paired table. A key with 8 or 10 frames silently changes the frame set the
+   pairing is computed over, and `rate_matched.py` will die with a `KeyError`.
+   Failed evals happen under high parallelism -- retry at `PAR=2`.
+3. **`PAR` beyond ~4 starves anything else running.** 8 parallel Octave workers
+   drop 4K encodes to 0.27 fps.

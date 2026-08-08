@@ -15,7 +15,8 @@ import math
 import numpy as np
 
 CRFS = [22, 26, 30, 34]
-CFGS = ["hdr10opt", "prodstack"]
+# 2026-08-08: prodmap is the candidate replacement for prodstack
+CFGS = ["hdr10opt", "prodstack", "prodmap"]
 
 acc = collections.defaultdict(dict)
 for ln in open("vdp_results.txt"):
