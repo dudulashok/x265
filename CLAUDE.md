@@ -555,14 +555,41 @@ whichever arm wins, per the 2026-08-07 methodology rule.
    will be compared against exactly these arms. Worth also identifying *what*
    differs — both affected configs manipulate chroma QP offsets while the plain
    anchor does not.
-1. **NEXT SESSION (a): VTM HDR lambda tables.** Try VTM's PQ-tuned QP-to-lambda
-   and chroma lambda weighting in x265's lambda setup, plus the temporal-layer
-   lambda/QP cascade models (x265's fixed ipratio/pbratio vs VTM's QP-adaptive
-   ones). The existing wPSNR harness measures this directly and both baseline arms
-   are already in `results.json`, so it is encode-and-measure only. Reimplement the
-   concept, do not port code (BSD→GPLv2 is fine, but the commercial dual-license
-   makes copied code a relicensing problem).
-2. **NEXT SESSION (b): post-mortem on why `--hdr-wsse-rd` does not help.** Measured
+1. **DONE 2026-08-08 — VTM HDR lambda tables, all three pieces implemented and
+   measured (X265_BUILD 225).** Verdicts (full tables in RESULTS.md "2026-08-08
+   verdicts"): `--hdr-qp-cascade` **negative and monotone in strength** (+1.3…+5.6%
+   sol10, +0.3…+7.7% whale10 wPSNR-Y) — under CRF, coarsening the unreferenced
+   layer only removes bits, there is no reallocation to referenced frames, so
+   x265's shallow spread is already better; don't pursue. `--hdr-vtm-lambda`
+   **neutral** (−0.5% whale10 … +0.96% sol10 at strength 1.0) — x265's empirical
+   lambda is already at the hull, and this **closes the wsse post-mortem**: a
+   global, consistent lambda change costs nothing while the per-CTU one cost
+   +1.5…+12.1%, so the damage was the per-block *inconsistency*, not the
+   lambda-vs-quantizer decoupling per se. `--hdr-chroma-qp-map` at full strength
+   is far too deep (+37.6% sol10 / +10.8% whale10 luma for −56…−68% chroma, i.e.
+   `--hdr10-opt`'s class), but **at 0.25 it is a small Pareto win over the fixed
+   −2/−2 floor on both clips** (luma 5.49 vs 7.14 sol10, 0.96 vs 1.37 whale10,
+   with Cr *better*). `--hdr-chroma-adapt` moderates the deep map exactly as
+   designed (sol10 +37.6 → +5.8) but the moderated point does not dominate
+   cqpmap025 — not going too deep beats scaling back a too-deep offset.
+   **Left running at session end: `run_cqpmap_followup.sh`** — `fixed12` (fixed
+   −1/−2, the control separating "ramp shape" from "merely shallower") and
+   `prodmap` (production stack with the ramp swapped in for `--hdr-pq`'s fixed
+   offsets). START NEXT SESSION BY READING `cqpmap_followup.out` and
+   `python bdrate.py`: if `cqpmap025` beats `fixed12`, the QP-adaptive shape is
+   real and `prodmap` is the candidate new recommended stack; if not, the win was
+   only depth and the right change is simply a shallower fixed offset.
+2. **LARGELY ANSWERED 2026-08-08 by `--hdr-vtm-lambda` (see item 1), and VTM
+   shows the fix.** The global-lambda arm is neutral while the per-CTU arm cost
+   +1.5…+12.1%, so the mechanism is per-block *inconsistency*, not
+   lambda-vs-quantizer decoupling. And VTM's own HDR RDO is the remaining
+   candidate: it applies the JCTVC-X1020 luma weight as a **per-pixel distortion
+   weight** (`RdCost::initLumaLevelToWeightTable`, w = 2^(clip(−3,6,0.015·Y−7.5)/3))
+   with lambda untouched and `LumaLevelToDeltaQPMode: 0`. That is candidate fix
+   (b) at pixel granularity — the design is now concrete rather than
+   hypothetical; the cost is weighted-SSE distortion kernels (a new cost flavor,
+   the design previously rejected as invasive). Original note kept for context:
+   post-mortem on why `--hdr-wsse-rd` does not help. Measured
    negative 2026-08-05 (whale +1.5/+5.4/+12.1% wPSNR-Y at 0.5/1.0/1.5, damage
    growing with strength). Working diagnosis to test, not assume: RD optimality
    needs lambda to equal the local −dD/dR *of the quantizer actually in use*, so

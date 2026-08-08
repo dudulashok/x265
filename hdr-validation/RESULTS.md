@@ -1036,3 +1036,66 @@ What survives:
   of what a binary contains.
 - **Check provenance on decoded pixels** (`ffmpeg -f md5`), never on bitstream
   bytes. `verify_binary_identity.sh` now does this.
+
+### 2026-08-08 verdicts: two of the three VTM tools are dead ends, the chroma
+### ramp is a small real win
+
+BD-rate % vs anchor, wPSNR columns, CRF 22–34, medium, negative = better.
+
+| clip | config | PSNR-Y | wPSNR-Y | wP-Cb | wP-Cr |
+|---|---|---|---|---|---|
+| sol10 | cascade05 / 10 / 15 | 1.24 / 3.05 / 5.50 | 1.26 / 3.06 / 5.58 | 2.61 / 6.19 / 10.26 | −1.39 / −2.93 / −3.50 |
+| whale10 | cascade05 / 10 / 15 | −0.34 / 2.20 / 5.56 | 0.30 / 3.58 / 7.74 | −7.79 / −11.67 / −15.17 | −6.60 / −10.99 / −15.79 |
+| sol10 | vtmlam05 / 10 | 0.14 / 0.29 | 0.24 / 0.96 | −0.08 / −0.12 | 1.75 / 1.72 |
+| whale10 | vtmlam05 / 10 | −0.33 / −0.69 | −0.29 / −0.51 | 0.01 / −1.53 | −3.40 / −4.36 |
+| sol10 | hdrpq (fixed −2/−2) | 7.14 | 7.14 | −18.81 | −19.53 |
+| sol10 | cqpmap025 / 05 / 10 | 5.47 / 12.50 / 37.49 | **5.49** / 12.51 / 37.59 | −14.29 / −28.86 / −55.70 | **−19.78** / −35.52 / −64.63 |
+| sol10 | cqpmap10ca | 5.73 | 5.80 | −7.70 | −21.12 |
+| whale10 | hdrpq | 1.38 | 1.37 | −17.49 | −22.92 |
+| whale10 | cqpmap025 / 05 / 10 | 0.97 / 2.78 / 10.45 | **0.96** / 2.82 / 10.79 | −15.36 / −32.82 / −63.77 | **−23.56** / −39.71 / −68.11 |
+| whale10 | cqpmap10ca | 10.45 | 10.79 | −63.77 | −68.11 |
+
+**1. `--hdr-qp-cascade`: negative, monotone in strength. Do not use.**
++1.26/+3.06/+5.58% wPSNR-Y on sol10 and +0.30/+3.58/+7.74% on whale10 at
+0.5/1.0/1.5. Same signature as `--hdr-wsse-rd`: the damage grows with the
+strength of the perturbation, which is what an off-hull move looks like. Under
+CRF, coarsening the never-referenced layer just removes bits — there is no
+reallocation to the referenced frames the way VTM's fixed-QP GOP structure gets
+it — so x265's shallow spread is already the better operating point. It does buy
+chroma on whale10 (−7.8…−15.2%), but that is the usual luma-for-chroma trade,
+not efficiency.
+
+**2. `--hdr-vtm-lambda`: neutral. Informative, and it closes the wsse question.**
+−0.51% (whale10) to +0.96% (sol10) wPSNR-Y at strength 1.0 — under 1% either
+way, sign flipping by content. VTM's λ = 0.57·2^((QP−12)/3) is not better than
+x265's empirical fit; x265 is already at the hull. This is the clean version of
+the `--hdr-wsse-rd` experiment: a *global, consistent* lambda change (RDO + ME +
+RDOQ + SAO + lookahead all moving together, quantizer step untouched) costs
+essentially nothing, whereas the *per-CTU* lambda scale cost +1.5…+12.1%. So the
+wsse damage was never "lambda decoupled from the quantizer step" in general — it
+was the per-block inconsistency, which is a stronger and more specific
+conclusion than the original post-mortem hypothesis.
+
+**3. `--hdr-chroma-qp-map`: full strength is far too deep; 0.25 is a small Pareto
+win over the fixed −2/−2 floor.** The full VVC table (+37.6% sol10 / +10.8%
+whale10 luma for −56…−68% chroma) lands in `--hdr10-opt`'s class — a huge
+luma-for-chroma trade. At strength 0.25 the ramp signals 0/0 near QP 24, −1/−2
+at 32, −2/−3 at 40, and that shape beats the flat −2/−2 on **both** clips:
+luma 5.49 vs 7.14 (sol10) and 0.96 vs 1.37 (whale10), with Cr **better**
+(−19.78 vs −19.53; −23.56 vs −22.92) and Cb worse. Cheaper luma, same or better
+Cr — back off where the offset does not pay, match it where it does.
+
+**4. `--hdr-chroma-adapt` works exactly as designed on the map.** It pulled the
+full table's sol10 luma cost from **+37.59% to +5.80%** while whale10 stayed
+untouched (chroma share 0.03 sits below the 0.10 knee, so factor 1.0 — the arm
+is bit-identical to `cqpmap10` there, which is the expected behaviour and was
+also how the stale-guard bug was spotted). But the moderated point (+5.80,
+−7.70/−21.12) does not dominate `cqpmap025` (+5.49, −14.29/−19.78): same luma
+cost, much less Cb. Scaling a too-deep offset down is worse than not going too
+deep.
+
+**Open (running at time of writing):** two arms decide whether the ramp is worth
+keeping — `fixed12` (a FIXED −1/−2, i.e. cqpmap025's mean depth, separating "the
+shape is better" from "it is merely shallower") and `prodmap` (the production
+stack with the ramp swapped in for `--hdr-pq`'s fixed offsets). Read them with
+`bdrate.py` against `hdrpq`, `cqpmap025` and `prodstack`.

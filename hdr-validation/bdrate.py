@@ -28,7 +28,8 @@ def series(clip, cfg, field):
             np.array([res[k][field] for k in keys]))
 
 VTM = ["cascade05", "cascade10", "cascade15", "vtmlam05", "vtmlam10",
-       "cqpmap10", "cqpmap10ca", "cqpmap05", "cqpmap025"]
+       "cqpmap10", "cqpmap10ca", "cqpmap05", "cqpmap025",
+       "fixed12", "prodmap"]
 CFGS = {"sol10": ["hdr10opt", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15",
                   "dbk10", "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
                   "chromaadapt", "chromaadapt05", "chromaadapt15", "prodstack"] + VTM,
