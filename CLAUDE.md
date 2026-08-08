@@ -493,12 +493,25 @@ efficiency*, not more allocation tuning. `--hdr-scene-qp` is explicitly deferred
    list, just not next.
 5. Then **measured MaxCLL/MaxFALL → CLL SEI** from the TODO.
 
-**Pending overnight (2026-08-07):** `decompose_jod_detached.sh` is computing
-12-frame Q_JOD for `hdrpq` and `hdrluma` (metric-only; encodes exist) to attribute
-the production stack's Q_JOD position to either chroma allocation or the
-`--hdr-luma-qp` 1.0→0.5 strength drop. Read `decompose_jod.out` first thing —
-the analysis it settles is written up in RESULTS.md under "Observation:
-the pre-rebase Q_JOD sat closer to hdr10opt at lower kbps".
+**Decomposition COMPLETE (2026-08-08, 480 evals, 0 failures)** — full table in
+RESULTS.md, "Decomposition result". The `--hdr-chroma-adapt` hypothesis is
+**falsified**: `prodstack` rate-matched ΔQ_JOD (+0.015…+0.021 on sol10) matches or
+exceeds the `hdrpq` floor it is built on at every CRF, and is indistinguishable
+from `hdrluma`. Two further findings worth carrying forward:
+- **The entire Q_JOD effect comes from the chroma offsets; the luma tools add
+  nothing measurable.** `hdrpq` alone (luma QP untouched) reproduces the whole
+  gain and is the *only* arm reaching significance (p<0.05 at 3 of 4 CRFs, sem
+  0.004–0.007 vs 0.021–0.040 for the luma arms — exactly what you expect when
+  luma is untouched). `--hdr-luma-qp` at either 1.0 or 0.5 moves the Q_JOD mean by
+  nothing while inflating variance.
+- **That gain is chroma-mediated via non-constant-luminance leakage**, confirmed
+  by a sign disagreement: at matched rate `hdrpq` is *worse* on luma (ΔwPSNR-Y
+  −0.24…−0.34) yet *better* on Q_JOD. A metric with no chromatic channel can only
+  do that if improved chroma reduces luminance error through the NCL matrix.
+All of it sits at +0.015…+0.02 JOD, ~2 orders of magnitude below the 1-JOD
+noticeability unit — so HDR-VDP-3's only measurable response to this tool set is a
+chroma side-effect, not the luma work the tools were built to do. Further argument
+for moving to coding-efficiency levers rather than allocation tuning.
 
 ### TODO — HDR quality / efficiency investigation
 

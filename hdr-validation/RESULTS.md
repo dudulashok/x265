@@ -860,3 +860,49 @@ untouched) and `hdrluma` (pre-rebase arm at luma-qp 1.0), then
 `rate_matched_decomp.py` tables all four arms against the anchor at matched
 bitrate. That separates "chroma allocation" from "luma-qp strength" cleanly.
 Output: `decompose_jod.out`.
+
+#### Decomposition result (2026-08-08): chroma-adapt does NOT cost Q_JOD — and the Q_JOD effect is entirely chroma-mediated
+
+480 evals, 0 failures. Rate-matched ΔQ_JOD vs the anchor, sol10 (the clip where
+the arms separate; whale10 shows no separation for any arm):
+
+| Arm | what it adds | CRF22 | CRF26 | CRF30 | CRF34 | sem |
+|---|---|---:|---:|---:|---:|---:|
+| `hdrpq` | chroma offsets only, luma untouched | **+0.0121** \* | **+0.0173** \* | **+0.0186** \* | +0.0074 | 0.004–0.007 |
+| `hdrluma` | + luma-qp **1.0** + scene-qp | +0.0132 | +0.0253 | +0.0180 | +0.0020 | 0.021–0.040 |
+| `prodstack` | + chroma-adapt + luma-qp **0.5** + scene-qp | +0.0151 | +0.0171 | +0.0212 | +0.0182 | 0.011–0.019 |
+| `hdr10opt` | in-tree staircase | +0.0023 | +0.0332 | +0.0018 | −0.0541 | 0.018–0.047 |
+
+(\* = p < 0.05; every other row is ns.)
+
+**Three findings, in order of importance.**
+
+1. **`--hdr-chroma-adapt` does not cost Q_JOD.** `prodstack` (+0.015…+0.021)
+   matches or slightly exceeds the `hdrpq` floor it is built on, at every CRF,
+   and is statistically indistinguishable from `hdrluma`. The hypothesis that
+   chroma-adapt explains the changed Q_JOD picture is **falsified**. It is also
+   strictly better than the floor on the other axes — same Q_JOD at +1–2% rate
+   instead of +7.6%, and ΔwPSNR-Y +0.025 instead of −0.34. Chroma-adapt is doing
+   exactly what it was designed to do.
+2. **The entire Q_JOD effect comes from the chroma offsets, and the luma tools
+   add nothing measurable.** `hdrpq` alone — which leaves luma QP completely
+   untouched — reproduces the whole gain, and it is the only arm reaching
+   significance (its sem is 4–10x smaller than the luma arms', exactly as
+   expected when luma is untouched and the per-frame delta is consistent).
+   Adding `--hdr-luma-qp` at 1.0 or 0.5 moves the Q_JOD mean by nothing while
+   inflating the variance.
+3. **That gain is chroma-mediated through non-constant-luminance leakage, and it
+   is confirmed by the sign disagreement.** At matched rate `hdrpq` is *worse* on
+   luma (ΔwPSNR-Y −0.24…−0.34, because its extra bits went to chroma while the
+   anchor is interpolated up to the same rate) yet *better* on Q_JOD. A metric
+   with no chromatic channel can only do that if improved chroma is reducing
+   luminance error via the NCL matrix. So the second-order path predicted from
+   `hdrvdp_visual_pathway.m` is real and, on this content, large enough to
+   dominate the small luma penalty.
+
+**Perspective:** all of this lives at +0.015 to +0.02 JOD — two orders of
+magnitude below the 1-JOD noticeability unit. The practical reading is unchanged:
+on this corpus the HDR tool set is perceptually neutral, and its measurable
+effect on HDR-VDP-3 is a chroma side-effect rather than the luma work the tools
+were designed to do. This strengthens the case for moving to coding-efficiency
+levers (VTM lambda tables) rather than further allocation tuning.
