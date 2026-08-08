@@ -834,8 +834,45 @@ frames and shots — rather than in how QP is sprinkled within a frame.
   Several also need *multi-shot* and *static-background* content, which the current
   corpus does not contain.
 
+#### P0 — metric prerequisites, or the rest of this list is unmeasurable
+
+The 2026-08-07/08 sessions established the core problem: **wPSNR and Q_JOD cannot
+see the tools we are building.** Every perceptual tool so far measured neutral or
+negative on wPSNR by construction, and Q_JOD moves by ~0.02 JOD — two orders of
+magnitude under the noticeability unit. Perceptually-motivated tools (QPA,
+variance boost, per-pixel wSSE, grain) therefore cannot be *judged* on the current
+harness, only penalised by it. Fix the metrics first.
+
+- [ ] **XPSNR in the harness (Helmrich & Bosse).** The perceptually weighted PSNR
+      variant designed exactly for this gap — spatio-temporal activity weighting,
+      much better subjective correlation than PSNR, and the metric VVenC's QPA
+      optimises, so it is the natural yardstick for the QPA item below. **Cheap:
+      the local ffmpeg already has the filter** (`ffmpeg -filters | grep xpsnr`
+      confirms `xpsnr VV->V`), so this is the same zero-new-binaries route CAMBI
+      took via libvmaf — add an `xpsnr.py` alongside `wpsnr.py`/`cambi.py` and a
+      column in `results.json`. Do this first; it is hours, not days, and it
+      changes what every later item is allowed to conclude.
+- [ ] **DeltaE-ITP (BT.2124)** — the colour-aware companion, already listed in the
+      HDR TODO above under the wPSNR cross-check item. Promoted here because the
+      2026-08-08 decomposition showed the chroma tools' only measurable effect
+      reaches Q_JOD through NCL luminance leakage: without a colour metric, every
+      chroma decision is being judged by a luminance proxy.
+
 #### P1 — highest expected value
 
+- [ ] **Alt-ref / hidden frames via `pic_output_flag` — AV1's ARF, and HEVC can do
+      it.** The slice header carries `pic_output_flag` (gated by the PPS
+      `output_flag_present_flag`), so a frame can be coded, used as a reference, and
+      **never displayed** — which is precisely AV1's alt-ref/hidden-frame
+      mechanism, one of its largest structural advantages. `grep -rn pic_output_flag
+      source/` returns **nothing**: x265 has no support at all. The generator for
+      the frame content already exists in-tree — upstream MCSTF produces exactly the
+      temporally-filtered picture an ARF wants — so the missing pieces are the PPS
+      flag, the slice-header bit, DPB lifetime for a non-output picture, and rate
+      control accounting for a frame that costs bits but displays nothing. Pairs
+      with the LTR item below: `pic_output_flag` gives *hidden-ness*, LTR gives
+      *lifetime*, and AV1's ARF is both. Strongest structural item on this list
+      after TPL, and unlike LTR it should show up on ordinary moving content.
 - [ ] **Dependency-aware RDO / temporal dependency model (AV1's TPL).** The single
       biggest known encoder-side lever, and a large part of why AV1 encoders beat HEVC
       at the same GOP structure. What x265 has: cu-tree (`estimateCUPropagate`,
@@ -854,7 +891,8 @@ frames and shots — rather than in how QP is sprinkled within a frame.
       per-block — TPL works precisely because delta-q and rdmult move together. Keep
       contributions zero-mean (the banding-protect rule). Effort: large; stage it.
 - [ ] **Long-term reference frames — HEVC supports them and x265 does not implement
-      them at all.** `grep -r longTerm source/` returns nothing; `dpb.cpp` builds a
+      them at all.** (Companion to the `pic_output_flag` item above: that one gives a
+      frame hidden-ness, this one gives it lifetime.) `grep -r longTerm source/` returns nothing; `dpb.cpp` builds a
       sliding window of short-term refs plus b-pyramid. AV1's GOLDEN/ALTREF and the
       HEVC background-modeling literature (static-background surveillance coding) both
       exploit a long-lived high-quality reference, and HEVC signals LTRs in the RPS
@@ -878,6 +916,25 @@ frames and shots — rather than in how QP is sprinkled within a frame.
 
 #### P2 — solid, moderate effort
 
+- [ ] **VVenC QPA — perceptually optimised QP adaptation (Helmrich et al.).** The
+      reference implementation is **already in the local VTM checkout** under
+      `ENABLE_QPA` (`source/Lib/EncoderLib/EncSlice.cpp`:
+      `filterAndCalculateAverageEnergies()` computes a high-pass spatial activity
+      measure, `lumaDQPOffset()` the luma-dependent term, and the QPA path derives
+      per-CTU QP from spatio-temporal visual activity with a masking model). This is
+      the mature, subjectively-validated version of what x265's `--aq-mode` does
+      crudely and of what our per-QG HDR tools do heuristically — and it is the
+      encoder side of the same model XPSNR measures, which is why the two belong
+      together: implement XPSNR first, then QPA becomes measurable rather than a
+      leap of faith. Reimplement the model from the papers, do not port the code.
+      Probably the highest-value P2 item for perceptual quality.
+- [ ] **Adaptive MCSTF strength (SVT-AV1-style).** Upstream MCSTF applies a fixed
+      filter strength; SVT-AV1 modulates its temporal-filter strength per frame from
+      noise, motion and prediction-error statistics. The evaluate-and-HDR-tune MCSTF
+      item in the HDR TODO above covers measuring MCSTF as-is; this is the follow-on
+      once that baseline exists, and it matters most for the case that item flags —
+      noise in PQ near-blacks, which is the expensive content to code and where
+      over-filtering costs detail.
 - [ ] **Perceptual rdmult / variance boost (SVT-AV1 `--variance-boost`, libaom
       `--deltaq-mode` perceptual modes, and the SSIM-RDO literature).** Per-block
       lambda scaling from local variance in octaves, tuned for subjective/SSIM rather
@@ -902,7 +959,8 @@ frames and shots — rather than in how QP is sprinkled within a frame.
       `--hdr-qp-cascade` got wrong: that tool coarsened the deepest layer under CRF,
       which only removes bits because CRF has no reallocation mechanism, whereas
       choosing the *structure* changes what gets referenced.
-- [ ] **λ-domain rate control (Li et al., HM's default).** x265's RC is q-domain
+- [ ] **R-λ (λ-domain) rate control — Li et al., JCTVC-K0103, HM's default.**
+      x265's RC is q-domain
       (`getQScale`, an empirical cplxr model). λ-domain RC is more rate-accurate and
       better behaved at low rates and under VBV. Contained change, clear measurement
       (rate accuracy + BD-rate in ABR/VBV), and it composes with the ABR+VBV sweep item
