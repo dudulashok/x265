@@ -906,3 +906,95 @@ on this corpus the HDR tool set is perceptually neutral, and its measurable
 effect on HDR-VDP-3 is a chroma side-effect rather than the luma work the tools
 were designed to do. This strengthens the case for moving to coding-efficiency
 levers (VTM lambda tables) rather than further allocation tuning.
+
+---
+
+## 2026-08-08: baseline arms put back on committed source (item 0), and the
+## three VTM-derived tools land
+
+### Item 0: the re-encode changed nothing, and that is the useful result
+
+The 2026-08-08 rebuild finding (see the Addendum above) left `hdr10opt` and
+`prodstack` reproducible only from an archived binary built from uncommitted
+work. Both arms were re-encoded on the committed-source binary
+`4.2+128-fb6839767` (`rerun_binary_arms.sh`, 16 encodes, 27 min; superseded
+bitstreams kept as `*.hevc.b20260807`, metric state backed up to
+`results-2026-08-08-prebinary.json` and `vdp_results-2026-08-08-prebinary.txt`)
+and fully re-measured — wPSNR and a fresh 12-frame HDR-VDP-3 pass.
+
+**Every number is unchanged:**
+
+| Quantity | Result across all 16 keys |
+|---|---|
+| wPSNR-Y | identical, Δ = 0.000000 dB |
+| bitrate | identical, Δ = 0.0000 kbps |
+| per-frame Q_JOD | identical to 4 decimals, max \|Δ\| = 0.0000 |
+
+So the 11 bytes of coded data that differed between the two binaries were
+genuinely inconsequential, every published conclusion stands verbatim, and the
+whole three-way report is now reproducible from the repository. The rate-matched
+decision view regenerated after the re-measure reproduces the Addendum's table
+exactly (`prodstack` luma-neutral at +0.03/−0.01 dB on sol10 and 0.00/+0.19 dB
+on whale10, with small free chroma gains and a consistent-but-ns +0.015…+0.021
+Q_JOD on sol10; `hdr10opt` paying 0.25–1.69 dB of luma for its chroma).
+
+Two process notes worth keeping:
+- 6 of the 192 HDR-VDP evals failed on the first pass (all `sol10_hdr10opt`
+  crf30/34) under 8 parallel Octave workers, leaving those keys with 10 and 8
+  frames. `rate_matched.py` assumes 12 and died with `KeyError: 152`. Retrying
+  at `PAR=2` recovered all 6. **A partial Q_JOD key is not a soft failure — it
+  silently changes the frame set a paired test is computed over.** Check
+  `awk '{c[$1]++} END {...}' vdp_results.txt` for 12-per-key before trusting a
+  paired table.
+- The fixed-CRF paired table (`paired_jod.py`) shows whale10 `prodstack` at
+  −0.02…−0.11 ΔQ_JOD, two points significant. That is not a regression: at
+  those CRFs `prodstack` spends 12–16% FEWER bits than the anchor. It is the
+  same rate confound the Addendum documents — read `rate_matched.py`.
+
+### Three VTM-derived tools implemented (X265_BUILD 225, `96275df9c`)
+
+Reading VTM to build the "PQ-tuned QP-to-lambda" TODO item **corrected the
+item's premise**: VTM has no PQ-specific lambda formula. With
+`LambdaFromQpEnable` (set in every JVET CTC configuration) every slice uses
+λ = 0.57·2^((QP−12)/3), and the temporal-layer weighting is carried entirely by
+the QP cascade. What VTM's HDR-PQ CTC (`cfg/per-class/classH1.cfg`) actually
+does differently is:
+
+1. **signal a PQ chroma QP mapping table** holding chroma QP far below the
+   SDR/HEVC table as QP rises (−3 QP at qPi 30, −5 at 36, −6 at 45);
+2. **LMCS** (`LMCSSignalType=1`) — decoder-normative, impossible in HEVC;
+3. **luma-adaptive dQP OFF**, with the JCTVC-X1020 luma weight applied instead
+   as a **per-pixel distortion weight** in RDO
+   (`RdCost::initLumaLevelToWeightTable`, w = 2^(clip(−3,6, 0.015·Y − 7.5)/3)).
+
+Point 3 matters for the `--hdr-wsse-rd` post-mortem: it is the same weight, but
+VTM applies it to the *distortion* at pixel granularity with lambda untouched —
+i.e. candidate fix (b) from that post-mortem, at a granularity our per-CTU
+lambda scale never had. That is now a concrete design rather than a hypothesis.
+
+Tools added, all default-off:
+
+| Option | Model | Where it acts |
+|---|---|---|
+| `--hdr-qp-cascade <float>` | JCTVC-X0038 QP-offset model, `clip(0, 3, 0.22·q − 4.95)` extra increment (full on non-ref B, half on ref B) | inside `rateEstimateQscale`, so qpNoVbv/VBV/predictors plan with it; single-pass only |
+| `--hdr-vtm-lambda <float>` | log-domain blend toward VTM's λ (x265's λ2 runs 10% high at QP 12 → 21% at QP 42) | rewrites the process-global lambda tables at `Encoder::configure`, from a pristine snapshot; reaches RDO/ME/RDOQ/SAO/lookahead consistently |
+| `--hdr-chroma-qp-map <float>` | VVC HDR-PQ chroma QP table, reproduced by inverse-searching the slice offset against `g_chromaScale` | per frame in `compressFrame`; assigns the total PPS+slice offset, and `--hdr-chroma-adapt` then scales whatever total is in place, so the two compose. 4:2:0 only |
+
+Chroma-map depth, for calibration against `--hdr-pq`'s static −2/−2:
+
+| slice QP | 24 | 28 | 32 | 36 | 40 | 45 |
+|---|---|---|---|---|---|---|
+| Cb offset | −1 | −3 | −5 | −7 | −9 | −11 |
+| Cr offset | −2 | −4 | −7 | −9 | −12 | −12 |
+
+Verification: default path bit-identical to `4.2+128-fb6839767` (matching MD5),
+each tool changes the bitstream, every stream round-trips (x265 recon == ffmpeg
+decode), and 8/10/12-bit all compile clean.
+
+**The round-trip test caught a real bug again.** `--hdr-chroma-qp-map` applied
+slice chroma offsets of −10/−11 that were never signalled, because
+`pps_slice_chroma_qp_offsets_present_flag` (`encoder.cpp:3924`) did not list the
+new parameter — the exact trap the comment on that line documents for
+`hdr-chroma-qp`. **Any new writer of `slice->m_chromaQpOffset` must be added to
+that flag.** (Chroma *deblocking* deliberately uses PPS-only offsets per spec
+8.7.2.5.5, so that asymmetry is correct, not a bug.)

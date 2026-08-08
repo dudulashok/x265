@@ -4952,12 +4952,16 @@ void Encoder::configure(x265_param *p)
 
     if (p->rc.hdrChromaAdaptStrength > 0)
     {
-        if (!p->cbQpOffset && !p->crQpOffset)
+        if (!p->cbQpOffset && !p->crQpOffset && !(p->rc.hdrChromaQpMapStrength > 0))
         {
-            /* the tool scales the static PPS offsets; with a 0/0 base there
-             * is nothing to scale. Runs after the bHdrPq block above, so
-             * --hdr-pq's -2/-2 defaults are already in place. */
-            x265_log(p, X265_LOG_WARNING, "hdr-chroma-adapt requires nonzero cbqpoffs/crqpoffs (e.g. --hdr-pq); disabling hdr-chroma-adapt.\n");
+            /* the tool scales the chroma offset in place for the frame; with a
+             * 0/0 PPS base and no per-frame offset source there is nothing to
+             * scale. Runs after the bHdrPq block above, so --hdr-pq's -2/-2
+             * defaults are already in place. hdr-chroma-qp-map also qualifies:
+             * it assigns a per-frame slice offset that this tool then scales,
+             * which is the combination that moderates the content-blind VVC
+             * table on chroma-heavy material. */
+            x265_log(p, X265_LOG_WARNING, "hdr-chroma-adapt requires nonzero cbqpoffs/crqpoffs (e.g. --hdr-pq) or --hdr-chroma-qp-map; disabling hdr-chroma-adapt.\n");
             p->rc.hdrChromaAdaptStrength = 0;
         }
         else if (!p->rc.aqMode && !p->rc.hevcAq && !p->bAQMotion && !p->bEnableWeightedPred && !p->bEnableWeightedBiPred)

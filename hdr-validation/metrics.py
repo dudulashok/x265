@@ -15,9 +15,9 @@ W, H = 3840, 2160
 COMMON = ["anchor", "hdr10opt", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15",
           "dbk10", "lumaq025", "lumaq05", "lumaq075", "lumaq10", "lumaq15",
           "chromaadapt", "prodstack",
-          # 2026-08-08: VTM-derived coding-efficiency tools (X265_BUILD 224)
+          # 2026-08-08: VTM-derived tools (X265_BUILD 225, commit 96275df9c)
           "cascade05", "cascade10", "cascade15", "vtmlam05", "vtmlam10",
-          "cqpmap10", "cqpmap10ca"]
+          "cqpmap10", "cqpmap10ca", "cqpmap05", "cqpmap025"]
 # 2026-08-07: vdp_frames deepened 4 -> 12 per clip (supersets of the original
 # grids sol10 24/72/120/168, whale10 37/112/187/262) so the config-to-config
 # Q_JOD deltas clear the sampling noise that made the first round unusable.
