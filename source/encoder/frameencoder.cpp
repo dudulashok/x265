@@ -41,6 +41,62 @@
 namespace X265_NS {
 void weightAnalyse(Slice& slice, Frame& frame, x265_param& param);
 
+/* hdr-chroma-qp-map: the chroma QP mapping VTM signals for HDR-PQ content.
+ *
+ * HEVC has one fixed qPi -> QpC table (g_chromaScale) tuned for SDR, and it is
+ * decoder-normative, so it cannot be replaced. VVC lets the encoder signal its
+ * own table in the SPS, and every JVET HDR-PQ common-test configuration does:
+ * a piecewise-linear map that holds chroma QP far below the SDR table as luma
+ * QP rises (about -3 QP at qPi 30, -5 at 36, -6 at 45), because PQ chroma
+ * errors stay visible where SDR practice assumes they are masked.
+ *
+ * The pivots below are the QpInValCb/QpOutValCb and QpInValCr/QpOutValCr lists
+ * from the JVET HDR-PQ class configuration; between pivots the map is linear,
+ * outside them it continues with slope 1. Reproducing the resulting chroma QP
+ * inside HEVC means finding the slice-level chroma QP offset whose SDR-table
+ * lookup lands closest to the VVC table's output -- which is what
+ * hdrVtmChromaQpOffset() below does, per frame and separately for Cb and Cr. */
+static double hdrVtmChromaQp(const int* qpIn, const int* qpOut, int n, int qpi)
+{
+    if (qpi <= qpIn[0])
+        return qpOut[0] + (qpi - qpIn[0]);
+    for (int i = 1; i < n; i++)
+    {
+        if (qpi <= qpIn[i])
+            return qpOut[i - 1] + (double)(qpi - qpIn[i - 1]) * (qpOut[i] - qpOut[i - 1]) / (qpIn[i] - qpIn[i - 1]);
+    }
+    return qpOut[n - 1] + (qpi - qpIn[n - 1]);
+}
+
+/* Total (PPS + slice) chroma QP offset that best reproduces the VVC HDR-PQ
+ * chroma QP at this luma QP, scaled by strength. */
+static int hdrVtmChromaQpOffset(int qp, int comp, double strength)
+{
+    static const int qpInCb[6]  = { 13, 20, 36, 38, 43, 54 };
+    static const int qpOutCb[6] = { 13, 21, 29, 29, 32, 37 };
+    static const int qpInCr[6]  = { 13, 20, 37, 41, 44, 54 };
+    static const int qpOutCr[6] = { 13, 21, 27, 29, 32, 37 };
+
+    int lumaQp = x265_clip3(QP_MIN, QP_MAX_MAX, qp);
+    double target = comp ? hdrVtmChromaQp(qpInCr, qpOutCr, 6, lumaQp)
+                         : hdrVtmChromaQp(qpInCb, qpOutCb, 6, lumaQp);
+
+    /* search the offset whose SDR-table lookup lands nearest the VVC target */
+    int best = 0;
+    double bestErr = 1e9;
+    for (int off = -12; off <= 12; off++)
+    {
+        double got = g_chromaScale[x265_clip3(QP_MIN, QP_MAX_MAX, lumaQp + off)];
+        double err = fabs(got - target);
+        if (err < bestErr - 1e-9)
+        {
+            bestErr = err;
+            best = off;
+        }
+    }
+    return (int)floor(strength * best + 0.5);
+}
+
 FrameEncoder::FrameEncoder()
 {
     m_reconfigure = false;
@@ -716,6 +772,32 @@ void FrameEncoder::compressFrame(int layer)
         slice->m_chromaQpOffset[1] = slice->m_pps->chromaQpOffset[1] + qpCr < -12 ? (qpCr + (-12 - (slice->m_pps->chromaQpOffset[1] + qpCr))) : qpCr;
     }
 
+    /* 4:2:0 only: the inverse search below assumes HEVC's qPi -> QpC table,
+     * which the spec applies only to 4:2:0 (4:2:2 and 4:4:4 clip instead of
+     * mapping, so the SDR table is not the thing being corrected). */
+    if (m_param->rc.hdrChromaQpMapStrength > 0 && m_param->internalCsp == X265_CSP_I420)
+    {
+        /* VTM's HDR-PQ chroma QP mapping, reproduced with slice-level offsets.
+         * Assigns the total (PPS + slice) chroma offset for this frame, so it
+         * replaces the static --hdr-pq -2/-2 with a QP-dependent offset:
+         * nothing at low QP, deepening as QP rises the way the signalled VVC
+         * table does. Runs BEFORE the content-adaptive block below, which
+         * then scales whatever total offset is in place -- the VVC table is
+         * content-blind, and on chroma-heavy content its full depth is the
+         * same trade --hdr-chroma-adapt exists to moderate. */
+        /* the clipped slice QP, since that is the qPi base the decoder adds
+         * the signalled offsets to */
+        for (int c = 0; c < 2; c++)
+        {
+            int total = hdrVtmChromaQpOffset(slice->m_sliceQp, c, m_param->rc.hdrChromaQpMapStrength);
+            slice->m_chromaQpOffset[c] = total - slice->m_pps->chromaQpOffset[c];
+        }
+        x265_log(m_param, X265_LOG_DEBUG,
+                 "hdr-chroma-qp-map: poc %d qp %d slice cb/cr %+d/%+d (pps %+d/%+d)\n",
+                 m_frame[layer]->m_poc, slice->m_sliceQp, slice->m_chromaQpOffset[0], slice->m_chromaQpOffset[1],
+                 slice->m_pps->chromaQpOffset[0], slice->m_pps->chromaQpOffset[1]);
+    }
+
     if (m_param->rc.hdrChromaAdaptStrength > 0 && m_frame[layer]->m_lowres.hdrFrameChromaAct >= 0.0 &&
         m_frame[layer]->m_lowres.hdrFrameLumaAct > 0.0)
     {
@@ -731,7 +813,12 @@ void FrameEncoder::compressFrame(int layer)
          * so the offset is returned toward 0. Scale is applied per frame as
          * a slice-level delta relative to the PPS offsets. The share is
          * mapped through [LO, HI] (below LO the offset is kept in full, at
-         * and above HI it is fully canceled at strength 1.0). */
+         * and above HI it is fully canceled at strength 1.0).
+         *
+         * The base being scaled is the total offset in place for this frame,
+         * i.e. the PPS offsets plus anything hdr-chroma-qp-map assigned above.
+         * With the map off the slice offset is still 0 here, so this is the
+         * original behaviour unchanged. */
         const double HDR_CHROMA_SHARE_LO = 0.10;
         const double HDR_CHROMA_SHARE_HI = 0.30;
         double lumaAct = m_frame[layer]->m_lowres.hdrFrameLumaAct;
@@ -741,7 +828,7 @@ void FrameEncoder::compressFrame(int layer)
         double factor = x265_clip3(0.0, 1.5, 1.0 - m_param->rc.hdrChromaAdaptStrength * shrink);
         for (int c = 0; c < 2; c++)
         {
-            int base = slice->m_pps->chromaQpOffset[c];
+            int base = slice->m_pps->chromaQpOffset[c] + slice->m_chromaQpOffset[c];
             int eff = x265_clip3(-12, 0, (int)floor(base * factor + 0.5));
             slice->m_chromaQpOffset[c] += eff - base;
         }

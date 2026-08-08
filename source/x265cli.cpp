@@ -288,6 +288,9 @@ namespace X265_NS {
         H0("   --hdr-scene-qp <float>        Temporal APL-adaptive QP bias strength for scene brightness transitions. 0 disables. Default %.2f\n", param->rc.hdrSceneQpStrength);
         H0("   --hdr-wsse-rd <float>         wSSE-weighted RDO strength: JVET wPSNR luma weight applied as per-CTU lambda scale (0 to 3.0). 0 disables. Default %.2f\n", param->rc.hdrWsseRdStrength);
         H0("   --hdr-deblock <float>         Luma-adaptive deblocking strength for PQ: stronger filtering in dark frames via slice beta/tc offsets (0 to 2.0). 0 disables. Default %.2f\n", param->rc.hdrDeblockStrength);
+        H0("   --hdr-qp-cascade <float>      QP-adaptive hierarchical-B QP cascade strength: widens the temporal-layer QP spread as QP rises (0 to 3.0). 0 disables. Default %.2f\n", param->rc.hdrQpCascadeStrength);
+        H0("   --hdr-vtm-lambda <float>      Blend x265's QP-to-lambda mapping toward VTM's 0.57*2^((QP-12)/3); 1.0 is exactly VTM. 0 disables. Default %.2f\n", param->rc.hdrVtmLambdaStrength);
+        H0("   --hdr-chroma-qp-map <float>   QP-dependent chroma QP offsets reproducing VTM's HDR-PQ chroma QP mapping table. 0 disables. Default %.2f\n", param->rc.hdrChromaQpMapStrength);
         H0("   --[no-]aq-motion              Block level QP adaptation based on the relative motion between the block and the frame. Default %s\n", OPT(param->bAQMotion));
         H1("   --[no-]sbrc                   Enables the segment based rate control. Default %s\n", OPT(param->bEnableSBRC));
         H0("   --qg-size <int>               Specifies the size of the quantization group (64, 32, 16, 8). Default %d\n", param->rc.qgSize);

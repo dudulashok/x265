@@ -29,3 +29,10 @@ verify_identity.marker
 prodstack_rerun_done.marker
 prodstack_metrics_done.marker
 bin-archive/
+*.hevc.b20260807
+rerun_binary_arms.out
+rerun_binary_arms_done.marker
+vtm_sweep.out
+vtm_sweep_done.marker
+decompose_jod.out
+decompose_jod_done.marker

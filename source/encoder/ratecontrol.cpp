@@ -2057,10 +2057,31 @@ double RateControl::rateEstimateQscale(Frame* curFrame, RateControlEntry *rce)
             }
         }
 
+        /* hdr-qp-cascade: QP-adaptive widening of the hierarchical-B cascade.
+         * x265 spaces the temporal layers by fixed multiples of m_pbOffset =
+         * 6*log2(pbratio), the same spread at every operating point, while the
+         * JCTVC-X0038 QP-offset model VTM uses in its random-access GOP table
+         * makes each layer's offset a linear function of the base QP, clipped
+         * to [0, 3] QP -- so the layers spread further apart as QP rises and
+         * collapse to the plain cascade at low QP. Reimplemented here as one
+         * extra increment on top of x265's own cascade, applied symmetrically
+         * to the reference-QP undo below so the interpolation stays in
+         * P-level QP space. Single pass only: with 2-pass statistics the
+         * allocator already distributes bits across the layers. */
+        double cascadeExtra = 0.0;
+        if (m_param->rc.hdrQpCascadeStrength > 0 && !m_2pass)
+        {
+            /* means of the per-temporal-layer (scale, offset) pairs in VTM's
+             * encoder_randomaccess GOP table; zero below QP ~22 */
+            const double scale = 0.22, offset = -4.95;
+            cascadeExtra = m_param->rc.hdrQpCascadeStrength *
+                x265_clip3(0.0, 3.0, scale * ((q0 + q1) / 2) + offset);
+        }
+
         if (prevRefSlice->m_sliceType == B_SLICE && IS_REFERENCED(m_curSlice->m_refFrameList[0][0]))
-            q0 -= m_pbOffset / 2;
+            q0 -= m_pbOffset / 2 + cascadeExtra / 2;
         if (nextRefSlice->m_sliceType == B_SLICE && IS_REFERENCED(m_curSlice->m_refFrameList[1][0]))
-            q1 -= m_pbOffset / 2;
+            q1 -= m_pbOffset / 2 + cascadeExtra / 2;
         if (i0 && i1)
             q = (q0 + q1) / 2 + m_ipOffset;
         else if (i0)
@@ -2073,9 +2094,9 @@ double RateControl::rateEstimateQscale(Frame* curFrame, RateControlEntry *rce)
             q = (q0 * dt1 + q1 * dt0) / (dt0 + dt1);
 
         if (IS_REFERENCED(curFrame))
-            q += m_pbOffset / 2;
+            q += m_pbOffset / 2 + cascadeExtra / 2;
         else
-            q += m_pbOffset;
+            q += m_pbOffset + cascadeExtra;
 
                 /* Set a min qp at scenechanges and transitions */
         if (m_isSceneTransition)

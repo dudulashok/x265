@@ -37,6 +37,7 @@ int   parseCpuName(const char *value, bool& bError, bool bEnableavx512);
 void  setParamAspectRatio(x265_param *p, int width, int height);
 void  getParamAspectRatio(x265_param *p, int& width, int& height);
 bool  parseLambdaFile(x265_param *param);
+void  applyVtmLambdaTables(x265_param *param);
 void x265_copy_params(x265_param* dst, x265_param* src);
 bool parseMaskingStrength(x265_param* p, const char* value);
 

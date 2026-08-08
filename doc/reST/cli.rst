@@ -2645,6 +2645,83 @@ VUI fields must be manually specified.
 	default). Assumes 10-bit BT.2020/PQ input. 0 disables. Typical range
 	0.5 to 2.0. Default 0.
 
+.. option:: --hdr-qp-cascade <float>
+
+	Strength of the QP-adaptive hierarchical-B QP cascade. x265 spaces the
+	temporal layers by fixed multiples of ``6*log2(pbratio)``: referenced B
+	frames sit half an offset above the QP interpolated from their
+	references, non-referenced B frames a full offset, and that spread is
+	the same at every operating point. The JCTVC-X0038 QP-offset model used
+	in VTM's random-access GOP table instead makes each temporal layer's
+	offset a linear function of the base QP, clipped to a [0, 3] QP range,
+	so the layers spread further apart as QP rises and collapse back to the
+	plain cascade at low QP -- coarser quantization for the frames nothing
+	is predicted from, finer for the frames that are.
+
+	This option applies that extra increment on top of x265's own cascade
+	(full on non-referenced B frames, half on referenced ones), and it is
+	applied inside the rate-control QP estimation, so ``qpNoVbv``, the VBV
+	clip and the frame-size predictors all plan with it. Below QP ~22 the
+	model contributes nothing, so the effect appears at the low-bitrate end
+	of a sweep first. Unlike the other ``--hdr-*`` options this one is not
+	PQ-specific -- it is a coding-efficiency model that happens to be
+	validated on the HDR corpus -- and it needs neither AQ nor
+	:option:`--hdr-pq`. Single-pass CRF/ABR only (in 2-pass the pass-1
+	statistics already allocate bits across the layers) and only meaningful
+	with :option:`--bframes` > 0. 0 disables. Typical range 0.5 to 1.5.
+	Default 0.
+
+.. option:: --hdr-vtm-lambda <float>
+
+	Blends x265's QP-to-lambda mapping toward the one VTM uses. x265
+	inherited x264's empirical fit ``lambda2 = 0.038*exp(0.234*QP)``, while
+	VTM derives every slice's lambda from ``lambda = 0.57*2^((QP-12)/3)``
+	and lets the QP cascade carry the temporal-layer weighting. The two
+	agree in shape, but x265's lambda is about 10% higher at QP 12 and 20%
+	higher at QP 42, with a slightly steeper slope in QP.
+
+	0 keeps x265's tables, 1.0 lands exactly on VTM's formula, and
+	intermediate or larger values sweep the lambda scale continuously.
+	Like :option:`--lambda-file` this rewrites the process-global lambda
+	tables, so it affects every encoder in the process -- and every
+	consumer of them consistently: mode decision, motion estimation, RDOQ,
+	SAO and the lookahead all move together, which is the difference
+	between this and a per-block lambda scale such as
+	:option:`--hdr-wsse-rd`. An explicit :option:`--lambda-file` takes
+	precedence and disables this option. Not PQ-specific. 0 disables.
+	Typical range 0 to 1.0. Default 0.
+
+.. option:: --hdr-chroma-qp-map <float>
+
+	Reproduces the HDR-PQ chroma QP mapping VTM signals for PQ content.
+	HEVC has a single, decoder-normative ``qPi -> QpC`` table tuned for
+	SDR; VVC lets the encoder signal its own, and every JVET HDR-PQ
+	common-test configuration signals one that holds chroma QP well below
+	the SDR table as luma QP rises -- roughly 3 QP lower at ``qPi`` 30,
+	5 lower at 36 and 6 lower at 45 -- because PQ chroma errors stay
+	visible where SDR practice assumes they are masked.
+
+	A table cannot be signalled in HEVC, so this option reproduces the same
+	effective chroma QP per frame: it picks the slice-level chroma QP
+	offset whose SDR-table lookup lands nearest the VVC table's output at
+	the frame's QP, separately for Cb and Cr. Unlike the fixed -2/-2 that
+	:option:`--hdr-pq` applies, the offset tracks the operating point --
+	nothing at low QP, deepening as QP rises -- which also makes the chroma
+	RD lambda weighting follow, since x265 derives the chroma distortion
+	weight from the effective chroma QP.
+
+	It assigns the total PPS+slice chroma offset, replacing the static
+	:option:`--hdr-pq` -2/-2 rather than adding to it.
+	:option:`--hdr-chroma-adapt` then scales the result by the frame's
+	chroma share of AC energy -- worth combining, because the VVC table is
+	content-blind and its full depth (Cb -9, Cr -12 near QP 40) is the same
+	luma-for-chroma trade that :option:`--hdr-chroma-adapt` exists to
+	moderate. The result is clipped to the HEVC spec range, so streams
+	remain conformant. 4:2:0 only -- the mapping being corrected is the
+	4:2:0 ``qPi -> QpC`` table; 4:2:2 and 4:4:4 clip rather than map, and
+	the option is ignored there. 1.0 is the full VVC table, intermediate
+	values scale the offset toward zero. 0 disables. Default 0.
+
 .. option:: --dhdr10-info <filename>
 
 	Inserts tone mapping information as an SEI message. It takes as input,

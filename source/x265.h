@@ -1974,6 +1974,52 @@ typedef struct x265_param
          * prediction (for the frame-level luma analysis). 0 disables
          * (default). Typical useful range 0.5 - 2.0. */
         double    hdrDeblockStrength;
+
+        /* Strength of the QP-adaptive hierarchical-B QP cascade. x265 spaces
+         * the temporal layers by fixed multiples of 6*log2(pbratio),
+         * independent of the operating QP, while the JCTVC-X0038 QP-offset
+         * model used by VTM's random-access configuration widens the
+         * per-temporal-layer offset as the base QP rises (a linear model in
+         * the base QP, clipped to [0, 3] QP). This applies that extra
+         * increment on top of x265's own cascade: nothing at low QP, up to
+         * +3 QP on non-reference B frames at high QP, halved for referenced
+         * B frames, so bits move from the deepest (never-referenced) layer to
+         * the layers that are predicted from. Not PQ-specific -- it is a
+         * coding-efficiency model -- but validated on the HDR corpus.
+         * Single-pass CRF/ABR only (in 2-pass the pass-1 statistics already
+         * allocate across layers). 0 disables (default). Typical useful
+         * range 0.5 - 1.5. */
+        double    hdrQpCascadeStrength;
+
+        /* Blend factor between x265's QP-to-lambda mapping and VTM's. x265
+         * uses x264's empirical fit lambda2 = 0.038*exp(0.234*QP); VTM derives
+         * every slice's lambda from lambda = 0.57*2^((QP-12)/3) and lets the
+         * QP cascade carry the temporal-layer weighting. 0 keeps x265's
+         * tables (default), 1 lands on VTM's formula, values in between (or
+         * above) sweep the lambda scale continuously. Like
+         * rc.lambdaFileName this rewrites the process-global lambda tables,
+         * so it affects every encoder in the process and every consumer of
+         * them consistently (mode decision, motion estimation, RDOQ, SAO and
+         * the lookahead) -- unlike a per-block lambda scale, the quantizer
+         * step and lambda stay in the same relationship everywhere. Not
+         * PQ-specific. Typical useful range 0 - 1. */
+        double    hdrVtmLambdaStrength;
+
+        /* Strength of the HDR-PQ chroma QP mapping VTM signals for PQ content.
+         * HEVC's qPi -> QpC table is fixed and SDR-tuned; every JVET HDR-PQ
+         * common-test configuration replaces it with a table that holds chroma
+         * QP well below the SDR one as luma QP rises (roughly -3 QP at qPi 30,
+         * -5 at 36, -6 at 45). HEVC cannot signal a table, so the equivalent
+         * chroma QP is reproduced per frame with the slice-level chroma QP
+         * offset that lands nearest the VVC table's output at the frame's QP.
+         * Unlike the fixed -2/-2 of --hdr-pq this tracks the operating point:
+         * nothing at low QP, deepening as QP rises. It assigns the total
+         * PPS+slice chroma offset, replacing the static --hdr-pq offsets;
+         * hdrChromaAdaptStrength then scales the result by content, which the
+         * content-blind VVC table needs on chroma-heavy material. 0 disables
+         * (default); 1.0 is the full VVC table and intermediate values scale
+         * the offset toward zero. */
+        double    hdrChromaQpMapStrength;
     } rc;
 
     /*== Video Usability Information ==*/

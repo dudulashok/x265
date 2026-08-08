@@ -35,3 +35,6 @@ NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-wss
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-deblock 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-chroma-adapt 1.0
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --hdr-pq --hdr-sao-band 1.0
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --crf 30 --hdr-qp-cascade 1.0
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --crf 30 --hdr-vtm-lambda 1.0
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset superfast --crf 30 --hdr-chroma-qp-map 1.0

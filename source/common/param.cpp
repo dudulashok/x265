@@ -321,6 +321,9 @@ void x265_param_default(x265_param* param)
     param->rc.hdrSceneQpStrength = 0.0;
     param->rc.hdrWsseRdStrength = 0.0;
     param->rc.hdrDeblockStrength = 0.0;
+    param->rc.hdrQpCascadeStrength = 0.0;
+    param->rc.hdrVtmLambdaStrength = 0.0;
+    param->rc.hdrChromaQpMapStrength = 0.0;
 
     param->rc.cuTree = 1;
     param->rc.rfConstantMax = 0;
@@ -1474,6 +1477,9 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("hdr-scene-qp") p->rc.hdrSceneQpStrength = atof(value);
         OPT("hdr-wsse-rd") p->rc.hdrWsseRdStrength = atof(value);
         OPT("hdr-deblock") p->rc.hdrDeblockStrength = atof(value);
+        OPT("hdr-qp-cascade") p->rc.hdrQpCascadeStrength = atof(value);
+        OPT("hdr-vtm-lambda") p->rc.hdrVtmLambdaStrength = atof(value);
+        OPT("hdr-chroma-qp-map") p->rc.hdrChromaQpMapStrength = atof(value);
 
 #ifdef SVT_HEVC
         OPT("svt")
@@ -1854,6 +1860,12 @@ int x265_check_params(x265_param* param)
           "hdr-chroma-adapt strength must be between 0 and 2");
     CHECK(param->rc.hdrSaoBandStrength < 0 || param->rc.hdrSaoBandStrength > 3,
           "hdr-sao-band strength must be between 0 and 3");
+    CHECK(param->rc.hdrQpCascadeStrength < 0 || param->rc.hdrQpCascadeStrength > 3,
+          "hdr-qp-cascade strength must be between 0 and 3");
+    CHECK(param->rc.hdrVtmLambdaStrength < 0 || param->rc.hdrVtmLambdaStrength > 2,
+          "hdr-vtm-lambda strength must be between 0 and 2");
+    CHECK(param->rc.hdrChromaQpMapStrength < 0 || param->rc.hdrChromaQpMapStrength > 2,
+          "hdr-chroma-qp-map strength must be between 0 and 2");
     CHECK(param->deblockingFilterTCOffset < -6 || param->deblockingFilterTCOffset > 6,
           "deblocking filter tC offset must be in the range of -6 to +6");
     CHECK(param->deblockingFilterBetaOffset < -6 || param->deblockingFilterBetaOffset > 6,
@@ -2553,6 +2565,12 @@ char *x265_param2string(x265_param* p, int padx, int pady)
         s += sprintf(s, " hdr-wsse-rd=%.2f", p->rc.hdrWsseRdStrength);
     if (p->rc.hdrDeblockStrength > 0)
         s += sprintf(s, " hdr-deblock=%.2f", p->rc.hdrDeblockStrength);
+    if (p->rc.hdrQpCascadeStrength > 0)
+        s += sprintf(s, " hdr-qp-cascade=%.2f", p->rc.hdrQpCascadeStrength);
+    if (p->rc.hdrVtmLambdaStrength > 0)
+        s += sprintf(s, " hdr-vtm-lambda=%.2f", p->rc.hdrVtmLambdaStrength);
+    if (p->rc.hdrChromaQpMapStrength > 0)
+        s += sprintf(s, " hdr-chroma-qp-map=%.2f", p->rc.hdrChromaQpMapStrength);
     BOOL(p->bHdrPq, "hdr-pq");
     BOOL(p->bDhdr10opt, "dhdr10-opt");
     BOOL(p->bEmitIDRRecoverySEI, "idr-recovery-sei");
@@ -2680,6 +2698,57 @@ bool parseLambdaFile(x265_param* param)
 
     fclose(lfn);
     return false;
+}
+
+/* hdr-vtm-lambda: blend x265's QP-to-lambda mapping toward the one VTM uses.
+ *
+ * x265 inherited x264's empirical fit lambda2 = 0.038 * exp(0.234 * QP), while
+ * VTM (with LambdaFromQpEnable, as in every JVET common-test configuration)
+ * derives every slice's lambda from one formula, lambda = 0.57 * 2^((QP-12)/3),
+ * and lets the QP cascade carry the temporal-layer weighting. The two agree in
+ * shape but x265's is ~10% higher at QP 12 and ~20% higher at QP 42, and its
+ * slope in QP is slightly steeper (0.338 vs 1/3 per QP in the exponent).
+ *
+ * strength is a log-domain blend: 0 keeps x265's tables, 1 lands exactly on
+ * VTM's formula, and intermediate or larger values sweep the lambda scale
+ * continuously -- which is what makes this usable as the "pure lambda-scale"
+ * arm of the RD-hull diagnostic (see --hdr-wsse-rd, where a per-CTU lambda
+ * scale with an unchanged quantizer step measured off-hull).
+ *
+ * The amplitude-domain table (SAD/SATD lambda) takes the square root of the
+ * lambda2 scale, preserving x265's own lambda-to-lambda2 relationship rather
+ * than imposing VTM's.
+ *
+ * Like --lambda-file, this writes the process-global lambda tables, so it
+ * affects every encoder in the process. The pristine tables are snapshotted on
+ * first use and every call recomputes from that snapshot, so repeated
+ * x265_encoder_open() calls set the same values instead of compounding. */
+void applyVtmLambdaTables(x265_param* param)
+{
+    static double baseLambda[QP_MAX_MAX + 1], baseLambda2[QP_MAX_MAX + 1];
+    static bool snapshotTaken = false;
+
+    if (!snapshotTaken)
+    {
+        memcpy(baseLambda, x265_lambda_tab, sizeof(baseLambda));
+        memcpy(baseLambda2, x265_lambda2_tab, sizeof(baseLambda2));
+        snapshotTaken = true;
+    }
+
+    double strength = param->rc.hdrVtmLambdaStrength;
+    /* VTM's lambda at 8-bit; the tables carry x265's bit-depth scaling, which
+     * is 2^(2*(depth-8)) for lambda2 and 2^(depth-8) for lambda -- the same
+     * scaling VTM applies through its bitDepthShift term. */
+    const double vtmScale = (double)(1 << (2 * (X265_DEPTH - 8)));
+
+    for (int i = 0; i < QP_MAX_MAX + 1; i++)
+    {
+        double vtmLambda2 = 0.57 * pow(2.0, (i - 12) / 3.0) * vtmScale;
+        double ratio = pow(vtmLambda2 / baseLambda2[i], strength);
+        x265_lambda2_tab[i] = baseLambda2[i] * ratio;
+        x265_lambda_tab[i] = baseLambda[i] * sqrt(ratio);
+    }
+    x265_log(param, X265_LOG_INFO, "hdr-vtm-lambda: VTM QP-to-lambda blend at strength %.2f\n", strength);
 }
 
 bool parseMaskingStrength(x265_param* p, const char* value)
@@ -3025,6 +3094,9 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->rc.hdrSceneQpStrength = src->rc.hdrSceneQpStrength;
     dst->rc.hdrWsseRdStrength = src->rc.hdrWsseRdStrength;
     dst->rc.hdrDeblockStrength = src->rc.hdrDeblockStrength;
+    dst->rc.hdrQpCascadeStrength = src->rc.hdrQpCascadeStrength;
+    dst->rc.hdrVtmLambdaStrength = src->rc.hdrVtmLambdaStrength;
+    dst->rc.hdrChromaQpMapStrength = src->rc.hdrChromaQpMapStrength;
     dst->vui.aspectRatioIdc = src->vui.aspectRatioIdc;
     dst->vui.sarWidth = src->vui.sarWidth;
     dst->vui.sarHeight = src->vui.sarHeight;

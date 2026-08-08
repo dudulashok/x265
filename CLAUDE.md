@@ -445,7 +445,74 @@ nothing in the current tool set moves luma wPSNR or Q_JOD at equal bitrate — t
 allocation knobs are close to exhausted, so the next work must be *coding
 efficiency*, not more allocation tuning. `--hdr-scene-qp` is explicitly deferred.
 
-0. **FIRST, a decision to take (2026-08-08 rebuild finding).** cmake was re-run and
+### 2026-08-08 session log — item 0 settled, VTM tools implemented
+
+**Item 0 is DONE (user chose re-encode).** `hdr10opt` and `prodstack` were
+re-encoded on the committed-source binary `4.2+128-fb6839767` (16 encodes,
+27 min, `rerun_binary_arms.sh`; old bitstreams kept as `*.hevc.b20260807`,
+metric state backed up to `results-2026-08-08-prebinary.json` /
+`vdp_results-2026-08-08-prebinary.txt`) and re-measured. **Every re-measured
+wPSNR-Y matched the archived value to 4 decimals**, so the 11-byte coded-data
+difference is confirmed inconsequential and no conclusion changes — but all
+three report arms are now reproducible from the repository, which is what the
+VTM comparison needed.
+
+**Reading VTM corrected the premise of item 1 (worth knowing before more work).**
+The TODO called for "VTM's PQ-tuned QP-to-lambda and chroma lambda weighting".
+VTM has no PQ-specific lambda formula: with `LambdaFromQpEnable` (set in every
+JVET CTC config) *every* slice uses λ = 0.57·2^((QP−12)/3) and the temporal-layer
+weighting is carried entirely by the QP cascade. What VTM's HDR-PQ CTC actually
+does differently (`cfg/per-class/classH1.cfg`) is:
+- **signal a PQ chroma QP mapping table** (`QpInValCb/QpOutValCb`) that holds
+  chroma QP far below the SDR/HEVC table as QP rises — about −3 QP at qPi 30,
+  −5 at 36, −6 at 45. This is where "chroma lambda weighting" really lives: in
+  x265 the chroma RD weight is already derived from the effective chroma QP
+  (`RDCost::setQP`), so reproducing the QP gets the lambda for free.
+- **LMCS with `LMCSSignalType=1`** — decoder-normative, not available in HEVC.
+- **luma-adaptive dQP OFF** (`LumaLevelToDeltaQPMode: 0`); instead the JCTVC-X1020
+  luma weight LUT is applied as a **per-pixel distortion weight** in RDO
+  (`RdCost::initLumaLevelToWeightTable`, weight = 2^(clip(−3,6,0.015·Y−7.5)/3)).
+  That is the same weight `--hdr-wsse-rd` used, but VTM applies it to the
+  *distortion* at pixel granularity with lambda untouched — i.e. exactly
+  candidate fix (b) of the wsse post-mortem, at a granularity our per-CTU
+  lambda scale never had.
+
+Three tools implemented today (X265_BUILD 225, all default-off, full 7-step
+checklist, docs in cli.rst):
+1. `--hdr-qp-cascade <float>` — the JCTVC-X0038 QP-offset model VTM uses in its
+   random-access GOP table, as an extra hierarchical-B increment on top of
+   x265's fixed `6·log2(pbratio)` cascade: `clip(0, 3, 0.22·q − 4.95)`, full on
+   non-referenced B, half on referenced, and symmetrically undone in the
+   reference-QP interpolation so it stays in P-level QP space. Nothing below
+   QP ≈22, up to +3 QP at high QP. Applied inside `rateEstimateQscale` so
+   qpNoVbv/VBV/predictors plan with it (same rule as `--hdr-scene-qp`).
+   Single-pass only.
+2. `--hdr-vtm-lambda <float>` — log-domain blend of x265's QP→lambda mapping
+   toward VTM's. x265's λ2 is 10% higher at QP 12 rising to 21% higher at QP 42,
+   with a slightly steeper slope. Implemented by rewriting the process-global
+   lambda tables at `Encoder::configure` (the mechanism `--lambda-file` already
+   uses, and an explicit `--lambda-file` still wins), with a pristine snapshot
+   so repeated `encoder_open` calls assign rather than compound. This also
+   *is* the "pure global lambda scale, quantizer untouched" arm the wsse
+   post-mortem wanted — but consistent across RDO/ME/RDOQ/SAO/lookahead
+   instead of per-CTU.
+3. `--hdr-chroma-qp-map <float>` — VTM's HDR-PQ chroma QP mapping reproduced
+   with slice-level offsets: for the frame's slice QP, pick the offset whose
+   HEVC-table lookup lands nearest the VVC table's output, separately for Cb
+   and Cr. It *assigns* the total PPS+slice offset (replacing `--hdr-pq`'s
+   static −2/−2) and `--hdr-chroma-adapt` now scales whatever total is in
+   place, so the two compose — deliberately, because the VVC table is
+   content-blind and its full depth is deep: **Cb −5/Cr −7 at QP 32, Cb −9/Cr
+   −12 at QP 40**. Expect a large chroma gain and a real luma cost on
+   chroma-heavy content; the composition with chroma-adapt is the interesting
+   arm. (`--hdr-chroma-adapt` with the map off is bit-identical to before.)
+
+Sweep queued as `run_vtm_sweep.sh`: `cascade05/10/15`, `vtmlam05/10` on ANCHOR
+flags (both are coding-efficiency models, so the chroma floor would only
+confound the luma reading), wPSNR + BD-rate only — Q_JOD is reserved for
+whichever arm wins, per the 2026-08-07 methodology rule.
+
+0. **DONE 2026-08-08 — see the session log above. (2026-08-08 rebuild finding.)** cmake was re-run and
    the tree rebuilt at `fb6839767`, so the binary now reports `4.2+128-fb6839767`
    (build 222, assembly intact, deterministic) — the stale-version trap is fixed.
    But the rebuild is **not** coding-identical to the binary that produced the

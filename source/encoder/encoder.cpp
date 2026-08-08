@@ -607,6 +607,9 @@ void Encoder::create()
 
     m_bZeroLatency = !m_param->bframes && !m_param->lookaheadDepth && m_param->frameNumThreads == 1 && m_param->maxSlices == 1;
     m_aborted |= parseLambdaFile(m_param);
+    /* after the lambda file, so an explicit --lambda-file always wins */
+    if (m_param->rc.hdrVtmLambdaStrength > 0 && !strlen(m_param->rc.lambdaFileName))
+        applyVtmLambdaTables(m_param);
 
     m_encodeStartTime = x265_mdate();
 
@@ -3919,7 +3922,8 @@ void Encoder::initPPS(PPS *pps)
      * rose from 1.3 (correct) to 15.7 (mismatched) at hdr-chroma-qp
      * strength 0.3 before this fix. */
     pps->pps_slice_chroma_qp_offsets_present_flag =
-        m_param->bHDR10Opt || (m_param->rc.hdrChromaQpStrength > 0) || (m_param->rc.hdrChromaAdaptStrength > 0);
+        m_param->bHDR10Opt || (m_param->rc.hdrChromaQpStrength > 0) || (m_param->rc.hdrChromaAdaptStrength > 0) ||
+        (m_param->rc.hdrChromaQpMapStrength > 0);
     pps->bConstrainedIntraPred = m_param->bEnableConstrainedIntra;
     pps->bUseWeightPred = m_param->bEnableWeightedPred;
     pps->bUseWeightedBiPred = m_param->bEnableWeightedBiPred;
