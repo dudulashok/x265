@@ -809,6 +809,140 @@ per-block QP sweeps for sensitivity); train offline in Python, export ONNX. New 
       pipeline; split prediction in `Analysis::compressCTU()` buys speed that converts
       to quality via slower presets at equal encode time.
 
+### TODO — AV1/AV2 and research-literature tools worth adapting (added 2026-08-08)
+
+**Why this list is separate.** The VVC/JVET list above is close to exhausted on the
+metric this project targets: `--hdr-luma-qp` is the only allocation tool that gains,
+the chroma tools are a luma-for-chroma trade, and the three VTM-derived tools measured
+2026-08-08 came out negative (`--hdr-qp-cascade`), neutral (`--hdr-vtm-lambda`) and
+"only worth it shallow" (`--hdr-chroma-qp-map`). What remains in the VVC direction is
+mostly decoder-normative. So the next round should come from **AV1/AV2 encoder
+technology and the coding literature**, where the biggest wins are in *what the
+encoder decides* — dependency-aware RDO, reference management, bit allocation across
+frames and shots — rather than in how QP is sprinkled within a frame.
+
+**Ground rules, same as before.**
+- HEVC Main10 conformance: encoder-side decisions, conformant syntax (scaling lists,
+  PPS/slice offsets, deblock overrides, SAO, weightp, RPS including **long-term
+  references**), or SEI. No decoder changes.
+- **Reimplement from papers/specs; do not port code.** libaom and SVT-AV1 are
+  BSD-2/BSD-3 with patent grants, and AVM likewise — permissive, but x265's commercial
+  dual-license makes *copied* code a relicensing problem exactly as with VTM.
+- **Most items here are NOT HDR-specific.** `hdr-validation/` measures wPSNR/Q_JOD on
+  two PQ clips; these tools need standard PSNR/SSIM BD-rate on broader material, so the
+  corpus-expansion item above becomes a prerequisite rather than a nice-to-have.
+  Several also need *multi-shot* and *static-background* content, which the current
+  corpus does not contain.
+
+#### P1 — highest expected value
+
+- [ ] **Dependency-aware RDO / temporal dependency model (AV1's TPL).** The single
+      biggest known encoder-side lever, and a large part of why AV1 encoders beat HEVC
+      at the same GOP structure. What x265 has: cu-tree (`estimateCUPropagate`,
+      `slicetype.cpp:4002`) — the x264 lineage, propagating *lowres SATD cost
+      fractions* backwards into a per-QG QP offset. What libaom's TPL does differently:
+      a real per-block motion search, **transform-domain distortion and rate**
+      estimates, recursion across the whole mini-GOP, and it derives **both** a
+      per-block delta-q *and* a per-block rdmult (lambda) scale from how much future
+      distortion depends on that block. Seam in x265: the lookahead already has lowres
+      MVs and costs, and `qpAqOffset`/`qpCuTreeOffset`/`invQscaleFactor` already carry
+      per-QG offsets into `calcAdaptiveQuantFrame`. **Stage it:** (1) calibrate by
+      measuring cu-tree off vs on on the corpus so the baseline magnitude is known;
+      (2) replace cost-fraction propagation with distortion propagation; (3) add the
+      matching per-CTU lambda scale. Note the 2026-08-08 lesson: a lambda scale
+      *without* the matching QP move is neutral at best, and negative when applied
+      per-block — TPL works precisely because delta-q and rdmult move together. Keep
+      contributions zero-mean (the banding-protect rule). Effort: large; stage it.
+- [ ] **Long-term reference frames — HEVC supports them and x265 does not implement
+      them at all.** `grep -r longTerm source/` returns nothing; `dpb.cpp` builds a
+      sliding window of short-term refs plus b-pyramid. AV1's GOLDEN/ALTREF and the
+      HEVC background-modeling literature (static-background surveillance coding) both
+      exploit a long-lived high-quality reference, and HEVC signals LTRs in the RPS
+      (`used_by_curr_pic_lt_flag`, `poc_lsb_lt`) — fully conformant Main10. Two
+      variants: (a) pin the shot's first or best frame as an LTR for the whole shot,
+      helping occlusion recovery, periodic motion and static backgrounds; (b)
+      synthesise a background frame from accumulated frames and code it as an LTR (the
+      SBM papers report large gains on surveillance). Expect little on the current HDR
+      corpus — both clips move throughout — so this needs static/repetitive material to
+      show anything; pair it with corpus expansion. Effort: substantial (RPS signalling,
+      DPB lifetime, reference lists, RC accounting) but self-contained, and the ceiling
+      is high because nothing in x265 competes with it today.
+- [ ] **Shot-level convex-hull bit allocation (Netflix "dynamic optimizer",
+      Katsavounidis).** Encode each shot at several CRFs, then pick per-shot operating
+      points on the sequence-level convex hull under a total bit budget. No encoder
+      change and no conformance question — a driver-level wrapper — and x265 already has
+      `--zones`/zonefile to *apply* a per-segment QP decision. Reliably several %
+      BD-rate over fixed CRF on multi-shot content, and our harness already produces
+      exactly the per-shot R-D data it consumes. Cheapest P1 item by far; needs a
+      multi-shot clip.
+
+#### P2 — solid, moderate effort
+
+- [ ] **Perceptual rdmult / variance boost (SVT-AV1 `--variance-boost`, libaom
+      `--deltaq-mode` perceptual modes, and the SSIM-RDO literature).** Per-block
+      lambda scaling from local variance in octaves, tuned for subjective/SSIM rather
+      than PSNR. x265 has variance-based *QP* adaptation (`--aq-mode` 1-4) and
+      `--ssim-rd`/`--psy-rd`, but no variance-driven *rdmult* scaling in the SVT-AV1
+      sense, and AQ and lambda are not jointly tuned. Implement as a joint (QP offset,
+      matching lambda) pair — see the 2026-08-08 lambda finding. Judge with
+      SSIM/subjective, not wPSNR, or it will look negative by construction.
+- [ ] **Per-frame RD search of deblocking (and SAO) parameters.** The infrastructure
+      now exists: `--hdr-deblock` added the first use of HEVC slice-level beta/tc
+      overrides in x265. Instead of a heuristic from APL, actually try a small set of
+      (beta, tc) pairs on the reconstructed frame and pick by SSE/wSSE. The
+      optimal-deblocking-parameter literature reports small but consistent gains; the
+      cost is extra filter passes over a recon copy, cheap next to analysis. Same idea
+      for SAO merge decisions.
+- [ ] **Adaptive mini-GOP structure from lookahead statistics** (libaom
+      `define_gf_group` chooses GF/ARF group length from firstpass noise, motion and
+      coherence stats). x265 has `--b-adapt 2` (trellis B-count) and scenecut
+      detection, but pyramid depth and mini-GOP length are essentially fixed by
+      `--bframes`/`--b-pyramid`. Deep pyramids for static scenes, shallow for high
+      motion. Conformant, cheap to try, and it is the *bit-neutral* version of what
+      `--hdr-qp-cascade` got wrong: that tool coarsened the deepest layer under CRF,
+      which only removes bits because CRF has no reallocation mechanism, whereas
+      choosing the *structure* changes what gets referenced.
+- [ ] **λ-domain rate control (Li et al., HM's default).** x265's RC is q-domain
+      (`getQScale`, an empirical cplxr model). λ-domain RC is more rate-accurate and
+      better behaved at low rates and under VBV. Contained change, clear measurement
+      (rate accuracy + BD-rate in ABR/VBV), and it composes with the ABR+VBV sweep item
+      above.
+
+#### P3 — speculative, narrow, or blocked on something else
+
+- [ ] **ICtCp / DeltaE-ITP-aware distortion in RDO** (HDR-specific). Replace
+      per-component SSE weighting with a perceptual colour-difference weighting in
+      ICtCp. Encoder-side only, conformant. This is the principled version of what the
+      chroma-QP tools do bluntly, and the 2026-08-08 decomposition gives it a motive:
+      chroma changes reach Q_JOD through NCL luminance leakage, which a colour-aware
+      distortion metric would model directly. Depends on the DeltaE-ITP metric item
+      above for validation.
+- [ ] **Per-pixel wSSE distortion in mode decision** — VTM's actual HDR RDO
+      (`RdCost::initLumaLevelToWeightTable`: the weight applied to distortion at pixel
+      granularity, lambda untouched). Cross-referenced from the wsse post-mortem; the
+      cost is weighted-SSE distortion kernels, i.e. the "fourth cost flavor" design
+      previously rejected as invasive. Better motivated now: the per-CTU lambda version
+      failed and the global lambda version is neutral, so granularity is the untested
+      variable.
+- [ ] **Cyclic intra refresh (VP9/AV1 low-delay `aq-mode=3`)**: refresh a fraction of
+      blocks per frame at lower QP to build a clean reference without an IDR.
+      Conformant and valuable for low-delay/RTC streaming, orthogonal to HDR — only
+      worth it if the project's scope widens beyond VOD-style HDR.
+- [ ] **AV1 quantizer matrices (`--enable-qm`) analogue** — already covered by the
+      "derive `--hdr-scaling-list` from the PQ CSF" item; AV1's qm tables are a second
+      reference point for what a perceptually-tuned matrix set looks like.
+- [ ] **ML partition pruning / early termination** — already in the CNN list; buys
+      speed that converts to quality via slower presets at equal wall-clock.
+
+#### Not portable — decoder-normative in AV1/AV2 (don't re-derive)
+
+CDEF, loop restoration (Wiener / self-guided), superres, switchable transform kernels
+and the extended intra mode set, chroma-from-luma (CfL), palette and IntraBC (HEVC has
+these only in the SCC extension, not Main10), and AV1's film-grain *synthesis*
+normativity — HEVC's FGC SEI is advisory, which is why the grain item above is a
+pipeline rather than a coding tool. Same category as JCCR / LMCS / dependent
+quantization on the VVC side.
+
 ### Evaluated and rejected (2026-08 idea review — don't re-derive)
 
 - **JCCR** (VVC joint chroma residual coding): bitstream syntax an HEVC decoder cannot
