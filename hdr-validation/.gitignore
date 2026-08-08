@@ -28,3 +28,4 @@ verify_identity.out
 verify_identity.marker
 prodstack_rerun_done.marker
 prodstack_metrics_done.marker
+bin-archive/

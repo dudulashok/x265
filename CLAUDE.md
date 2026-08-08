@@ -445,6 +445,24 @@ nothing in the current tool set moves luma wPSNR or Q_JOD at equal bitrate — t
 allocation knobs are close to exhausted, so the next work must be *coding
 efficiency*, not more allocation tuning. `--hdr-scene-qp` is explicitly deferred.
 
+0. **FIRST, a decision to take (2026-08-08 rebuild finding).** cmake was re-run and
+   the tree rebuilt at `fb6839767`, so the binary now reports `4.2+128-fb6839767`
+   (build 222, assembly intact, deterministic) — the stale-version trap is fixed.
+   But the rebuild is **not** coding-identical to the binary that produced the
+   published encodes: the anchor matches byte-for-byte (SEI aside) while `hdr10opt`
+   and `prodstack` each differ by 11 bytes of coded data. The tree was clean with no
+   code commits after `e166ea110`, so the pre-rebuild binary must have been built
+   from **uncommitted intermediate work** — i.e. from source that is not in the
+   repository. Impact on numbers is nil (~1e-5 dB wPSNR, <0.001 Q_JOD, same as the
+   earlier equivalent perturbation), so no conclusion changes, and the old binary is
+   archived at `hdr-validation/bin-archive/x265-4.2+119-808cbae9e-prerebuild.exe` so
+   the published bitstreams stay reproducible. Decide before the VTM work starts:
+   re-encode `hdr10opt` + `prodstack` on the current binary (16 encodes + metrics,
+   ~2.5 h) so the baseline is reproducible from source, or accept the archived
+   binary as the reference. Recommended: re-encode, since the VTM lambda experiment
+   will be compared against exactly these arms. Worth also identifying *what*
+   differs — both affected configs manipulate chroma QP offsets while the plain
+   anchor does not.
 1. **NEXT SESSION (a): VTM HDR lambda tables.** Try VTM's PQ-tuned QP-to-lambda
    and chroma lambda weighting in x265's lambda setup, plus the temporal-layer
    lambda/QP cascade models (x265's fixed ipratio/pbratio vs VTM's QP-adaptive

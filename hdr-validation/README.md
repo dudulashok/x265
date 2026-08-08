@@ -214,6 +214,38 @@ trap that hid it: the binary's **version string was stale** — it reported
 had not been re-run. Do not trust `x265 --version` alone as provenance; the
 MD5 re-encode check is the reliable test.
 
+### 2026-08-08 rebuild: version string fixed, and what it exposed
+
+cmake was re-run and the tree fully rebuilt at `fb6839767`, so the binary now
+reports **`4.2+128-fb6839767`** (X265_BUILD 222, assembly intact, verified
+deterministic across repeat encodes). The misleading stale string is gone.
+
+The rebuild also exposed something the version fix alone would have hidden.
+Re-running `verify_binary_identity.sh` against the stored encodes:
+
+| Arm | old binary vs new binary |
+|---|---|
+| anchor | **coding-identical** — 12 differing bytes, all the version-string SEI |
+| hdr10opt | 11 bytes of **coded data** differ (offset ~386354) |
+| prodstack | 11 bytes of **coded data** differ (offset ~438667) |
+
+The source tree was clean and contains no code commits after `e166ea110`, so a
+clean rebuild of the same source should have been coding-identical. It is not,
+which means **the pre-rebuild binary was built from a working tree that does
+not correspond to any committed state** — almost certainly uncommitted
+intermediate work that was adjusted before `e166ea110` was committed. The plain
+anchor is unaffected; both affected configs manipulate chroma QP offsets
+(`--hdr10-opt`'s luma-driven staircase, `--hdr-pq`'s −2/−2), which is the
+thread to pull when identifying the exact difference.
+
+Consequence: the published `hdr10opt` and `prodstack` bitstreams are
+reproducible only with the archived pre-rebuild binary, kept at
+`bin-archive/x265-4.2+119-808cbae9e-prerebuild.exe` (md5
+`cf23c823603a3c2051b2ba93dcf1113c`). The measured impact of an equivalent
+11-byte perturbation was ~1e-5 dB wPSNR and <0.001 Q_JOD, so **no published
+conclusion changes** — but the arms are not byte-reproducible from source until
+they are re-encoded on the current binary (16 encodes + metrics, ~2.5 h).
+
 ## Baseline arms are measured ONCE — reuse them, don't re-measure
 
 `anchor` (default x265 + VUI signalling) and `hdr10opt` (anchor +
