@@ -79,7 +79,8 @@ print("  ! = the config's bitrate falls outside the anchor's measured range, "
 
 hdr = (f"{'clip':<9}{'config':<11}{'CRF':>4}{'kbps':>9}"
        f"{'dwPSNR-Y':>10}{'dwP-Cb':>9}{'dwP-Cr':>9}"
-       f"{'dXP-Y':>9}{'dXP-Cb':>9}{'dXP-Cr':>9}{'dQ_JOD':>9}{'sem':>7}{'p':>9}  sig")
+       f"{'dXP-Y':>9}{'dXP-Cb':>9}{'dXP-Cr':>9}{'dQ_JOD':>9}{'sem':>7}{'p':>9}  sig"
+       f"{'dDEITP':>9}")
 print(hdr)
 print("-" * (len(hdr) + 4))
 
@@ -124,9 +125,23 @@ for clip in ["sol10", "whale10"]:
                 line += f"{d.mean():>+9.4f}{sem:>7.4f}{p:>9.2e}  {sig}"
             else:
                 line += f"{'-':>9}{'-':>7}{'-':>9}  -"
+            # DeltaE-ITP, paired per frame like Q_JOD but LOWER = better, so
+            # the delta is (anchor_at_rate - config): positive = config better
+            dea = [res[f"{clip}_anchor_crf{c}"].get("deitp_frames") for c in CRFS]
+            det = res[kt].get("deitp_frames")
+            if det and all(dea):
+                d = []
+                for i in sorted(det, key=int):
+                    av, _ = interp_at(la, [a[i] for a in dea], lr)
+                    d.append(av - det[i])
+                line += f"{np.mean(d):>+9.4f}"
+            else:
+                line += f"{'-':>9}"
             print(line + ("   !" if ex1 else ""))
         print()
 
 print("Reading it: a config that improves the encoder shows POSITIVE dwPSNR-Y")
 print("and POSITIVE dQ_JOD at equal bitrate. Mixed signs mean the config is")
 print("trading one metric for the other, not improving quality per bit.")
+print("dDEITP is sign-flipped to match (anchor minus config, since lower")
+print("DeltaE is better): positive = config has less colour error per bit.")
