@@ -21,14 +21,19 @@ def bd_rate(r_a, q_a, r_t, q_t):
     it = np.polyval(np.polyint(pt), [lo, hi])
     return (np.exp(((it[1] - it[0]) - (ia[1] - ia[0])) / (hi - lo)) - 1) * 100
 
-CFGS = ["anchor", "hdr10opt", "prodstack"]
+# 2026-08-11: prodmap (the new recommended stack) joins the report, and the
+# XPSNR columns land alongside wPSNR.
+CFGS = ["anchor", "hdr10opt", "prodstack", "prodmap"]
 LABEL = {"anchor": "default (anchor)",
          "hdr10opt": "--hdr10-opt",
-         "prodstack": "prod stack"}
+         "prodstack": "prod stack",
+         "prodmap": "prodmap"}
 CRFS = [22, 26, 30, 34]
 FIELDS = [("kbps", "kbps", "%10.1f"), ("psnr_y", "PSNR-Y", "%9.4f"),
           ("wpsnr_y", "wPSNR-Y", "%9.4f"), ("wpsnr_cb", "wPSNR-Cb", "%9.4f"),
-          ("wpsnr_cr", "wPSNR-Cr", "%9.4f"), ("vdp_jod", "Q_JOD", "%8.4f")]
+          ("wpsnr_cr", "wPSNR-Cr", "%9.4f"), ("xpsnr_y", "XPSNR-Y", "%9.4f"),
+          ("xpsnr_cb", "XPSNR-Cb", "%9.4f"), ("xpsnr_cr", "XPSNR-Cr", "%9.4f"),
+          ("vdp_jod", "Q_JOD", "%8.4f")]
 
 res = json.load(open("results.json"))
 

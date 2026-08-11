@@ -1202,6 +1202,18 @@ does not overturn any standing verdict — but from here on, perceptual tools
 (QPA, variance boost, per-pixel wSSE) can actually be *judged* rather than
 penalised by construction.
 
+Full-backfill BD-rate read (240 encodes, `report_3way_2026-08-11.txt`): the
+one honest nuance is that on XPSNR BD-rate the two stacks read **+1.2…+1.4%
+XPSNR-Y on both clips** — a small consistent cost where wPSNR reads a small
+gain (−0.16…−0.58%) — while keeping the large chroma gains (whale10
+−18/−21% XPSNR-Cb/Cr). At equal bitrate the dXP-Y deltas are within ±0.11 dB,
+so the operational verdict stays "approximately free", but the sign
+disagreement between the two weighted-PSNR family members is worth
+remembering when a future tool is tuned *on* XPSNR: the JVET dQP model's
+reallocation is credited by the JVET metric and mildly debited by the
+activity-masking one. hdr10opt is unambiguous on both: +10.7% (whale10) /
++37.9% (sol10) XPSNR-Y BD-rate.
+
 **Harness trap found and fixed (cost a debugging hour, worth recording):
 ffmpeg 8 negotiates color range/colorspace across filter graphs.** A
 VUI-tagged HDR decode (tv/bt2020nc/smpte2084) fed into a two-input metric

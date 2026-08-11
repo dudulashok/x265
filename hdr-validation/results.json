@@ -17,7 +17,23 @@
   "xpsnr_y": 40.3333,
   "xpsnr_cb": 38.1646,
   "xpsnr_cr": 40.9195,
-  "xpsnr_frames": 192
+  "xpsnr_frames": 192,
+  "deitp_frames": {
+   "8": 6.4189,
+   "24": 11.1704,
+   "40": 11.007,
+   "56": 9.6004,
+   "72": 9.1979,
+   "88": 12.7987,
+   "104": 7.3062,
+   "120": 6.5819,
+   "136": 3.1118,
+   "152": 3.3149,
+   "168": 3.0341,
+   "184": 1.4517
+  },
+  "deitp_mean": 7.0828,
+  "deitp_p95_mean": 18.0914
  },
  "sol10_anchor_crf26": {
   "kbps": 20120.757,
@@ -441,7 +457,11 @@
   "wpsnr_cb": 52.97095072489388,
   "wpsnr_cr": 57.04112952157641,
   "vdp_jod": 8.410190666666667,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 41.9114,
+  "xpsnr_cb": 42.2523,
+  "xpsnr_cr": 46.7423,
+  "xpsnr_frames": 300
  },
  "whale10_hdrluma_crf26": {
   "kbps": 2831.4576,
@@ -453,7 +473,11 @@
   "wpsnr_cb": 51.3943198075172,
   "wpsnr_cr": 55.55873146964931,
   "vdp_jod": 8.250605666666667,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 39.9941,
+  "xpsnr_cb": 40.9706,
+  "xpsnr_cr": 45.1352,
+  "xpsnr_frames": 300
  },
  "whale10_hdrluma_crf30": {
   "kbps": 1681.3392,
@@ -465,7 +489,11 @@
   "wpsnr_cb": 49.93280793639774,
   "wpsnr_cr": 52.947825877716525,
   "vdp_jod": 8.051410333333333,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 37.7464,
+  "xpsnr_cb": 39.6114,
+  "xpsnr_cr": 41.5656,
+  "xpsnr_frames": 300
  },
  "whale10_hdrluma_crf34": {
   "kbps": 985.9168000000001,
@@ -477,7 +505,11 @@
   "wpsnr_cb": 48.228526340720215,
   "wpsnr_cr": 52.208264638588716,
   "vdp_jod": 7.881553916666667,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 35.0348,
+  "xpsnr_cb": 37.4406,
+  "xpsnr_cr": 40.6798,
+  "xpsnr_frames": 300
  },
  "whale10_wsse05_crf22": {
   "kbps": 6004.6576,
@@ -487,7 +519,11 @@
   "psnr_cr": 55.88602675337426,
   "wpsnr_y": 51.564950909396636,
   "wpsnr_cb": 53.576949554612135,
-  "wpsnr_cr": 58.09005211088531
+  "wpsnr_cr": 58.09005211088531,
+  "xpsnr_y": 42.7562,
+  "xpsnr_cb": 42.7166,
+  "xpsnr_cr": 47.9643,
+  "xpsnr_frames": 300
  },
  "whale10_wsse05_crf26": {
   "kbps": 3601.1872000000003,
@@ -497,7 +533,11 @@
   "psnr_cr": 53.99787318548587,
   "wpsnr_y": 49.12184756342859,
   "wpsnr_cb": 52.08975682568094,
-  "wpsnr_cr": 56.24280847068721
+  "wpsnr_cr": 56.24280847068721,
+  "xpsnr_y": 40.9531,
+  "xpsnr_cb": 41.6971,
+  "xpsnr_cr": 45.9204,
+  "xpsnr_frames": 300
  },
  "whale10_wsse05_crf30": {
   "kbps": 2184.7152,
@@ -507,7 +547,11 @@
   "psnr_cr": 52.52832321664118,
   "wpsnr_y": 46.49917276107359,
   "wpsnr_cb": 50.41988260751059,
-  "wpsnr_cr": 54.81137549963251
+  "wpsnr_cr": 54.81137549963251,
+  "xpsnr_y": 38.7614,
+  "xpsnr_cb": 40.0529,
+  "xpsnr_cr": 44.2393,
+  "xpsnr_frames": 300
  },
  "whale10_wsse05_crf34": {
   "kbps": 1360.848,
@@ -517,7 +561,11 @@
   "psnr_cr": 50.219963240359,
   "wpsnr_y": 43.799148946492906,
   "wpsnr_cb": 48.86045132592142,
-  "wpsnr_cr": 52.68155721415176
+  "wpsnr_cr": 52.68155721415176,
+  "xpsnr_y": 36.2352,
+  "xpsnr_cb": 38.382,
+  "xpsnr_cr": 41.2961,
+  "xpsnr_frames": 300
  },
  "whale10_wsse10_crf22": {
   "kbps": 5683.129599999999,
@@ -527,7 +575,11 @@
   "psnr_cr": 55.67330717218929,
   "wpsnr_y": 51.220322229615995,
   "wpsnr_cb": 53.36427562748851,
-  "wpsnr_cr": 57.882872291058206
+  "wpsnr_cr": 57.882872291058206,
+  "xpsnr_y": 42.4048,
+  "xpsnr_cb": 42.5428,
+  "xpsnr_cr": 47.7544,
+  "xpsnr_frames": 300
  },
  "whale10_wsse10_crf26": {
   "kbps": 3399.7472000000002,
@@ -537,7 +589,11 @@
   "psnr_cr": 53.78914393399264,
   "wpsnr_y": 48.65115454192879,
   "wpsnr_cb": 51.822608807157984,
-  "wpsnr_cr": 56.03947833862628
+  "wpsnr_cr": 56.03947833862628,
+  "xpsnr_y": 40.4869,
+  "xpsnr_cb": 41.4667,
+  "xpsnr_cr": 45.696,
+  "xpsnr_frames": 300
  },
  "whale10_wsse10_crf30": {
   "kbps": 2062.4944,
@@ -547,7 +603,11 @@
   "psnr_cr": 52.33431981305617,
   "wpsnr_y": 45.953902824713055,
   "wpsnr_cb": 50.07264846179777,
-  "wpsnr_cr": 54.614872919908805
+  "wpsnr_cr": 54.614872919908805,
+  "xpsnr_y": 38.1992,
+  "xpsnr_cb": 39.7112,
+  "xpsnr_cr": 44.0351,
+  "xpsnr_frames": 300
  },
  "whale10_wsse10_crf34": {
   "kbps": 1307.2608,
@@ -557,7 +617,11 @@
   "psnr_cr": 50.15615394248095,
   "wpsnr_y": 43.13315889177456,
   "wpsnr_cb": 48.372680897640876,
-  "wpsnr_cr": 52.621651901497316
+  "wpsnr_cr": 52.621651901497316,
+  "xpsnr_y": 35.4866,
+  "xpsnr_cb": 37.7309,
+  "xpsnr_cr": 41.2197,
+  "xpsnr_frames": 300
  },
  "whale10_wsse15_crf22": {
   "kbps": 5349.344,
@@ -567,7 +631,11 @@
   "psnr_cr": 55.4237076469552,
   "wpsnr_y": 50.687137459978366,
   "wpsnr_cb": 53.106169672498595,
-  "wpsnr_cr": 57.628064353066684
+  "wpsnr_cr": 57.628064353066684,
+  "xpsnr_y": 41.9324,
+  "xpsnr_cb": 42.3699,
+  "xpsnr_cr": 47.5296,
+  "xpsnr_frames": 300
  },
  "whale10_wsse15_crf26": {
   "kbps": 3177.5968,
@@ -577,7 +645,11 @@
   "psnr_cr": 53.51268313918964,
   "wpsnr_y": 48.00778840921605,
   "wpsnr_cb": 51.46730984077556,
-  "wpsnr_cr": 55.77288753638375
+  "wpsnr_cr": 55.77288753638375,
+  "xpsnr_y": 39.8654,
+  "xpsnr_cb": 41.1275,
+  "xpsnr_cr": 45.3991,
+  "xpsnr_frames": 300
  },
  "whale10_wsse15_crf30": {
   "kbps": 1952.32,
@@ -587,7 +659,11 @@
   "psnr_cr": 51.983077786585945,
   "wpsnr_y": 45.23030776977551,
   "wpsnr_cb": 49.63355628104047,
-  "wpsnr_cr": 54.29023874480896
+  "wpsnr_cr": 54.29023874480896,
+  "xpsnr_y": 37.4942,
+  "xpsnr_cb": 39.2384,
+  "xpsnr_cr": 43.6026,
+  "xpsnr_frames": 300
  },
  "whale10_wsse15_crf34": {
   "kbps": 1265.5392,
@@ -597,7 +673,11 @@
   "psnr_cr": 49.75855379920114,
   "wpsnr_y": 42.349511017670395,
   "wpsnr_cb": 47.88500312825239,
-  "wpsnr_cr": 52.24564602960804
+  "wpsnr_cr": 52.24564602960804,
+  "xpsnr_y": 34.737,
+  "xpsnr_cb": 37.2484,
+  "xpsnr_cr": 40.7694,
+  "xpsnr_frames": 300
  },
  "whale10_dbk10_crf22": {
   "kbps": 6286.4672,
@@ -607,7 +687,11 @@
   "psnr_cr": 55.99026726533325,
   "wpsnr_y": 51.827206654517,
   "wpsnr_cb": 53.713802452983614,
-  "wpsnr_cr": 58.18812732630491
+  "wpsnr_cr": 58.18812732630491,
+  "xpsnr_y": 42.9899,
+  "xpsnr_cb": 42.81,
+  "xpsnr_cr": 48.0418,
+  "xpsnr_frames": 300
  },
  "whale10_dbk10_crf26": {
   "kbps": 3798.2672000000002,
@@ -617,7 +701,11 @@
   "psnr_cr": 54.257934079941435,
   "wpsnr_y": 49.48627348394126,
   "wpsnr_cb": 52.27608962155845,
-  "wpsnr_cr": 56.483654721424955
+  "wpsnr_cr": 56.483654721424955,
+  "xpsnr_y": 41.3239,
+  "xpsnr_cb": 41.8068,
+  "xpsnr_cr": 46.2499,
+  "xpsnr_frames": 300
  },
  "whale10_dbk10_crf30": {
   "kbps": 2321.832,
@@ -627,7 +715,11 @@
   "psnr_cr": 52.755988869889194,
   "wpsnr_y": 46.957820845678995,
   "wpsnr_cb": 50.73366453813212,
-  "wpsnr_cr": 55.0157459215351
+  "wpsnr_cr": 55.0157459215351,
+  "xpsnr_y": 39.2435,
+  "xpsnr_cb": 40.384,
+  "xpsnr_cr": 44.512,
+  "xpsnr_frames": 300
  },
  "whale10_dbk10_crf34": {
   "kbps": 1444.504,
@@ -637,7 +729,11 @@
   "psnr_cr": 51.2352113675542,
   "wpsnr_y": 44.34401613944965,
   "wpsnr_cb": 49.12198104195133,
-  "wpsnr_cr": 53.588018872005925
+  "wpsnr_cr": 53.588018872005925,
+  "xpsnr_y": 36.7789,
+  "xpsnr_cb": 38.6247,
+  "xpsnr_cr": 42.6001,
+  "xpsnr_frames": 300
  },
  "sol10_hdrpq_crf22": {
   "kbps": 36026.538,
@@ -713,7 +809,11 @@
   "wpsnr_cb": 53.716640637572056,
   "wpsnr_cr": 58.20707426277263,
   "vdp_jod": 8.513456666666666,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 42.9835,
+  "xpsnr_cb": 42.8148,
+  "xpsnr_cr": 48.0499,
+  "xpsnr_frames": 300
  },
  "whale10_hdrpq_crf26": {
   "kbps": 3805.1567999999997,
@@ -725,7 +825,11 @@
   "wpsnr_cb": 52.264057315486234,
   "wpsnr_cr": 56.48500594992172,
   "vdp_jod": 8.3542055,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 41.3168,
+  "xpsnr_cb": 41.808,
+  "xpsnr_cr": 46.2523,
+  "xpsnr_frames": 300
  },
  "whale10_hdrpq_crf30": {
   "kbps": 2323.024,
@@ -737,7 +841,11 @@
   "wpsnr_cb": 50.72409146541051,
   "wpsnr_cr": 55.03034094901167,
   "vdp_jod": 8.21383525,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 39.2473,
+  "xpsnr_cb": 40.3937,
+  "xpsnr_cr": 44.5268,
+  "xpsnr_frames": 300
  },
  "whale10_hdrpq_crf34": {
   "kbps": 1444.504,
@@ -749,7 +857,11 @@
   "wpsnr_cb": 49.15668236697591,
   "wpsnr_cr": 53.59306039605195,
   "vdp_jod": 8.0276475,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 36.7622,
+  "xpsnr_cb": 38.6744,
+  "xpsnr_cr": 42.6469,
+  "xpsnr_frames": 300
  },
  "sol10_lumaq025_crf22": {
   "kbps": 33949.859,
@@ -1095,7 +1207,11 @@
   "psnr_cr": 54.882567494464666,
   "wpsnr_y": 51.48344296167807,
   "wpsnr_cb": 52.8948703398497,
-  "wpsnr_cr": 57.10236698704709
+  "wpsnr_cr": 57.10236698704709,
+  "xpsnr_y": 42.7326,
+  "xpsnr_cb": 42.3067,
+  "xpsnr_cr": 46.952,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq025_crf26": {
   "kbps": 3481.6656000000003,
@@ -1105,7 +1221,11 @@
   "psnr_cr": 53.23349361831346,
   "wpsnr_y": 49.10383435737032,
   "wpsnr_cb": 51.40424552549102,
-  "wpsnr_cr": 55.50462789158351
+  "wpsnr_cr": 55.50462789158351,
+  "xpsnr_y": 40.9875,
+  "xpsnr_cb": 41.073,
+  "xpsnr_cr": 45.0704,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq025_crf30": {
   "kbps": 2137.1616,
@@ -1115,7 +1235,11 @@
   "psnr_cr": 50.982071770242584,
   "wpsnr_y": 46.552044152037254,
   "wpsnr_cb": 49.959162342061305,
-  "wpsnr_cr": 53.39816862718728
+  "wpsnr_cr": 53.39816862718728,
+  "xpsnr_y": 38.8856,
+  "xpsnr_cb": 39.7815,
+  "xpsnr_cr": 42.3055,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq025_crf34": {
   "kbps": 1333.1312,
@@ -1125,7 +1249,11 @@
   "psnr_cr": 50.50310077479242,
   "wpsnr_y": 43.87953695421864,
   "wpsnr_cb": 48.326316534152404,
-  "wpsnr_cr": 52.899086634699934
+  "wpsnr_cr": 52.899086634699934,
+  "xpsnr_y": 36.288,
+  "xpsnr_cb": 37.688,
+  "xpsnr_cr": 41.7498,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq05_crf22": {
   "kbps": 5297.9792,
@@ -1135,7 +1263,11 @@
   "psnr_cr": 54.520535266340566,
   "wpsnr_y": 51.16870227010688,
   "wpsnr_cb": 52.674465078059555,
-  "wpsnr_cr": 56.77109139488795
+  "wpsnr_cr": 56.77109139488795,
+  "xpsnr_y": 42.4643,
+  "xpsnr_cb": 42.1152,
+  "xpsnr_cr": 46.5317,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq05_crf26": {
   "kbps": 3221.5712000000003,
@@ -1145,7 +1277,11 @@
   "psnr_cr": 52.98899807318814,
   "wpsnr_y": 48.749685611400864,
   "wpsnr_cb": 51.21083527789095,
-  "wpsnr_cr": 55.2719905365062
+  "wpsnr_cr": 55.2719905365062,
+  "xpsnr_y": 40.6593,
+  "xpsnr_cb": 40.8992,
+  "xpsnr_cr": 44.8136,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq05_crf30": {
   "kbps": 1954.7136,
@@ -1155,7 +1291,11 @@
   "psnr_cr": 50.87414526570892,
   "wpsnr_y": 46.14630592828436,
   "wpsnr_cb": 49.681331808657376,
-  "wpsnr_cr": 53.304389780849746
+  "wpsnr_cr": 53.304389780849746,
+  "xpsnr_y": 38.4571,
+  "xpsnr_cb": 39.4251,
+  "xpsnr_cr": 42.1749,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq05_crf34": {
   "kbps": 1190.6943999999999,
@@ -1165,7 +1305,11 @@
   "psnr_cr": 50.0123995153189,
   "wpsnr_y": 43.483458394111125,
   "wpsnr_cb": 47.78379125996813,
-  "wpsnr_cr": 52.46159528109204
+  "wpsnr_cr": 52.46159528109204,
+  "xpsnr_y": 35.8416,
+  "xpsnr_cb": 36.7901,
+  "xpsnr_cr": 41.1636,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq075_crf22": {
   "kbps": 4928.264,
@@ -1175,7 +1319,11 @@
   "psnr_cr": 54.21309312746697,
   "wpsnr_y": 50.83448404849891,
   "wpsnr_cb": 52.43482119838592,
-  "wpsnr_cr": 56.481267428425774
+  "wpsnr_cr": 56.481267428425774,
+  "xpsnr_y": 42.1829,
+  "xpsnr_cb": 41.8988,
+  "xpsnr_cr": 46.191,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq075_crf26": {
   "kbps": 2999.2896,
@@ -1185,7 +1333,11 @@
   "psnr_cr": 52.62341864711139,
   "wpsnr_y": 48.389925447447276,
   "wpsnr_cb": 51.018249724474614,
-  "wpsnr_cr": 54.939477736096464
+  "wpsnr_cr": 54.939477736096464,
+  "xpsnr_y": 40.3386,
+  "xpsnr_cb": 40.746,
+  "xpsnr_cr": 44.325,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq075_crf30": {
   "kbps": 1811.3872,
@@ -1195,7 +1347,11 @@
   "psnr_cr": 51.194703887801936,
   "wpsnr_y": 45.770320472165864,
   "wpsnr_cb": 49.44931674397186,
-  "wpsnr_cr": 53.566957437203364
+  "wpsnr_cr": 53.566957437203364,
+  "xpsnr_y": 38.1017,
+  "xpsnr_cb": 39.0749,
+  "xpsnr_cr": 42.6477,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq075_crf34": {
   "kbps": 1088.7872,
@@ -1205,7 +1361,11 @@
   "psnr_cr": 49.26440751343272,
   "wpsnr_y": 43.08722683677263,
   "wpsnr_cb": 47.84149353206088,
-  "wpsnr_cr": 51.800609076664664
+  "wpsnr_cr": 51.800609076664664,
+  "xpsnr_y": 35.3941,
+  "xpsnr_cb": 36.9776,
+  "xpsnr_cr": 40.2187,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq10_crf22": {
   "kbps": 4595.5024,
@@ -1215,7 +1375,11 @@
   "psnr_cr": 53.89093526213863,
   "wpsnr_y": 50.48066190210291,
   "wpsnr_cb": 52.20131465846524,
-  "wpsnr_cr": 56.17438344676381
+  "wpsnr_cr": 56.17438344676381,
+  "xpsnr_y": 41.8924,
+  "xpsnr_cb": 41.6856,
+  "xpsnr_cr": 45.8103,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq10_crf26": {
   "kbps": 2783.1392,
@@ -1225,7 +1389,11 @@
   "psnr_cr": 52.405447021445724,
   "wpsnr_y": 48.00674137663413,
   "wpsnr_cb": 50.778276935578184,
-  "wpsnr_cr": 54.73259923877747
+  "wpsnr_cr": 54.73259923877747,
+  "xpsnr_y": 39.9806,
+  "xpsnr_cb": 40.4674,
+  "xpsnr_cr": 44.0991,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq10_crf30": {
   "kbps": 1656.6304,
@@ -1235,7 +1403,11 @@
   "psnr_cr": 50.96294764734277,
   "wpsnr_y": 45.344189912335146,
   "wpsnr_cb": 49.17559204664556,
-  "wpsnr_cr": 53.35238478877153
+  "wpsnr_cr": 53.35238478877153,
+  "xpsnr_y": 37.6909,
+  "xpsnr_cb": 38.7219,
+  "xpsnr_cr": 42.289,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq10_crf34": {
   "kbps": 979.0192,
@@ -1245,7 +1417,11 @@
   "psnr_cr": 49.32860090386072,
   "wpsnr_y": 42.680780436114134,
   "wpsnr_cb": 47.399929156426175,
-  "wpsnr_cr": 51.84537210023531
+  "wpsnr_cr": 51.84537210023531,
+  "xpsnr_y": 35.0194,
+  "xpsnr_cb": 36.4275,
+  "xpsnr_cr": 40.2738,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq15_crf22": {
   "kbps": 4024.656,
@@ -1255,7 +1431,11 @@
   "psnr_cr": 53.49434188562981,
   "wpsnr_y": 49.75680420694473,
   "wpsnr_cb": 51.77419012503745,
-  "wpsnr_cr": 55.79531130859593
+  "wpsnr_cr": 55.79531130859593,
+  "xpsnr_y": 41.3054,
+  "xpsnr_cb": 41.2692,
+  "xpsnr_cr": 45.3721,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq15_crf26": {
   "kbps": 2421.544,
@@ -1265,7 +1445,11 @@
   "psnr_cr": 51.60365758565007,
   "wpsnr_y": 47.19309346297709,
   "wpsnr_cb": 50.19370579479789,
-  "wpsnr_cr": 54.00546822958645
+  "wpsnr_cr": 54.00546822958645,
+  "xpsnr_y": 39.2876,
+  "xpsnr_cb": 39.7191,
+  "xpsnr_cr": 43.0817,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq15_crf30": {
   "kbps": 1423.5152,
@@ -1275,7 +1459,11 @@
   "psnr_cr": 50.89066698935269,
   "wpsnr_y": 44.57172712143377,
   "wpsnr_cb": 48.73459192233383,
-  "wpsnr_cr": 53.274912573166525
+  "wpsnr_cr": 53.274912573166525,
+  "xpsnr_y": 36.9636,
+  "xpsnr_cb": 38.0906,
+  "xpsnr_cr": 42.278,
+  "xpsnr_frames": 300
  },
  "whale10_lumaq15_crf34": {
   "kbps": 809.4064000000001,
@@ -1285,7 +1473,11 @@
   "psnr_cr": 49.166609855412034,
   "wpsnr_y": 41.91476468513332,
   "wpsnr_cb": 47.76367877203519,
-  "wpsnr_cr": 51.69833095488539
+  "wpsnr_cr": 51.69833095488539,
+  "xpsnr_y": 34.3161,
+  "xpsnr_cb": 37.3294,
+  "xpsnr_cr": 40.1222,
+  "xpsnr_frames": 300
  },
  "whale10_chromaadapt_crf22": {
   "kbps": 6294.7712,
@@ -1295,7 +1487,11 @@
   "psnr_cr": 55.998007998240354,
   "wpsnr_y": 51.79380545666482,
   "wpsnr_cb": 53.716640637572056,
-  "wpsnr_cr": 58.20707426277263
+  "wpsnr_cr": 58.20707426277263,
+  "xpsnr_y": 42.9835,
+  "xpsnr_cb": 42.8148,
+  "xpsnr_cr": 48.0499,
+  "xpsnr_frames": 300
  },
  "whale10_chromaadapt_crf26": {
   "kbps": 3805.3872,
@@ -1305,7 +1501,11 @@
   "psnr_cr": 54.260975581237744,
   "wpsnr_y": 49.45823457129027,
   "wpsnr_cb": 52.264057315486234,
-  "wpsnr_cr": 56.48500594992172
+  "wpsnr_cr": 56.48500594992172,
+  "xpsnr_y": 41.3168,
+  "xpsnr_cb": 41.808,
+  "xpsnr_cr": 46.2523,
+  "xpsnr_frames": 300
  },
  "whale10_chromaadapt_crf30": {
   "kbps": 2323.1807999999996,
@@ -1315,7 +1515,11 @@
   "psnr_cr": 52.7724558579843,
   "wpsnr_y": 46.92761350446453,
   "wpsnr_cb": 50.72409146541051,
-  "wpsnr_cr": 55.03034094901167
+  "wpsnr_cr": 55.03034094901167,
+  "xpsnr_y": 39.2473,
+  "xpsnr_cb": 40.3937,
+  "xpsnr_cr": 44.5268,
+  "xpsnr_frames": 300
  },
  "whale10_chromaadapt_crf34": {
   "kbps": 1444.7392,
@@ -1325,7 +1529,11 @@
   "psnr_cr": 51.25761613470628,
   "wpsnr_y": 44.29180094703973,
   "wpsnr_cb": 49.15668236697591,
-  "wpsnr_cr": 53.59306039605195
+  "wpsnr_cr": 53.59306039605195,
+  "xpsnr_y": 36.7622,
+  "xpsnr_cb": 38.6744,
+  "xpsnr_cr": 42.6469,
+  "xpsnr_frames": 300
  },
  "sol10_chromaadapt05_crf22": {
   "kbps": 34966.695,
@@ -1451,7 +1659,11 @@
   "cambi_mean": 3.6389,
   "cambi_p95": 3.8591,
   "cambi_max": 4.0166,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 51.6423,
+  "xpsnr_cb": 49.8556,
+  "xpsnr_cr": 50.8034,
+  "xpsnr_frames": 96
  },
  "band10_anchor_crf26": {
   "kbps": 127.856,
@@ -1465,7 +1677,11 @@
   "cambi_mean": 3.3724,
   "cambi_p95": 3.7776,
   "cambi_max": 4.0469,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 50.0374,
+  "xpsnr_cb": 47.2915,
+  "xpsnr_cr": 48.2792,
+  "xpsnr_frames": 96
  },
  "band10_anchor_crf30": {
   "kbps": 111.756,
@@ -1479,7 +1695,11 @@
   "cambi_mean": 3.458,
   "cambi_p95": 3.8003,
   "cambi_max": 3.9865,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 48.0257,
+  "xpsnr_cb": 44.5576,
+  "xpsnr_cr": 45.7002,
+  "xpsnr_frames": 96
  },
  "band10_anchor_crf34": {
   "kbps": 101.69,
@@ -1493,7 +1713,11 @@
   "cambi_mean": 3.2517,
   "cambi_p95": 3.7241,
   "cambi_max": 3.8012,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 45.6719,
+  "xpsnr_cb": 41.5515,
+  "xpsnr_cr": 42.3984,
+  "xpsnr_frames": 96
  },
  "band10_bandp05_crf22": {
   "kbps": 155.994,
@@ -1507,7 +1731,11 @@
   "cambi_mean": 3.6816,
   "cambi_p95": 3.8777,
   "cambi_max": 4.016,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 51.4624,
+  "xpsnr_cb": 49.7106,
+  "xpsnr_cr": 50.4635,
+  "xpsnr_frames": 96
  },
  "band10_bandp05_crf26": {
   "kbps": 132.214,
@@ -1521,7 +1749,11 @@
   "cambi_mean": 3.4308,
   "cambi_p95": 3.7687,
   "cambi_max": 4.0344,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 49.7093,
+  "xpsnr_cb": 47.4979,
+  "xpsnr_cr": 48.5503,
+  "xpsnr_frames": 96
  },
  "band10_bandp05_crf30": {
   "kbps": 120.046,
@@ -1535,7 +1767,11 @@
   "cambi_mean": 3.2241,
   "cambi_p95": 3.7924,
   "cambi_max": 3.9716,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 47.3011,
+  "xpsnr_cb": 44.4,
+  "xpsnr_cr": 44.625,
+  "xpsnr_frames": 96
  },
  "band10_bandp05_crf34": {
   "kbps": 113.424,
@@ -1549,7 +1785,11 @@
   "cambi_mean": 3.2856,
   "cambi_p95": 3.8041,
   "cambi_max": 3.853,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 44.4829,
+  "xpsnr_cb": 41.7135,
+  "xpsnr_cr": 41.5591,
+  "xpsnr_frames": 96
  },
  "band10_bandp10_crf22": {
   "kbps": 164.21,
@@ -1563,7 +1803,11 @@
   "cambi_mean": 3.5781,
   "cambi_p95": 3.8223,
   "cambi_max": 4.0139,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 50.8423,
+  "xpsnr_cb": 49.2474,
+  "xpsnr_cr": 50.1105,
+  "xpsnr_frames": 96
  },
  "band10_bandp10_crf26": {
   "kbps": 141.854,
@@ -1577,7 +1821,11 @@
   "cambi_mean": 3.4562,
   "cambi_p95": 3.8046,
   "cambi_max": 4.0233,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 48.7805,
+  "xpsnr_cb": 46.469,
+  "xpsnr_cr": 47.044,
+  "xpsnr_frames": 96
  },
  "band10_bandp10_crf30": {
   "kbps": 126.982,
@@ -1591,7 +1839,11 @@
   "cambi_mean": 3.464,
   "cambi_p95": 3.7728,
   "cambi_max": 3.9204,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 46.2655,
+  "xpsnr_cb": 44.1752,
+  "xpsnr_cr": 44.1961,
+  "xpsnr_frames": 96
  },
  "band10_bandp10_crf34": {
   "kbps": 124.58,
@@ -1605,7 +1857,11 @@
   "cambi_mean": 3.1587,
   "cambi_p95": 3.7841,
   "cambi_max": 3.8446,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 43.6635,
+  "xpsnr_cb": 41.3154,
+  "xpsnr_cr": 41.9957,
+  "xpsnr_frames": 96
  },
  "band10_slist_crf22": {
   "kbps": 149.11,
@@ -1619,7 +1875,11 @@
   "cambi_mean": 3.632,
   "cambi_p95": 3.8536,
   "cambi_max": 4.0173,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 51.6455,
+  "xpsnr_cb": 49.9086,
+  "xpsnr_cr": 50.5215,
+  "xpsnr_frames": 96
  },
  "band10_slist_crf26": {
   "kbps": 127.416,
@@ -1633,7 +1893,11 @@
   "cambi_mean": 3.442,
   "cambi_p95": 3.7918,
   "cambi_max": 4.0485,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 50.0802,
+  "xpsnr_cb": 47.2096,
+  "xpsnr_cr": 48.651,
+  "xpsnr_frames": 96
  },
  "band10_slist_crf30": {
   "kbps": 110.01,
@@ -1647,7 +1911,11 @@
   "cambi_mean": 3.4916,
   "cambi_p95": 3.8171,
   "cambi_max": 3.9818,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 47.8261,
+  "xpsnr_cb": 44.5017,
+  "xpsnr_cr": 44.9324,
+  "xpsnr_frames": 96
  },
  "band10_slist_crf34": {
   "kbps": 102.106,
@@ -1661,7 +1929,11 @@
   "cambi_mean": 3.2585,
   "cambi_p95": 3.7811,
   "cambi_max": 3.8318,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 45.5318,
+  "xpsnr_cb": 41.455,
+  "xpsnr_cr": 42.347,
+  "xpsnr_frames": 96
  },
  "band10_source": {
   "cambi_mean": 0.005,
@@ -1681,7 +1953,11 @@
   "cambi_mean": 3.7882,
   "cambi_p95": 3.9143,
   "cambi_max": 4.017,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 51.7828,
+  "xpsnr_cb": 50.7263,
+  "xpsnr_cr": 51.5172,
+  "xpsnr_frames": 96
  },
  "band10_saoband10_crf26": {
   "kbps": 133.062,
@@ -1695,7 +1971,11 @@
   "cambi_mean": 3.5421,
   "cambi_p95": 3.7955,
   "cambi_max": 4.0438,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 50.2528,
+  "xpsnr_cb": 48.7532,
+  "xpsnr_cr": 49.2014,
+  "xpsnr_frames": 96
  },
  "band10_saoband10_crf30": {
   "kbps": 117.484,
@@ -1709,7 +1989,11 @@
   "cambi_mean": 3.4822,
   "cambi_p95": 3.8732,
   "cambi_max": 3.9777,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 48.156,
+  "xpsnr_cb": 46.0565,
+  "xpsnr_cr": 46.8985,
+  "xpsnr_frames": 96
  },
  "band10_saoband10_crf34": {
   "kbps": 116.404,
@@ -1723,7 +2007,11 @@
   "cambi_mean": 3.2255,
   "cambi_p95": 3.7294,
   "cambi_max": 3.7796,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 45.6239,
+  "xpsnr_cb": 43.8966,
+  "xpsnr_cr": 44.2387,
+  "xpsnr_frames": 96
  },
  "band10_saoband30_crf22": {
   "kbps": 188.186,
@@ -1737,7 +2025,11 @@
   "cambi_mean": 3.8534,
   "cambi_p95": 3.9728,
   "cambi_max": 4.015,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 51.8985,
+  "xpsnr_cb": 51.153,
+  "xpsnr_cr": 52.0017,
+  "xpsnr_frames": 96
  },
  "band10_saoband30_crf26": {
   "kbps": 150.332,
@@ -1751,7 +2043,11 @@
   "cambi_mean": 3.7247,
   "cambi_p95": 3.9406,
   "cambi_max": 4.0448,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 50.3696,
+  "xpsnr_cb": 49.2695,
+  "xpsnr_cr": 49.8548,
+  "xpsnr_frames": 96
  },
  "band10_saoband30_crf30": {
   "kbps": 130.9,
@@ -1765,7 +2061,11 @@
   "cambi_mean": 3.4958,
   "cambi_p95": 3.8113,
   "cambi_max": 3.9794,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 48.2413,
+  "xpsnr_cb": 46.7613,
+  "xpsnr_cr": 48.0447,
+  "xpsnr_frames": 96
  },
  "band10_saoband30_crf34": {
   "kbps": 126.908,
@@ -1779,7 +2079,11 @@
   "cambi_mean": 3.1655,
   "cambi_p95": 3.7739,
   "cambi_max": 3.8167,
-  "cambi_frames": 96
+  "cambi_frames": 96,
+  "xpsnr_y": 45.8662,
+  "xpsnr_cb": 45.1362,
+  "xpsnr_cr": 45.9525,
+  "xpsnr_frames": 96
  },
  "whale10_source": {
   "cambi_mean": 0.1521,
@@ -1995,7 +2299,11 @@
   "wpsnr_cb": 53.36497155038825,
   "wpsnr_cr": 57.66386194026814,
   "vdp_jod": 8.472902166666666,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 42.4888,
+  "xpsnr_cb": 42.5606,
+  "xpsnr_cr": 47.4629,
+  "xpsnr_frames": 300
  },
  "whale10_prodstack_crf26": {
   "kbps": 3281.8384,
@@ -2007,7 +2315,11 @@
   "wpsnr_cb": 51.817610384722926,
   "wpsnr_cr": 56.094351855974274,
   "vdp_jod": 8.325764416666667,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 40.6934,
+  "xpsnr_cb": 41.356,
+  "xpsnr_cr": 45.8557,
+  "xpsnr_frames": 300
  },
  "whale10_prodstack_crf30": {
   "kbps": 1986.8368,
@@ -2019,7 +2331,11 @@
   "wpsnr_cb": 50.373325826315906,
   "wpsnr_cr": 54.318822336042786,
   "vdp_jod": 8.112010666666666,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 38.5349,
+  "xpsnr_cb": 40.1402,
+  "xpsnr_cr": 43.5319,
+  "xpsnr_frames": 300
  },
  "whale10_prodstack_crf34": {
   "kbps": 1204.6832,
@@ -2031,7 +2347,11 @@
   "wpsnr_cb": 48.6915735502608,
   "wpsnr_cr": 53.011770060996035,
   "vdp_jod": 7.949346333333334,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 35.9306,
+  "xpsnr_cb": 38.0365,
+  "xpsnr_cr": 41.749,
+  "xpsnr_frames": 300
  },
  "sol10_cascade05_crf22": {
   "kbps": 32218.184,
@@ -2377,7 +2697,11 @@
   "psnr_cr": 55.183638380892,
   "wpsnr_y": 51.43966615629421,
   "wpsnr_cb": 53.044931172328646,
-  "wpsnr_cr": 57.380784168056266
+  "wpsnr_cr": 57.380784168056266,
+  "xpsnr_y": 42.7859,
+  "xpsnr_cb": 42.4429,
+  "xpsnr_cr": 47.2915,
+  "xpsnr_frames": 300
  },
  "whale10_cascade05_crf26": {
   "kbps": 3407.144,
@@ -2387,7 +2711,11 @@
   "psnr_cr": 53.47118066104037,
   "wpsnr_y": 48.922142169091714,
   "wpsnr_cb": 51.58634384182564,
-  "wpsnr_cr": 55.71711578495305
+  "wpsnr_cr": 55.71711578495305,
+  "xpsnr_y": 40.9826,
+  "xpsnr_cb": 41.3295,
+  "xpsnr_cr": 45.3497,
+  "xpsnr_frames": 300
  },
  "whale10_cascade05_crf30": {
   "kbps": 2059.8384,
@@ -2397,7 +2725,11 @@
   "psnr_cr": 51.46320327066459,
   "wpsnr_y": 46.354780825219954,
   "wpsnr_cb": 49.98479956635119,
-  "wpsnr_cr": 53.82718176776193
+  "wpsnr_cr": 53.82718176776193,
+  "xpsnr_y": 38.9041,
+  "xpsnr_cb": 39.747,
+  "xpsnr_cr": 42.8988,
+  "xpsnr_frames": 300
  },
  "whale10_cascade05_crf34": {
   "kbps": 1274.6943999999999,
@@ -2407,7 +2739,11 @@
   "psnr_cr": 50.65503186455187,
   "wpsnr_y": 43.81311231385044,
   "wpsnr_cb": 48.579538799776856,
-  "wpsnr_cr": 53.02348743101682
+  "wpsnr_cr": 53.02348743101682,
+  "xpsnr_y": 36.5202,
+  "xpsnr_cb": 38.1378,
+  "xpsnr_cr": 41.9952,
+  "xpsnr_frames": 300
  },
  "whale10_cascade10_crf22": {
   "kbps": 5420.136,
@@ -2417,7 +2753,11 @@
   "psnr_cr": 55.128942486227814,
   "wpsnr_y": 51.083967513730926,
   "wpsnr_cb": 52.97654231426111,
-  "wpsnr_cr": 57.31652160056912
+  "wpsnr_cr": 57.31652160056912,
+  "xpsnr_y": 42.6073,
+  "xpsnr_cb": 42.4228,
+  "xpsnr_cr": 47.2226,
+  "xpsnr_frames": 300
  },
  "whale10_cascade10_crf26": {
   "kbps": 3138.04,
@@ -2427,7 +2767,11 @@
   "psnr_cr": 53.3845603108481,
   "wpsnr_y": 48.3291613463605,
   "wpsnr_cb": 51.49344415873549,
-  "wpsnr_cr": 55.63492712430534
+  "wpsnr_cr": 55.63492712430534,
+  "xpsnr_y": 40.6328,
+  "xpsnr_cb": 41.2657,
+  "xpsnr_cr": 45.2254,
+  "xpsnr_frames": 300
  },
  "whale10_cascade10_crf30": {
   "kbps": 1908.0208,
@@ -2437,7 +2781,11 @@
   "psnr_cr": 51.31782231345493,
   "wpsnr_y": 45.77206283313535,
   "wpsnr_cb": 49.88982735599342,
-  "wpsnr_cr": 53.70268948958167
+  "wpsnr_cr": 53.70268948958167,
+  "xpsnr_y": 38.537,
+  "xpsnr_cb": 39.654,
+  "xpsnr_cr": 42.6746,
+  "xpsnr_frames": 300
  },
  "whale10_cascade10_crf34": {
   "kbps": 1201.4112,
@@ -2447,7 +2795,11 @@
   "psnr_cr": 50.53871664545408,
   "wpsnr_y": 43.285100447393354,
   "wpsnr_cb": 48.36942551694963,
-  "wpsnr_cr": 52.92232237645112
+  "wpsnr_cr": 52.92232237645112,
+  "xpsnr_y": 36.1557,
+  "xpsnr_cb": 37.827,
+  "xpsnr_cr": 41.7877,
+  "xpsnr_frames": 300
  },
  "whale10_cascade15_crf22": {
   "kbps": 5121.4448,
@@ -2457,7 +2809,11 @@
   "psnr_cr": 55.09213433393157,
   "wpsnr_y": 50.686882212007475,
   "wpsnr_cb": 52.89870200537279,
-  "wpsnr_cr": 57.27941359204231
+  "wpsnr_cr": 57.27941359204231,
+  "xpsnr_y": 42.3869,
+  "xpsnr_cb": 42.3945,
+  "xpsnr_cr": 47.1946,
+  "xpsnr_frames": 300
  },
  "whale10_cascade15_crf26": {
   "kbps": 2925.1552,
@@ -2467,7 +2823,11 @@
   "psnr_cr": 53.34167708753732,
   "wpsnr_y": 47.740811378883386,
   "wpsnr_cb": 51.43511157347061,
-  "wpsnr_cr": 55.592054113712884
+  "wpsnr_cr": 55.592054113712884,
+  "xpsnr_y": 40.2985,
+  "xpsnr_cb": 41.2314,
+  "xpsnr_cr": 45.1642,
+  "xpsnr_frames": 300
  },
  "whale10_cascade15_crf30": {
   "kbps": 1783.408,
@@ -2477,7 +2837,11 @@
   "psnr_cr": 51.273047620402366,
   "wpsnr_y": 45.22846714125724,
   "wpsnr_cb": 49.77485337040304,
-  "wpsnr_cr": 53.65241345627605
+  "wpsnr_cr": 53.65241345627605,
+  "xpsnr_y": 38.1995,
+  "xpsnr_cb": 39.5233,
+  "xpsnr_cr": 42.5848,
+  "xpsnr_frames": 300
  },
  "whale10_cascade15_crf34": {
   "kbps": 1133.4016000000001,
@@ -2487,7 +2851,11 @@
   "psnr_cr": 50.38664694843024,
   "wpsnr_y": 42.82397847877039,
   "wpsnr_cb": 48.286451551747824,
-  "wpsnr_cr": 52.78340993541959
+  "wpsnr_cr": 52.78340993541959,
+  "xpsnr_y": 35.865,
+  "xpsnr_cb": 37.745,
+  "xpsnr_cr": 41.5849,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam05_crf22": {
   "kbps": 6220.0815999999995,
@@ -2497,7 +2865,11 @@
   "psnr_cr": 55.25753043258117,
   "wpsnr_y": 51.839105164351224,
   "wpsnr_cb": 53.13049575508285,
-  "wpsnr_cr": 57.455137458220555
+  "wpsnr_cr": 57.455137458220555,
+  "xpsnr_y": 43.016,
+  "xpsnr_cb": 42.4694,
+  "xpsnr_cr": 47.3619,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam05_crf26": {
   "kbps": 3792.6464,
@@ -2507,7 +2879,11 @@
   "psnr_cr": 53.57854973393218,
   "wpsnr_y": 49.52269469462853,
   "wpsnr_cb": 51.69308695147862,
-  "wpsnr_cr": 55.819872866409355
+  "wpsnr_cr": 55.819872866409355,
+  "xpsnr_y": 41.3722,
+  "xpsnr_cb": 41.4047,
+  "xpsnr_cr": 45.4876,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam05_crf30": {
   "kbps": 2319.6928,
@@ -2517,7 +2893,11 @@
   "psnr_cr": 51.959461863404606,
   "wpsnr_y": 47.00975485675366,
   "wpsnr_cb": 50.05327232946203,
-  "wpsnr_cr": 54.27118155450006
+  "wpsnr_cr": 54.27118155450006,
+  "xpsnr_y": 39.303,
+  "xpsnr_cb": 39.7287,
+  "xpsnr_cr": 43.6483,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam05_crf34": {
   "kbps": 1456.9776000000002,
@@ -2527,7 +2907,11 @@
   "psnr_cr": 50.818702265223756,
   "wpsnr_y": 44.40427475356089,
   "wpsnr_cb": 48.68268888417368,
-  "wpsnr_cr": 53.18815601131875
+  "wpsnr_cr": 53.18815601131875,
+  "xpsnr_y": 36.8884,
+  "xpsnr_cb": 38.1224,
+  "xpsnr_cr": 42.1568,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam10_crf22": {
   "kbps": 6295.672,
@@ -2537,7 +2921,11 @@
   "psnr_cr": 55.2985051861149,
   "wpsnr_y": 51.891546698250224,
   "wpsnr_cb": 53.18215347337623,
-  "wpsnr_cr": 57.49393157379994
+  "wpsnr_cr": 57.49393157379994,
+  "xpsnr_y": 43.0646,
+  "xpsnr_cb": 42.5247,
+  "xpsnr_cr": 47.4013,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam10_crf26": {
   "kbps": 3829.144,
@@ -2547,7 +2935,11 @@
   "psnr_cr": 53.62159871198267,
   "wpsnr_y": 49.58830446117014,
   "wpsnr_cb": 51.783465293734004,
-  "wpsnr_cr": 55.86057959656084
+  "wpsnr_cr": 55.86057959656084,
+  "xpsnr_y": 41.4289,
+  "xpsnr_cb": 41.5347,
+  "xpsnr_cr": 45.5292,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam10_crf30": {
   "kbps": 2361.5392,
@@ -2557,7 +2949,11 @@
   "psnr_cr": 52.11804538353321,
   "wpsnr_y": 47.10940621024345,
   "wpsnr_cb": 50.16829918039332,
-  "wpsnr_cr": 54.41113177621476
+  "wpsnr_cr": 54.41113177621476,
+  "xpsnr_y": 39.4411,
+  "xpsnr_cb": 39.8826,
+  "xpsnr_cr": 43.8666,
+  "xpsnr_frames": 300
  },
  "whale10_vtmlam10_crf34": {
   "kbps": 1481.7168000000001,
@@ -2567,7 +2963,11 @@
   "psnr_cr": 50.83218807389027,
   "wpsnr_y": 44.52884903746015,
   "wpsnr_cb": 48.74210427918329,
-  "wpsnr_cr": 53.19873707912557
+  "wpsnr_cr": 53.19873707912557,
+  "xpsnr_y": 37.0461,
+  "xpsnr_cb": 38.2011,
+  "xpsnr_cr": 42.1827,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10_crf22": {
   "kbps": 6690.7728,
@@ -2577,7 +2977,11 @@
   "psnr_cr": 57.216393775427186,
   "wpsnr_y": 51.803802548216005,
   "wpsnr_cb": 54.53211803639489,
-  "wpsnr_cr": 59.5201262401049
+  "wpsnr_cr": 59.5201262401049,
+  "xpsnr_y": 43.012,
+  "xpsnr_cb": 43.2098,
+  "xpsnr_cr": 48.9794,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10_crf26": {
   "kbps": 4166.0976,
@@ -2587,7 +2991,11 @@
   "psnr_cr": 56.638376688155134,
   "wpsnr_y": 49.477486389313164,
   "wpsnr_cb": 53.80428287438307,
-  "wpsnr_cr": 58.91479469056588
+  "wpsnr_cr": 58.91479469056588,
+  "xpsnr_y": 41.3469,
+  "xpsnr_cb": 42.8014,
+  "xpsnr_cr": 48.4784,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10_crf30": {
   "kbps": 2600.5024,
@@ -2597,7 +3005,11 @@
   "psnr_cr": 56.003031241836695,
   "wpsnr_y": 46.97036436203804,
   "wpsnr_cb": 53.1924516570504,
-  "wpsnr_cr": 58.244959995482816
+  "wpsnr_cr": 58.244959995482816,
+  "xpsnr_y": 39.3463,
+  "xpsnr_cb": 42.4601,
+  "xpsnr_cr": 47.8873,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10_crf34": {
   "kbps": 1569.744,
@@ -2607,7 +3019,11 @@
   "psnr_cr": 54.25565246132854,
   "wpsnr_y": 44.36041439321059,
   "wpsnr_cb": 51.944088460484565,
-  "wpsnr_cr": 56.491570224549754
+  "wpsnr_cr": 56.491570224549754,
+  "xpsnr_y": 36.9624,
+  "xpsnr_cb": 41.4138,
+  "xpsnr_cr": 46.0936,
+  "xpsnr_frames": 300
  },
  "sol10_cqpmap10ca_crf22": {
   "kbps": 34427.653,
@@ -2785,7 +3201,11 @@
   "psnr_cr": 57.216393775427186,
   "wpsnr_y": 51.803802548216005,
   "wpsnr_cb": 54.53211803639489,
-  "wpsnr_cr": 59.5201262401049
+  "wpsnr_cr": 59.5201262401049,
+  "xpsnr_y": 43.012,
+  "xpsnr_cb": 43.2098,
+  "xpsnr_cr": 48.9794,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10ca_crf26": {
   "kbps": 4166.132799999999,
@@ -2795,7 +3215,11 @@
   "psnr_cr": 56.638376688155134,
   "wpsnr_y": 49.477486389313164,
   "wpsnr_cb": 53.80428287438307,
-  "wpsnr_cr": 58.91479469056588
+  "wpsnr_cr": 58.91479469056588,
+  "xpsnr_y": 41.3469,
+  "xpsnr_cb": 42.8014,
+  "xpsnr_cr": 48.4784,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10ca_crf30": {
   "kbps": 2600.5376,
@@ -2805,7 +3229,11 @@
   "psnr_cr": 56.003031241836695,
   "wpsnr_y": 46.97036436203804,
   "wpsnr_cb": 53.1924516570504,
-  "wpsnr_cr": 58.244959995482816
+  "wpsnr_cr": 58.244959995482816,
+  "xpsnr_y": 39.3463,
+  "xpsnr_cb": 42.4601,
+  "xpsnr_cr": 47.8873,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap10ca_crf34": {
   "kbps": 1569.7792,
@@ -2815,7 +3243,11 @@
   "psnr_cr": 54.25565246132854,
   "wpsnr_y": 44.36041439321059,
   "wpsnr_cb": 51.944088460484565,
-  "wpsnr_cr": 56.491570224549754
+  "wpsnr_cr": 56.491570224549754,
+  "xpsnr_y": 36.9624,
+  "xpsnr_cb": 41.4138,
+  "xpsnr_cr": 46.0936,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap05_crf22": {
   "kbps": 6318.9744,
@@ -2825,7 +3257,11 @@
   "psnr_cr": 56.06842573379707,
   "wpsnr_y": 51.795753637045365,
   "wpsnr_cb": 53.77061946318483,
-  "wpsnr_cr": 58.289334393991574
+  "wpsnr_cr": 58.289334393991574,
+  "xpsnr_y": 42.9846,
+  "xpsnr_cb": 42.8276,
+  "xpsnr_cr": 48.0898,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap05_crf26": {
   "kbps": 3871.5472,
@@ -2835,7 +3271,11 @@
   "psnr_cr": 55.00847822704059,
   "wpsnr_y": 49.44942230482347,
   "wpsnr_cb": 52.70588991829968,
-  "wpsnr_cr": 57.239093803817305
+  "wpsnr_cr": 57.239093803817305,
+  "xpsnr_y": 41.3095,
+  "xpsnr_cb": 42.1411,
+  "xpsnr_cr": 46.9664,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap05_crf30": {
   "kbps": 2360.7744,
@@ -2845,7 +3285,11 @@
   "psnr_cr": 53.67755622703571,
   "wpsnr_y": 46.92611600254687,
   "wpsnr_cb": 51.47263214783752,
-  "wpsnr_cr": 55.93794012438743
+  "wpsnr_cr": 55.93794012438743,
+  "xpsnr_y": 39.251,
+  "xpsnr_cb": 41.0844,
+  "xpsnr_cr": 45.5272,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap05_crf34": {
   "kbps": 1452.056,
@@ -2855,7 +3299,11 @@
   "psnr_cr": 52.10582363020488,
   "wpsnr_y": 44.29713302271452,
   "wpsnr_cb": 50.24271664847031,
-  "wpsnr_cr": 54.41423445189402
+  "wpsnr_cr": 54.41423445189402,
+  "xpsnr_y": 36.8107,
+  "xpsnr_cb": 40.0193,
+  "xpsnr_cr": 43.637,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap025_crf22": {
   "kbps": 6222.3824,
@@ -2865,7 +3313,11 @@
   "psnr_cr": 55.59185766404916,
   "wpsnr_y": 51.7905482055961,
   "wpsnr_cb": 53.41888913895257,
-  "wpsnr_cr": 57.8083080849217
+  "wpsnr_cr": 57.8083080849217,
+  "xpsnr_y": 42.9815,
+  "xpsnr_cb": 42.6495,
+  "xpsnr_cr": 47.6088,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap025_crf26": {
   "kbps": 3785.816,
@@ -2875,7 +3327,11 @@
   "psnr_cr": 54.24718742344722,
   "wpsnr_y": 49.446749825851136,
   "wpsnr_cb": 52.009398713679616,
-  "wpsnr_cr": 56.469487185763384
+  "wpsnr_cr": 56.469487185763384,
+  "xpsnr_y": 41.2969,
+  "xpsnr_cb": 41.5519,
+  "xpsnr_cr": 46.2353,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap025_crf30": {
   "kbps": 2319.504,
@@ -2885,7 +3341,11 @@
   "psnr_cr": 52.94052808762931,
   "wpsnr_y": 46.922747881950826,
   "wpsnr_cb": 50.73894102111825,
-  "wpsnr_cr": 55.21743702395588
+  "wpsnr_cr": 55.21743702395588,
+  "xpsnr_y": 39.2406,
+  "xpsnr_cb": 40.4046,
+  "xpsnr_cr": 44.6592,
+  "xpsnr_frames": 300
  },
  "whale10_cqpmap025_crf34": {
   "kbps": 1432.7392,
@@ -2895,7 +3355,11 @@
   "psnr_cr": 50.62516608753529,
   "wpsnr_y": 44.314376099432884,
   "wpsnr_cb": 49.32976326258335,
-  "wpsnr_cr": 53.08419922652522
+  "wpsnr_cr": 53.08419922652522,
+  "xpsnr_y": 36.8459,
+  "xpsnr_cb": 38.9602,
+  "xpsnr_cr": 41.7647,
+  "xpsnr_frames": 300
  },
  "sol10_fixed12_crf22": {
   "kbps": 35132.249,
@@ -3025,7 +3489,11 @@
   "psnr_cr": 55.94756708314478,
   "wpsnr_y": 51.796083505185706,
   "wpsnr_cb": 53.41934123559347,
-  "wpsnr_cr": 58.16039330408903
+  "wpsnr_cr": 58.16039330408903,
+  "xpsnr_y": 42.9848,
+  "xpsnr_cb": 42.6457,
+  "xpsnr_cr": 47.9915,
+  "xpsnr_frames": 300
  },
  "whale10_fixed12_crf26": {
   "kbps": 3770.08,
@@ -3035,7 +3503,11 @@
   "psnr_cr": 54.247908752714196,
   "wpsnr_y": 49.44206979873451,
   "wpsnr_cb": 51.92191003376613,
-  "wpsnr_cr": 56.47597076663323
+  "wpsnr_cr": 56.47597076663323,
+  "xpsnr_y": 41.2975,
+  "xpsnr_cb": 41.5174,
+  "xpsnr_cr": 46.2304,
+  "xpsnr_frames": 300
  },
  "whale10_fixed12_crf30": {
   "kbps": 2306.6623999999997,
@@ -3045,7 +3517,11 @@
   "psnr_cr": 52.50903558553199,
   "wpsnr_y": 46.916149346391364,
   "wpsnr_cb": 50.46668613498418,
-  "wpsnr_cr": 54.80682598169098
+  "wpsnr_cr": 54.80682598169098,
+  "xpsnr_y": 39.2425,
+  "xpsnr_cb": 40.2436,
+  "xpsnr_cr": 44.1493,
+  "xpsnr_frames": 300
  },
  "whale10_fixed12_crf34": {
   "kbps": 1446.632,
@@ -3055,7 +3531,11 @@
   "psnr_cr": 50.32653212535351,
   "wpsnr_y": 44.28711606201604,
   "wpsnr_cb": 48.86900844151014,
-  "wpsnr_cr": 52.7799079139006
+  "wpsnr_cr": 52.7799079139006,
+  "xpsnr_y": 36.7757,
+  "xpsnr_cb": 38.3234,
+  "xpsnr_cr": 41.3849,
+  "xpsnr_frames": 300
  },
  "whale10_prodmap_crf22": {
   "kbps": 5370.625599999999,
@@ -3067,7 +3547,11 @@
   "wpsnr_cb": 53.04712625552412,
   "wpsnr_cr": 57.27353979649717,
   "vdp_jod": 8.451774,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 42.4721,
+  "xpsnr_cb": 42.3618,
+  "xpsnr_cr": 47.0239,
+  "xpsnr_frames": 300
  },
  "whale10_prodmap_crf26": {
   "kbps": 3267.8927999999996,
@@ -3079,7 +3563,11 @@
   "wpsnr_cb": 51.57141820343806,
   "wpsnr_cr": 55.85134741680447,
   "vdp_jod": 8.31863575,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 40.691,
+  "xpsnr_cb": 41.1392,
+  "xpsnr_cr": 45.3923,
+  "xpsnr_frames": 300
  },
  "whale10_prodmap_crf30": {
   "kbps": 1987.7968,
@@ -3091,7 +3579,11 @@
   "wpsnr_cb": 50.387628862126164,
   "wpsnr_cr": 54.71924391056945,
   "vdp_jod": 8.123805666666668,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 38.5281,
+  "xpsnr_cb": 40.1445,
+  "xpsnr_cr": 44.0091,
+  "xpsnr_frames": 300
  },
  "whale10_prodmap_crf34": {
   "kbps": 1212.0048000000002,
@@ -3103,6 +3595,10 @@
   "wpsnr_cb": 48.713469121219006,
   "wpsnr_cr": 53.154797428775886,
   "vdp_jod": 7.951728083333333,
-  "vdp_n": 12
+  "vdp_n": 12,
+  "xpsnr_y": 35.9123,
+  "xpsnr_cb": 38.0332,
+  "xpsnr_cr": 41.9238,
+  "xpsnr_frames": 300
  }
 }
