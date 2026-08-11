@@ -887,9 +887,12 @@ harness, only penalised by it. Fix the metrics first.
 - [x] **DeltaE-ITP (BT.2124)** — done 2026-08-11 (`deitp.py`: PQ→LMS→ICtCp per
       BT.2100-2/BT.2124, validated structurally, float32; sampled on the
       HDR-VDP 12-frame grid so per-frame values pair with Q_JOD; in metrics.py
-      for the chroma-relevant arms, `DEITP_CFGS`). Backfill + the first
-      chroma-arm read (does the VVC ramp cut colour error per bit?) still
-      pending. Original rationale: the colour-aware companion, already listed in the
+      for the chroma-relevant arms, `DEITP_CFGS`; backfilled, 96 keys). **First
+      read (RESULTS.md 2026-08-11): the chroma tools finally have a metric that
+      sees them — hdr10opt buys 7–20% colour-error reduction at equal bitrate
+      (for its known luma price), prodstack/prodmap keep a smaller free
+      +0.08…+0.54 ΔE. Natural next read: the cqpmap depth series as a
+      luma-vs-ΔE Pareto curve.** Original rationale: the colour-aware companion, already listed in the
       HDR TODO above under the wPSNR cross-check item. Promoted here because the
       2026-08-08 decomposition showed the chroma tools' only measurable effect
       reaches Q_JOD through NCL luminance leakage: without a colour metric, every

@@ -1232,7 +1232,32 @@ ICtCp, 720*sqrt(dI^2+(Ct/2)^2+dCp^2)), validated structurally (PQ roundtrip
 < 1e-6, neutral axis exactly Ct=Cp=0; float32 matches float64 to 4
 decimals). Sampled on the HDR-VDP 12-frame grid so per-frame values pair
 with Q_JOD; wired into `metrics.py` for the chroma-relevant arms
-(`DEITP_CFGS`). First number: whale10 anchor CRF22 mean dE 3.24 / p95 7.97.
-Backfill queued behind the XPSNR pass; the first full chroma-arm read
-(does the VVC chroma ramp actually reduce colour error per bit?) is the
-natural next measurement.
+(`DEITP_CFGS`). Backfill complete same day: 96 keys.
+
+### The first colour read (`rate_matched_2026-08-11.txt`): the chroma tools
+### finally have a metric that can see them
+
+Anchor absolute levels for scale: sol10 mean ΔE-ITP 7.1→12.7 across
+CRF 22→34, whale10 3.2→5.3 (>1 ΔE everywhere, i.e. visibly imperfect colour
+at every operating point — colour error is a real quantity on this corpus).
+At equal bitrate (dDEITP sign-flipped: positive = less colour error per bit):
+
+- **`--hdr10-opt` genuinely buys colour quality: +0.5…+1.6 ΔE on sol10,
+  +0.3…+0.9 on whale10** — a 7–20% relative colour-error reduction at equal
+  bitrate, growing toward low rates. This is the first metric on which its
+  chroma trade shows a real benefit rather than just a wPSNR-Cb number; the
+  price remains 0.25–1.9 dB of luma (wPSNR and XPSNR agree on that side).
+- **prodstack/prodmap keep a smaller free version: +0.08…+0.54 ΔE**
+  (~2–10% relative), on top of being luma-neutral — consistently positive on
+  both clips except one extrapolated row at the range edge (prodmap whale10
+  CRF34, −0.006). prodmap's colour gain is slightly smaller than prodstack's
+  on sol10 (e.g. +0.080 vs +0.138 at CRF22) — exactly the Cb-for-luma trade
+  the 2026-08-08 sweep chose, now visible in colour units.
+- Why this matters beyond bookkeeping: the 2026-08-08 decomposition showed
+  Q_JOD only sees chroma through NCL luminance leakage (~+0.02 JOD, far
+  below noticeability). ΔE-ITP has chromatic channels, and it says the
+  chroma-QP allocation is doing real, quantifiable perceptual work. The
+  open question it sharpens: where is the luma/colour Pareto knee — is
+  hdr10opt's deep offset buying its 1.6 ΔE at a fair luma price? The
+  cqpmap depth series (10/05/025) is already measured and is the right
+  data to answer that with; a depth-vs-ΔE curve is a natural next read.
