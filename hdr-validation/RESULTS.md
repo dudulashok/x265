@@ -1261,3 +1261,48 @@ At equal bitrate (dDEITP sign-flipped: positive = less colour error per bit):
   hdr10opt's deep offset buying its 1.6 ΔE at a fair luma price? The
   cqpmap depth series (10/05/025) is already measured and is the right
   data to answer that with; a depth-vs-ΔE curve is a natural next read.
+
+## Session conclusion: baseline vs --hdr10-opt vs prodmap, all metrics
+
+The bottom line across every metric now in the harness, read at equal
+bitrate (the decision view) with BD-rate as backup: **prodmap >= baseline >
+hdr10opt on luma; hdr10opt > prodmap > baseline on colour; prodmap is the
+only configuration that improves anything without paying for it
+elsewhere.**
+
+| Quality axis (at equal bitrate) | hdr10opt vs baseline | prodmap vs baseline |
+|---|---|---|
+| Luma (wPSNR-Y)                  | loses 0.25-1.7 dB    | neutral (+-0.06 dB), BD -0.35/-0.58% |
+| Luma (XPSNR-Y, perceptual)      | loses 0.2-1.9 dB     | neutral (+-0.1 dB) |
+| Chroma (wPSNR-Cb/Cr)            | +1.3..+3.5 dB        | +0.04..+0.98 dB |
+| Colour error (DeltaE-ITP)       | 7-20% less (+0.3..+1.6 dE) | 2-10% less, free (+0.08..+0.54 dE) |
+| Perceptual (HDR-VDP-3 Q_JOD)    | not significant      | not significant |
+
+1. **prodmap vs baseline: a strict, free improvement.** The only
+   configuration luma-positive per bit on BOTH clips (wPSNR-Y BD-rate
+   -0.35% sol10 / -0.58% whale10, PSNR-Y also better), keeping a real
+   chroma gain (whale10 -17/-22% chroma BD) and a measurable free
+   colour-error reduction on DeltaE-ITP. HDR-VDP-3 confirms it costs
+   nothing perceptually. No axis on which the baseline beats it — hence
+   the cli.rst recommendation.
+2. **hdr10opt vs baseline: a trade, not an improvement — and expensive.**
+   At fixed CRF it looks better only because it spends up to 82% more
+   bits (sol10). Rate-normalised it sacrifices real luma (up to -1.9 dB
+   at equal bitrate; +33%/+38% luma BD on sol10) to buy chroma. The one
+   point in its favour added 2026-08-11: DeltaE-ITP shows its deep
+   offsets purchase genuine colour fidelity (7-20% less colour error),
+   not just a wPSNR-Cb number. But the price is visible on every luma
+   metric, including the perceptual XPSNR.
+3. **hdr10opt vs prodmap: prodmap dominates every luminance column of
+   both clips**; hdr10opt wins only on raw colour-error depth because its
+   offsets are much deeper. A use case valuing colour above all should
+   not reach for hdr10opt but for a deeper `--hdr-chroma-qp-map` — same
+   trade curve, better exchange rate.
+4. **The honest perceptual caveat, unchanged from 2026-08-07:** all three
+   configs sit within ~0.02-0.05 JOD of each other at equal bitrate, two
+   orders of magnitude below the 1-JOD noticeability unit — on HDR-VDP-3
+   they are effectively the same picture. prodmap wins because it is
+   *free*, not because a viewer would spot it. The next session's Pareto
+   read on the cqpmap depth series (0.25/0.5/1.0, already encoded and
+   dE-measured) will say whether spending some of that freedom on deeper
+   colour offsets is worth it in dE terms.
