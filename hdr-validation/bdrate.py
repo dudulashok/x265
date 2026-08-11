@@ -42,7 +42,8 @@ rows = []
 for clip, cfgs in CFGS.items():
     for cfg in cfgs:
         row = {"clip": clip, "config": cfg}
-        for field in ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr", "vdp_jod"]:
+        for field in ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr",
+                      "xpsnr_y", "xpsnr_cb", "xpsnr_cr", "vdp_jod"]:
             try:
                 ra, qa = series(clip, "anchor", field)
                 rt, qt = series(clip, cfg, field)

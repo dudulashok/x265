@@ -78,14 +78,17 @@ print("  ! = the config's bitrate falls outside the anchor's measured range, "
       "so the anchor value is EXTRAPOLATED -- treat as indicative only.\n")
 
 hdr = (f"{'clip':<9}{'config':<11}{'CRF':>4}{'kbps':>9}"
-       f"{'dwPSNR-Y':>10}{'dwP-Cb':>9}{'dwP-Cr':>9}{'dQ_JOD':>9}{'sem':>7}{'p':>9}  sig")
+       f"{'dwPSNR-Y':>10}{'dwP-Cb':>9}{'dwP-Cr':>9}"
+       f"{'dXP-Y':>9}{'dXP-Cb':>9}{'dXP-Cr':>9}{'dQ_JOD':>9}{'sem':>7}{'p':>9}  sig")
 print(hdr)
 print("-" * (len(hdr) + 4))
 
 for clip in ["sol10", "whale10"]:
     la = np.log([res[f"{clip}_anchor_crf{c}"]["kbps"] for c in CRFS])
+    FIELDS = ("wpsnr_y", "wpsnr_cb", "wpsnr_cr", "xpsnr_y", "xpsnr_cb", "xpsnr_cr")
     wa = {f: [res[f"{clip}_anchor_crf{c}"][f] for c in CRFS]
-          for f in ("wpsnr_y", "wpsnr_cb", "wpsnr_cr")}
+          for f in FIELDS
+          if all(f in res[f"{clip}_anchor_crf{c}"] for c in CRFS)}
     frames = sorted(acc[f"{clip}_anchor_crf{CRFS[0]}"])
     for cfg in CFGS:
         for crf in CRFS:
@@ -93,14 +96,19 @@ for clip in ["sol10", "whale10"]:
             if kt not in res or "wpsnr_y" not in res[kt]:
                 continue
             lr = math.log(res[kt]["kbps"])
-            dw = {}
-            for f in ("wpsnr_y", "wpsnr_cb", "wpsnr_cr"):
-                av, ex1 = interp_at(la, wa[f], lr)
-                dw[f] = res[kt][f] - av
+            dw, ex1 = {}, False
+            for f in FIELDS:
+                if f in wa and f in res[kt]:
+                    av, ex = interp_at(la, wa[f], lr)
+                    dw[f] = res[kt][f] - av
+                    ex1 = ex1 or ex
+
+            def col(f, wd=9):
+                return f"{dw[f]:>+{wd}.4f}" if f in dw else f"{'-':>{wd}}"
 
             line = (f"{clip:<9}{cfg:<11}{crf:>4}{res[kt]['kbps']:>9.1f}"
-                    f"{dw['wpsnr_y']:>+10.4f}{dw['wpsnr_cb']:>+9.4f}"
-                    f"{dw['wpsnr_cr']:>+9.4f}")
+                    f"{col('wpsnr_y', 10)}{col('wpsnr_cb')}{col('wpsnr_cr')}"
+                    f"{col('xpsnr_y')}{col('xpsnr_cb')}{col('xpsnr_cr')}")
             if acc.get(kt):
                 d = []
                 for i in frames:

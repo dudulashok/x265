@@ -142,6 +142,20 @@ python bootstrap_jod_bd.py   # bootstrap CI for the Q_JOD BD-rate
   `w = 2^(dQP/3)`, `dQP(Y) = clip3(-3, 6, 0.015*Y - 7.5)` on original
   10-bit luma; same-denominator wMSE as VTM's implementation. Chroma
   planes use the 2x2-averaged co-located luma weight.
+- **XPSNR** (`xpsnr.py`) — Helmrich & Bosse's perceptually weighted PSNR
+  with spatio-temporal activity masking, computed by ffmpeg's `xpsnr`
+  filter (present in the local gyan 8.1 build; no new binaries). The
+  metric VVenC's QPA optimises — the P0 yardstick for perceptual tools
+  that wPSNR penalises by construction. The pooled per-sequence value is
+  parsed from the filter summary (it is derived from summed weighted
+  SSDs, not a mean of per-frame dB). **Trap fixed 2026-08-11:** ffmpeg 8
+  negotiates color range/space across filter graphs, so a VUI-tagged HDR
+  decode against an untagged raw reference silently gets a YUV matrix
+  conversion inserted (~7 dB Y / ~11 dB Cr of pure conversion error);
+  `xpsnr.py` force-tags both branches with `setparams` and was verified
+  byte-exact against a numpy ground truth. Any future two-input ffmpeg
+  metric must do the same (`cambi.py` is immune — same stream on both
+  inputs).
 - **HDR-VDP-3** (v3.0.7, `run_hdrvdp.m`, GNU Octave) — `quality` task,
   reporting mean Q_JOD over 4 evenly spaced frames per encode. Frames are
   converted to linear BT.2020 RGB in absolute cd/m² via the PQ EOTF
@@ -182,7 +196,7 @@ views looked contradictory:
 ```sh
 # 1. extract segments (see README paths) next to these scripts, then:
 bash run_encodes.sh          # 24 encodes, resumable
-python metrics.py            # wPSNR + HDR-VDP-3 (Octave), resumable -> results.json
+python metrics.py            # wPSNR + XPSNR + HDR-VDP-3 (Octave), resumable -> results.json
 python bdrate.py             # BD-rate tables from results.json
 ```
 

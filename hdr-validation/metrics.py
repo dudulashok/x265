@@ -1,9 +1,12 @@
 """Orchestrate metric computation over the CRF sweep and emit results.json.
 
 - wPSNR/PSNR: wpsnr.py per encode (sequential; ffmpeg-decode bound)
+- XPSNR: xpsnr.py per encode (ffmpeg xpsnr filter; perceptual P0 metric)
 - HDR-VDP-3: prep 4 frames per encode, then Octave evals, 4 in parallel
 - Bitrate from bitstream size (frames/fps known per clip)
 Resumable: skips work whose outputs already exist in results.json.
+save() merges into the on-disk file rather than overwriting it, so a
+concurrent merge_vdp.py (or a second metrics pass) is not clobbered.
 """
 import os, sys, json, glob, subprocess
 from concurrent.futures import ThreadPoolExecutor
@@ -49,7 +52,11 @@ def encode_done(key):
         return False
 
 def save():
-    json.dump(results, open("results.json", "w"), indent=1)
+    cur = json.load(open("results.json")) if os.path.exists("results.json") else {}
+    for k, v in results.items():
+        cur.setdefault(k, {}).update(v)
+    json.dump(cur, open("results.json.tmp", "w"), indent=1)
+    os.replace("results.json.tmp", "results.json")
 
 # ---- wPSNR ----
 for clip, meta in CLIPS.items():
@@ -66,6 +73,19 @@ for clip, meta in CLIPS.items():
                     [sys.executable, "wpsnr.py", f"{clip}.yuv", hevc, str(W), str(H)])
                 ent.update(json.loads(out))
                 print(key, "wPSNR-Y %.4f" % ent["wpsnr_y"])
+                save()
+
+# ---- XPSNR (perceptually weighted; see xpsnr.py for the setparams trap) ----
+from xpsnr import xpsnr as xpsnr_one
+for clip, meta in CLIPS.items():
+    for cfg in meta["configs"]:
+        for crf in CRFS:
+            key = f"{clip}_{cfg}_crf{crf}"
+            if key in results and os.path.exists(f"{key}.hevc") \
+                    and encode_done(key) and "xpsnr_y" not in results[key]:
+                results[key].update(
+                    xpsnr_one(f"{clip}.yuv", f"{key}.hevc", W, H, meta["fps"]))
+                print(key, "XPSNR-Y %.4f" % results[key]["xpsnr_y"])
                 save()
 
 # ---- CAMBI (banding; no-reference, decode only) ----
@@ -89,7 +109,7 @@ for clip, meta in CLIPS.items():
                 save()
 
 if os.environ.get("WPSNR_ONLY"):
-    print("METRICS_DONE (wpsnr+cambi only; run vdp_evals.sh + merge_vdp.py for HDR-VDP-3)")
+    print("METRICS_DONE (wpsnr+xpsnr+cambi only; run vdp_evals.sh + merge_vdp.py for HDR-VDP-3)")
     sys.exit(0)
 
 # ---- HDR-VDP-3 prep ----
