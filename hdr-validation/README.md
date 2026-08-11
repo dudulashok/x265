@@ -162,6 +162,15 @@ python bootstrap_jod_bd.py   # bootstrap CI for the Q_JOD BD-rate
   (`prep_frames.py`), center-cropped to 1920x1080 (identically for
   reference and test) to keep CPU runtime tractable; 62 pixels/degree
   (BT.2100 recommended 1.6-picture-heights UHD viewing distance).
+- **DeltaE-ITP** (`deitp.py`) — ITU-R BT.2124 colour difference in ICtCp,
+  the colour-aware companion (chroma decisions were previously judged only
+  through luminance proxies — the 2026-08-08 decomposition showed chroma
+  effects reach Q_JOD via NCL leakage). Lower = better; ~1 ΔE at the
+  noticeability threshold. Sampled on the same 12-frame grid as HDR-VDP-3
+  so per-frame values pair with Q_JOD (`deitp_frames` in results.json);
+  computed for the chroma-relevant arms only (`DEITP_CFGS` in metrics.py).
+  Chroma upsampling is nearest replication, identical on both sides — do
+  not compare absolute values against HDRTools without checking that.
 - **CAMBI** (`cambi.py`) — Netflix's banding detector, computed by libvmaf
   through ffmpeg's `libvmaf` filter (default options, on the 10-bit decode;
   no-reference). 0 = no banding, ≳5 = clearly visible, scale tops at 24.

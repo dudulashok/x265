@@ -108,6 +108,32 @@ for clip, meta in CLIPS.items():
                       (results[key]["cambi_mean"], results[key]["cambi_p95"]))
                 save()
 
+# ---- DeltaE-ITP (BT.2124; sampled on the HDR-VDP frame grid) ----
+# Chroma-relevant arms only: a 4K frame costs ~1 s in numpy so the full
+# sweep is not tractable, and the luma-only arms are what wPSNR/XPSNR
+# already judge. Per-frame values land in results[key]["deitp_frames"]
+# keyed by frame index, pairable with the Q_JOD grid.
+DEITP_CFGS = {"anchor", "hdr10opt", "hdrpq", "chromaadapt", "chromaadapt05",
+              "chromaadapt15", "prodstack", "prodmap",
+              "cqpmap10", "cqpmap10ca", "cqpmap05", "cqpmap025", "fixed12"}
+for clip, meta in CLIPS.items():
+    if not meta["vdp_frames"]:
+        continue
+    idxs = ",".join(str(i) for i in meta["vdp_frames"])
+    for cfg in meta["configs"]:
+        if cfg not in DEITP_CFGS:
+            continue
+        for crf in CRFS:
+            key = f"{clip}_{cfg}_crf{crf}"
+            if key in results and os.path.exists(f"{key}.hevc") \
+                    and encode_done(key) and "deitp_mean" not in results[key]:
+                out = subprocess.check_output(
+                    [sys.executable, "deitp.py", f"{clip}.yuv", f"{key}.hevc",
+                     str(W), str(H), idxs])
+                results[key].update(json.loads(out))
+                print(key, "dE-ITP %.4f" % results[key]["deitp_mean"])
+                save()
+
 if os.environ.get("WPSNR_ONLY"):
     print("METRICS_DONE (wpsnr+xpsnr+cambi only; run vdp_evals.sh + merge_vdp.py for HDR-VDP-3)")
     sys.exit(0)

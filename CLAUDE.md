@@ -584,10 +584,10 @@ whichever arm wins, per the 2026-08-07 methodology rule.
    --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0` gives wPSNR-Y
    **−0.35% (sol10) / −0.58% (whale10)** against prodstack's −0.16%/−0.26%, PSNR-Y
    better on both, for 2.9 points of whale10 Cb (partly returned as Cr). First
-   improvement to the recommended configuration since 2026-08-05. **Not yet
-   measured: Q_JOD on `prodmap`** — that is the natural next measurement, read at
-   equal bitrate per the 2026-08-07 rule, and cli.rst still recommends the old
-   prodstack until it lands.
+   improvement to the recommended configuration since 2026-08-05. **RESOLVED
+   2026-08-11: Q_JOD on `prodmap` measured — neutral at equal bitrate, same
+   shape as prodstack; cli.rst now recommends prodmap** (see the 2026-08-11
+   session log).
 2. **LARGELY ANSWERED 2026-08-08 by `--hdr-vtm-lambda` (see item 1), and VTM
    shows the fix.** The global-lambda arm is neutral while the per-CTU arm cost
    +1.5…+12.1%, so the mechanism is per-block *inconsistency*, not
@@ -640,6 +640,29 @@ All of it sits at +0.015…+0.02 JOD, ~2 orders of magnitude below the 1-JOD
 noticeability unit — so HDR-VDP-3's only measurable response to this tool set is a
 chroma side-effect, not the luma work the tools were built to do. Further argument
 for moving to coding-efficiency levers rather than allocation tuning.
+
+### 2026-08-11 session log — prodmap Q_JOD gate passed (recommendation flipped),
+### XPSNR + DeltaE-ITP in the harness (both P0 metric items)
+
+1. **prodmap is the recommended stack, now with the Q_JOD gate passed.** The
+   96-eval HDR-VDP-3 pass on the existing prodmap encodes (0 failures, 12/12
+   frames per key) read at equal bitrate per the 2026-08-07 rule: sol10
+   consistently positive-but-ns (+0.008…+0.019 JOD, prodstack band), whale10
+   noise around zero with the same CRF-30 dip prodstack has. The paired
+   fixed-CRF whale10 negatives (−0.098** at CRF30) coincide with 13–16%
+   bitrate savings — the rate confound, same as prodstack. cli.rst flipped to
+   recommend `--hdr-pq --hdr-chroma-qp-map 0.25 --hdr-chroma-adapt 1.0
+   --hdr-luma-qp 0.5 --hdr-scene-qp 1.0`. Full table in RESULTS.md 2026-08-11.
+2. **XPSNR in the harness** (P0 item 1) and it *agrees* with wPSNR on every
+   standing verdict — see the [x] TODO entry; the load-bearing find is the
+   ffmpeg-8 filter-graph colorspace-negotiation trap (setparams both branches,
+   documented in xpsnr.py/README/RESULTS.md).
+3. **DeltaE-ITP in the harness** (P0 item 2, `deitp.py`) — validated, wired
+   into metrics.py for chroma-relevant arms on the Q_JOD-pairable 12-frame
+   grid; backfill and the first chroma read are the open half.
+4. Methodology note for whoever reads reports next: `rate_matched.py` now has
+   dXP-Y/Cb/Cr columns; `bdrate.py` fits XPSNR BD-rates; metrics.py save() is
+   merge-on-write so concurrent metric passes don't clobber results.json.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -843,7 +866,16 @@ magnitude under the noticeability unit. Perceptually-motivated tools (QPA,
 variance boost, per-pixel wSSE, grain) therefore cannot be *judged* on the current
 harness, only penalised by it. Fix the metrics first.
 
-- [ ] **XPSNR in the harness (Helmrich & Bosse).** The perceptually weighted PSNR
+- [x] **XPSNR in the harness** — done 2026-08-11 (`xpsnr.py` via the local
+      ffmpeg 8.1 filter, columns in results.json/bdrate.py/rate_matched.py,
+      backfilled across the sweep). First read agrees with wPSNR on every
+      standing verdict (hdr10opt trades 0.8–1.9 dB XPSNR-Y for chroma;
+      prodstack/prodmap XPSNR-neutral at equal rate). **Trap for any future
+      two-input ffmpeg metric: ffmpeg 8 negotiates color range/space across
+      filter graphs — force-tag BOTH branches with setparams or a silent YUV
+      matrix conversion (~7 dB Y error) lands on one branch. Verified
+      byte-exact against numpy after the fix.** Original rationale kept:
+      The perceptually weighted PSNR
       variant designed exactly for this gap — spatio-temporal activity weighting,
       much better subjective correlation than PSNR, and the metric VVenC's QPA
       optimises, so it is the natural yardstick for the QPA item below. **Cheap:
@@ -852,7 +884,12 @@ harness, only penalised by it. Fix the metrics first.
       took via libvmaf — add an `xpsnr.py` alongside `wpsnr.py`/`cambi.py` and a
       column in `results.json`. Do this first; it is hours, not days, and it
       changes what every later item is allowed to conclude.
-- [ ] **DeltaE-ITP (BT.2124)** — the colour-aware companion, already listed in the
+- [x] **DeltaE-ITP (BT.2124)** — done 2026-08-11 (`deitp.py`: PQ→LMS→ICtCp per
+      BT.2100-2/BT.2124, validated structurally, float32; sampled on the
+      HDR-VDP 12-frame grid so per-frame values pair with Q_JOD; in metrics.py
+      for the chroma-relevant arms, `DEITP_CFGS`). Backfill + the first
+      chroma-arm read (does the VVC ramp cut colour error per bit?) still
+      pending. Original rationale: the colour-aware companion, already listed in the
       HDR TODO above under the wPSNR cross-check item. Promoted here because the
       2026-08-08 decomposition showed the chroma tools' only measurable effect
       reaches Q_JOD through NCL luminance leakage: without a colour metric, every

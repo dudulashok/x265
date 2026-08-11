@@ -1152,3 +1152,75 @@ sol10 chroma columns are small enough (−2.09 / −2.89) that the chroma-adapt
 moderation is doing most of the work there rather than the ramp. A Q_JOD pass on
 `prodmap` plus the rate-matched view is the natural next measurement, and by the
 2026-08-07 rule it must be read at equal bitrate, not at fixed CRF.
+
+---
+
+# 2026-08-11: prodmap Q_JOD lands — the recommendation flips; XPSNR and
+# DeltaE-ITP join the harness
+
+## prodmap is HDR-VDP-3-neutral at equal bitrate: the last gate is passed
+
+96 evals (2 clips x 4 CRFs x 12 frames, 0 failures) on the existing
+2026-08-08 prodmap encodes. Read per the 2026-08-07 rule — equal bitrate
+(`rate_matched.py`), not fixed CRF:
+
+| clip | CRF | dwPSNR-Y | dQ_JOD | sem | sig |
+|---|---|---|---|---|---|
+| sol10 | 22 | +0.0445 | +0.0101 | 0.0105 | ns (!) |
+| sol10 | 26 | +0.0343 | +0.0130 | 0.0159 | ns |
+| sol10 | 30 | −0.0145 | +0.0079 | 0.0218 | ns |
+| sol10 | 34 | −0.0116 | +0.0186 | 0.0207 | ns |
+| whale10 | 22 | +0.0428 | −0.0019 | 0.0210 | ns |
+| whale10 | 26 | +0.0287 | +0.0062 | 0.0200 | ns |
+| whale10 | 30 | +0.0574 | −0.0371 | 0.0264 | ns |
+| whale10 | 34 | +0.1582 | +0.0039 | 0.0148 | ns (!) |
+
+Same shape as prodstack in the 2026-08-07 report: sol10 consistently
+positive-but-ns (+0.008…+0.019 vs prodstack's +0.015…+0.021), whale10 noise
+around zero including the same CRF-30 dip (prodmap −0.037, prodstack −0.049).
+The paired fixed-CRF view shows the same significant whale10 negatives at
+CRF 30/34 that prodstack shows (−0.098**, −0.069*) — and the same 13–16%
+bitrate saving at those points, which is exactly the rate confound the
+equal-bitrate rule exists to remove. All deltas remain ~2 orders of
+magnitude below the 1-JOD noticeability unit.
+
+**Verdict: prodmap passes the same test prodstack passed — it costs nothing
+perceptually — while being the better wPSNR stack (−0.35/−0.58% vs
+−0.16/−0.26% wPSNR-Y BD-rate). It is now the recommended configuration;
+cli.rst updated.** Same honest reading as 2026-08-07: this is not a
+measurable perceptual win, it is a free luma-efficiency improvement.
+
+## XPSNR is in the harness (P0 item 1) — and it agrees with wPSNR
+
+`xpsnr.py` via the local ffmpeg 8.1's `xpsnr` filter (zero new binaries, the
+CAMBI route); backfill across all encodes on disk into `results.json`
+(`xpsnr_y/cb/cr`); BD-fit columns in `bdrate.py`; dXP-Y/Cb/Cr columns in
+`rate_matched.py`. First read on sol10 at equal bitrate: hdr10opt loses
+0.83–1.93 dB XPSNR-Y to buy +1.3…+2.6 dB chroma (the same story as wPSNR),
+and prodstack is XPSNR-neutral (−0.11…−0.006 dB). The perceptual yardstick
+does not overturn any standing verdict — but from here on, perceptual tools
+(QPA, variance boost, per-pixel wSSE) can actually be *judged* rather than
+penalised by construction.
+
+**Harness trap found and fixed (cost a debugging hour, worth recording):
+ffmpeg 8 negotiates color range/colorspace across filter graphs.** A
+VUI-tagged HDR decode (tv/bt2020nc/smpte2084) fed into a two-input metric
+filter against an untagged raw reference gets a silent YUV matrix conversion
+auto-inserted on one branch — ~7 dB Y / ~11 dB Cr of pure conversion error
+with frame pairing fully correct (verified against a numpy ground truth;
+plain `psnr` filter reproduced `wpsnr.py`'s numbers byte-exact once both
+branches were force-tagged with `setparams`). Every future two-input ffmpeg
+metric must apply the same guard; `cambi.py` is immune (same stream both
+inputs).
+
+## DeltaE-ITP is in the harness (P0 item 2)
+
+`deitp.py`: BT.2124 colour difference in ICtCp (PQ EOTF -> BT.2100 LMS ->
+ICtCp, 720*sqrt(dI^2+(Ct/2)^2+dCp^2)), validated structurally (PQ roundtrip
+< 1e-6, neutral axis exactly Ct=Cp=0; float32 matches float64 to 4
+decimals). Sampled on the HDR-VDP 12-frame grid so per-frame values pair
+with Q_JOD; wired into `metrics.py` for the chroma-relevant arms
+(`DEITP_CFGS`). First number: whale10 anchor CRF22 mean dE 3.24 / p95 7.97.
+Backfill queued behind the XPSNR pass; the first full chroma-arm read
+(does the VVC chroma ramp actually reduce colour error per bit?) is the
+natural next measurement.

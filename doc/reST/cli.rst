@@ -2506,10 +2506,12 @@ VUI fields must be manually specified.
 	complete HDR10 stream additionally requires :option:`--master-display`
 	and :option:`--max-cll`. For coding-efficiency HDR tuning the measured
 	recommendation is to combine it with the adaptive tools:
-	``--hdr-pq --hdr-chroma-adapt 1.0 --hdr-luma-qp 0.5 --hdr-scene-qp 1.0``
-	(wPSNR-Y-neutral vs a plain VUI anchor on both natural and animated 4K
-	PQ test content while retaining the chroma gains of the -2/-2 offsets
-	where they are cheap). Default disabled.
+	``--hdr-pq --hdr-chroma-qp-map 0.25 --hdr-chroma-adapt 1.0
+	--hdr-luma-qp 0.5 --hdr-scene-qp 1.0``
+	(wPSNR-Y-positive vs a plain VUI anchor on both natural and animated 4K
+	PQ test content while retaining the chroma gains of the offsets where
+	they are cheap, and HDR-VDP-3-neutral at equal bitrate). Default
+	disabled.
 
 .. option:: --hdr-luma-qp <float>
 
