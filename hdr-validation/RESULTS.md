@@ -1478,3 +1478,42 @@ buffer), 4 rate points per clip matched to the anchor CRF bitrates.
    suspect is the luma-QP tools' interaction with ABR's complexity
    feedback (cplxr), testable with hdrpq-only and lumaq-only ABR arms
    (8 encodes) before any tuning is attempted.
+
+## ABR luma-cost decomposition (2026-08-13): it is `--hdr-luma-qp` that
+## loses its gain under ABR; scene-qp is exonerated; chroma costs unchanged
+
+Three single-component arms under plain ABR, same 4 rate points
+(`run_abr_decomp.sh`, 24 encodes; BD table in `abr_report_2026-08-12.txt`):
+
+| arm | sol10 wPSNR-Y (CRF ref) | whale10 wPSNR-Y (CRF ref) |
+|---|---|---|
+| hdrpq (chroma offsets) | +7.71 (+7.14) | +1.42 (+1.37) |
+| lumaq05 (luma model) | **+0.68 (−1.31)** | **+0.83 (−1.50)** |
+| sceneqp10 (RC bias) | +0.37 (—) | −0.12 (—) |
+| prodmap (full stack) | +1.86 (−0.35) | +1.47 (−0.58) |
+
+1. **The chroma offsets cost the SAME under ABR as under CRF** (+7.7 vs
+   +7.1 sol10, +1.4 vs +1.4 whale10) — no ABR-specific penalty. The
+   "fixed budget makes luma pay the chroma bill" hypothesis from the first
+   ABR read is wrong as an *extra* effect: the bill is the same in both
+   modes, BD-rate was already accounting for it.
+2. **`--hdr-luma-qp` is the component that flips**: from a −1.3…−1.5%
+   luma *gain* under CRF to a +0.7…+0.8% *cost* under ABR — a consistent
+   ~2.2% swing on BOTH clips, which fully explains prodmap's CRF→ABR
+   delta. On whale10 it also degrades chroma (+6.7/+8.1) where under CRF
+   it was chroma-neutral. Working hypothesis (untested): the per-QG
+   offsets are zero-mean by design, but ABR's complexity feedback (cplxr,
+   the lookahead cost plan through `invQscaleFactor`) re-plans against the
+   redistributed costs each frame, and the correction fights the
+   redistribution; CRF has no such feedback loop and lets the model land
+   where it aims.
+3. **`--hdr-scene-qp` is exonerated** (+0.4/−0.1, noise) — the direct
+   `rateEstimateQscale` interaction was the a-priori suspect and is clean.
+4. **Practical consequence — an ABR variant of the stack**: dropping
+   `--hdr-luma-qp` from prodmap under ABR (i.e. `--hdr-pq
+   --hdr-chroma-qp-map 0.25 --hdr-chroma-adapt 1.0 --hdr-scene-qp 1.0`)
+   should by this decomposition cost only ~+0.7…+1.2% luma for the full
+   chroma gains. Unverified as a unit — one 8-encode arm when wanted.
+   Fixing the luma model itself for ABR (making the redistribution
+   visible to the rate predictor) is a deeper change; measure the
+   simple variant first.

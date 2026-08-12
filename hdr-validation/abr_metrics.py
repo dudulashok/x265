@@ -76,21 +76,26 @@ print("none" if not bad else f"{bad} warnings")
 import numpy as np
 from bdrate import bd_rate
 
-print("\nBD-RATE prodmap vs anchor (negative = prodmap saves bits at equal quality)")
-print(f"{'clip':<9}{'mode':<5}" + "".join(f"{f:>10}" for f in
+print("\nBD-RATE vs anchor per mode (negative = config saves bits at equal quality)")
+print(f"{'clip':<9}{'mode':<5}{'config':<11}" + "".join(f"{f:>10}" for f in
       ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr", "xpsnr_y"]))
 for clip in ["sol10", "whale10"]:
     for mode in ["abr", "vbv"]:
         ks = sorted([k for (k, c, g, m, t) in keys if c == clip and m == mode and g == "anchor"])
-        kt = sorted([k for (k, c, g, m, t) in keys if c == clip and m == mode and g == "prodmap"])
-        if len(ks) < 4 or len(kt) < 4:
-            print(f"{clip:<9}{mode:<5} incomplete ({len(ks)}/{len(kt)} of 4)")
+        if len(ks) < 4:
             continue
-        row = f"{clip:<9}{mode:<5}"
-        for f in ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr", "xpsnr_y"]:
-            ra = np.array([results[k]["kbps"] for k in ks])
-            qa = np.array([results[k][f] for k in ks])
-            rt = np.array([results[k]["kbps"] for k in kt])
-            qt = np.array([results[k][f] for k in kt])
-            row += f"{bd_rate(ra, qa, rt, qt):>+10.2f}"
-        print(row)
+        cfgs = sorted(set(g for (k, c, g, m, t) in keys
+                          if c == clip and m == mode and g != "anchor"))
+        for cfg in cfgs:
+            kt = sorted([k for (k, c, g, m, t) in keys if c == clip and m == mode and g == cfg])
+            if len(kt) < 4:
+                print(f"{clip:<9}{mode:<5}{cfg:<11} incomplete ({len(kt)} of 4)")
+                continue
+            row = f"{clip:<9}{mode:<5}{cfg:<11}"
+            for f in ["psnr_y", "wpsnr_y", "wpsnr_cb", "wpsnr_cr", "xpsnr_y"]:
+                ra = np.array([results[k]["kbps"] for k in ks])
+                qa = np.array([results[k][f] for k in ks])
+                rt = np.array([results[k]["kbps"] for k in kt])
+                qt = np.array([results[k][f] for k in kt])
+                row += f"{bd_rate(ra, qa, rt, qt):>+10.2f}"
+            print(row)

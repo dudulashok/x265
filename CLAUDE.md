@@ -717,10 +717,18 @@ for moving to coding-efficiency levers rather than allocation tuning.
    VBV encodes (`--hdr-scene-qp`'s rateEstimateQscale path behaves — the
    DoVi VBV gate is passed) and prodmap HALVES sol10's single-pass ABR
    overshoot (+2.8..+6.2% vs anchor's +7.7..+12.0%). prodmap stays the CRF
-   recommendation; ABR/VBV users buy chroma at a small luma price. Open
-   follow-up (8 encodes): decompose which component carries the ABR luma
-   cost (suspect: luma-QP tools vs ABR's cplxr feedback) with hdrpq-only
-   and lumaq-only ABR arms.
+   recommendation; ABR/VBV users buy chroma at a small luma price.
+   **Decomposition DONE (2026-08-13, 24 encodes, RESULTS.md): the ABR luma
+   cost is carried by `--hdr-luma-qp`** — it flips from −1.3…−1.5% (CRF) to
+   +0.7…+0.8% (ABR) on both clips, a consistent ~2.2% swing; the chroma
+   offsets cost the SAME in both modes (no ABR-specific penalty) and
+   `--hdr-scene-qp` is exonerated (neutral, the a-priori suspect was
+   wrong). Hypothesis for the flip (untested): ABR's complexity feedback
+   re-plans against the AQ-redistributed lookahead costs and fights the
+   redistribution. Untested follow-ups: (a) the ABR stack variant —
+   prodmap WITHOUT `--hdr-luma-qp` (should be ~+0.7…+1.2% luma for full
+   chroma gains, 8 encodes); (b) making the dQP redistribution visible to
+   the rate predictor (deeper change, only if (a) motivates it).
 7. **HDR10+ / Dolby Vision compatibility assessed (user question), code
    verified at `6a9905161`:**
    - **HDR10+: no changes required.** `--dhdr10-info` SEI pass-through is

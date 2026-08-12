@@ -1,3 +1,51 @@
+sol10_hdrpq_abr11500 wPSNR-Y 37.7379
+sol10_hdrpq_abr11500 XPSNR-Y 35.9338
+sol10_hdrpq_abr20000 wPSNR-Y 39.9989
+sol10_hdrpq_abr20000 XPSNR-Y 38.1025
+sol10_hdrpq_abr33500 wPSNR-Y 42.3900
+sol10_hdrpq_abr33500 XPSNR-Y 40.2248
+sol10_hdrpq_abr6500 wPSNR-Y 35.8230
+sol10_hdrpq_abr6500 XPSNR-Y 33.7845
+sol10_lumaq05_abr11500 wPSNR-Y 37.8210
+sol10_lumaq05_abr11500 XPSNR-Y 35.9644
+sol10_lumaq05_abr20000 wPSNR-Y 40.0976
+sol10_lumaq05_abr20000 XPSNR-Y 38.1172
+sol10_lumaq05_abr33500 wPSNR-Y 42.5217
+sol10_lumaq05_abr33500 XPSNR-Y 40.2490
+sol10_lumaq05_abr6500 wPSNR-Y 35.8736
+sol10_lumaq05_abr6500 XPSNR-Y 33.8116
+sol10_sceneqp10_abr11500 wPSNR-Y 37.9631
+sol10_sceneqp10_abr11500 XPSNR-Y 36.1175
+sol10_sceneqp10_abr20000 wPSNR-Y 40.2251
+sol10_sceneqp10_abr20000 XPSNR-Y 38.2782
+sol10_sceneqp10_abr33500 wPSNR-Y 42.6387
+sol10_sceneqp10_abr33500 XPSNR-Y 40.4083
+sol10_sceneqp10_abr6500 wPSNR-Y 35.9858
+sol10_sceneqp10_abr6500 XPSNR-Y 33.9687
+whale10_hdrpq_abr1450 wPSNR-Y 43.8104
+whale10_hdrpq_abr1450 XPSNR-Y 36.4416
+whale10_hdrpq_abr2300 wPSNR-Y 46.1843
+whale10_hdrpq_abr2300 XPSNR-Y 38.6262
+whale10_hdrpq_abr3700 wPSNR-Y 48.6494
+whale10_hdrpq_abr3700 XPSNR-Y 40.6765
+whale10_hdrpq_abr6200 wPSNR-Y 50.9934
+whale10_hdrpq_abr6200 XPSNR-Y 42.4367
+whale10_lumaq05_abr1450 wPSNR-Y 44.0193
+whale10_lumaq05_abr1450 XPSNR-Y 36.5546
+whale10_lumaq05_abr2300 wPSNR-Y 46.2811
+whale10_lumaq05_abr2300 XPSNR-Y 38.6263
+whale10_lumaq05_abr3700 wPSNR-Y 48.7242
+whale10_lumaq05_abr3700 XPSNR-Y 40.6416
+whale10_lumaq05_abr6200 wPSNR-Y 50.9986
+whale10_lumaq05_abr6200 XPSNR-Y 42.3715
+whale10_sceneqp10_abr1450 wPSNR-Y 43.8558
+whale10_sceneqp10_abr1450 XPSNR-Y 36.4678
+whale10_sceneqp10_abr2300 wPSNR-Y 46.2586
+whale10_sceneqp10_abr2300 XPSNR-Y 38.6650
+whale10_sceneqp10_abr3700 wPSNR-Y 48.7406
+whale10_sceneqp10_abr3700 XPSNR-Y 40.7331
+whale10_sceneqp10_abr6200 wPSNR-Y 51.1020
+whale10_sceneqp10_abr6200 XPSNR-Y 42.5046
 
 RATE ACCURACY (deviation from target; sign = over/undershoot)
 key                               target    actual    dev%
@@ -5,18 +53,42 @@ sol10_anchor_abr11500              11500   12662.4  +10.11
 sol10_anchor_abr20000              20000   21769.3   +8.85
 sol10_anchor_abr33500              33500   36073.4   +7.68
 sol10_anchor_abr6500                6500    7281.7  +12.03
+sol10_hdrpq_abr11500               11500   12689.3  +10.34
+sol10_hdrpq_abr20000               20000   21894.5   +9.47
+sol10_hdrpq_abr33500               33500   36250.6   +8.21
+sol10_hdrpq_abr6500                 6500    7318.4  +12.59
+sol10_lumaq05_abr11500             11500   12147.3   +5.63
+sol10_lumaq05_abr20000             20000   20875.3   +4.38
+sol10_lumaq05_abr33500             33500   34772.4   +3.80
+sol10_lumaq05_abr6500               6500    6985.0   +7.46
 sol10_prodmap_abr11500             11500   12015.8   +4.49
 sol10_prodmap_abr20000             20000   20653.5   +3.27
 sol10_prodmap_abr33500             33500   34452.6   +2.84
 sol10_prodmap_abr6500               6500    6900.2   +6.16
+sol10_sceneqp10_abr11500           11500   12499.0   +8.69
+sol10_sceneqp10_abr20000           20000   21489.9   +7.45
+sol10_sceneqp10_abr33500           33500   35620.2   +6.33
+sol10_sceneqp10_abr6500             6500    7176.1  +10.40
 whale10_anchor_abr1450              1450    1287.5  -11.20
 whale10_anchor_abr2300              2300    2067.1  -10.13
 whale10_anchor_abr3700              3700    3428.0   -7.35
 whale10_anchor_abr6200              6200    5945.9   -4.10
+whale10_hdrpq_abr1450               1450    1280.8  -11.67
+whale10_hdrpq_abr2300               2300    2069.7  -10.01
+whale10_hdrpq_abr3700               3700    3427.1   -7.38
+whale10_hdrpq_abr6200               6200    5931.6   -4.33
+whale10_lumaq05_abr1450             1450    1307.9   -9.80
+whale10_lumaq05_abr2300             2300    2089.8   -9.14
+whale10_lumaq05_abr3700             3700    3472.3   -6.15
+whale10_lumaq05_abr6200             6200    6007.6   -3.10
 whale10_prodmap_abr1450             1450    1303.3  -10.12
 whale10_prodmap_abr2300             2300    2093.1   -9.00
 whale10_prodmap_abr3700             3700    3469.4   -6.23
 whale10_prodmap_abr6200             6200    6010.5   -3.06
+whale10_sceneqp10_abr1450           1450    1288.6  -11.13
+whale10_sceneqp10_abr2300           2300    2070.3   -9.99
+whale10_sceneqp10_abr3700           3700    3435.1   -7.16
+whale10_sceneqp10_abr6200           6200    5955.6   -3.94
 sol10_anchor_vbv11500              11500   11366.4   -1.16
 sol10_anchor_vbv20000              20000   19689.9   -1.55
 sol10_anchor_vbv33500              33500   33822.4   +0.96
@@ -37,9 +109,15 @@ whale10_prodmap_vbv6200             6200    6288.4   +1.43
 VBV HEALTH (warnings in encode logs)
 none
 
-BD-RATE prodmap vs anchor (negative = prodmap saves bits at equal quality)
-clip     mode     psnr_y   wpsnr_y  wpsnr_cb  wpsnr_cr   xpsnr_y
-sol10    abr       +4.55     +1.86     -1.04     -2.62     +3.69
-sol10    vbv       +2.58     -0.13     +0.43     -4.20     +1.05
-whale10  abr       +3.20     +1.47    -15.30    -23.70     +3.56
-whale10  vbv       +3.87     +2.00    -18.47    -19.53     +3.59
+BD-RATE vs anchor per mode (negative = config saves bits at equal quality)
+clip     mode config         psnr_y   wpsnr_y  wpsnr_cb  wpsnr_cr   xpsnr_y
+sol10    abr  hdrpq           +7.70     +7.71    -20.22    -19.11     +7.38
+sol10    abr  lumaq05         +2.98     +0.68     +1.74     +2.63     +2.04
+sol10    abr  prodmap         +4.55     +1.86     -1.04     -2.62     +3.69
+sol10    abr  sceneqp10       +0.61     +0.37     +0.14     +2.26     +0.91
+sol10    vbv  prodmap         +2.58     -0.13     +0.43     -4.20     +1.05
+whale10  abr  hdrpq           +1.38     +1.42    -18.11    -21.45     +1.30
+whale10  abr  lumaq05         +2.61     +0.83     +6.71     +8.09     +2.87
+whale10  abr  prodmap         +3.20     +1.47    -15.30    -23.70     +3.56
+whale10  abr  sceneqp10       -0.09     -0.12     -0.00     -0.04     +0.28
+whale10  vbv  prodmap         +3.87     +2.00    -18.47    -19.53     +3.59
