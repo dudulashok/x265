@@ -707,6 +707,40 @@ for moving to coding-efficiency levers rather than allocation tuning.
    binary. NOTE the luma-code-level `m_analyzeAll` CSV stats path is
    untouched and still underestimates saturated colors — only the new
    param uses the linear-light definition.
+5. **ARF (`pic_output_flag`) scoped, then deferred** (user directive): full
+   plan in `hdr-validation/ARF-SCOPING.md`; start there next time.
+6. **ABR / ABR+VBV validation sweep LAUNCHED (detached, `run_abr_sweep.sh`)**
+   — the first non-CRF measurement of the tools. anchor vs prodmap, ABR and
+   ABR+VBV (maxrate=bufsize=target, 1-second buffer), 4 rate points per clip
+   matched to the anchor CRF bitrates so BD-rates are comparable to the CRF
+   numbers (−0.35/−0.58 wPSNR-Y). 32 encodes, medium preset. When done, run
+   `python abr_metrics.py` — it computes wPSNR+XPSNR into results.json and
+   prints the three deciding views: rate accuracy (zero-mean rule predicts
+   no degradation), VBV-health warnings from the logs (the `--hdr-scene-qp`
+   VBV interaction is THE untested path — its bias applies inside
+   `rateEstimateQscale` before the VBV clip by design), and per-mode
+   BD-rates. Progress: `tail hdr-validation/abr_sweep_progress.out`; done
+   marker `abr_sweep_done.marker`.
+7. **HDR10+ / Dolby Vision compatibility assessed (user question), code
+   verified at `6a9905161`:**
+   - **HDR10+: no changes required.** `--dhdr10-info` SEI pass-through is
+     orthogonal to all our tools (QP allocation + static SEI only). The
+     opportunity item remains `--dhdr10-auto` (already on the TODO), and the
+     measured-CLL work just built its foundation — the linear-light
+     max(R,G,B) scan in `PicYuv::copyFromPicture` is exactly the stats pass
+     maxSCL/percentile computation needs.
+   - **Dolby Vision 8.1 (HDR10 base layer): works as-is**, pending the
+     ABR/VBV sweep since DoVi *mandates* VBV (`param.cpp:2003`). Genuine
+     synergy found: profile 8.1 force-enables `bEmitHDR10SEI/bEmitCLL`
+     (`encoder.cpp:4059`), so without user `--max-cll` it emits CLL **0,0**
+     today — `--hdr-measured-cll` in 2-pass fills it with real values.
+   - **Dolby Vision 5 (IPTPQc2) and 8.4 (HLG): our colour assumptions do
+     not hold.** Profile 5 is not BT.2020 YCbCr — the chroma tools' stats
+     and the VVC chroma-QP table were derived for YCbCr, measured-CLL's
+     BT.2020 NCL matrix is simply wrong there, and profile 5 sets its own
+     `crQpOffset=3` (`encoder.cpp:4063`) which `--hdr-chroma-qp-map` would
+     overwrite (it assigns the total offset). 8.4 is HLG, not PQ. → new
+     TODO: a configure()-time guard.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -732,7 +766,17 @@ for moving to coding-efficiency levers rather than allocation tuning.
       QP-domain banding mode first.
 - [ ] **Exercise `--hdr-scene-qp`**: acquire or synthesize a transient-rich HDR segment
       (fireworks, flash cuts); verify the bias interacts sanely with VBV and ABR, and add
-      a `rate-control-tests.txt` descriptor.
+      a `rate-control-tests.txt` descriptor. (The ABR/VBV half is covered by the
+      2026-08-12 sweep — the transient-rich segment remains.)
+- [ ] **Dolby Vision guard for the HDR tools** (found 2026-08-12): with
+      `--dolby-vision-profile 5` (IPTPQc2) or `8.4` (HLG), warn-and-disable the
+      chroma tools (`--hdr-pq` offsets, `--hdr-chroma-qp-map`, `--hdr-chroma-adapt`,
+      `--hdr-chroma-qp`), `--hdr-measured-cll` (BT.2020 NCL matrix invalid) and the
+      PQ-model tools; profile 5 additionally sets its own `crQpOffset=3` that
+      `--hdr-chroma-qp-map` would silently overwrite. Profile 8.1 needs no guard
+      (HDR10 base layer) — and pairs well with `--hdr-measured-cll`, since 8.1
+      force-enables the CLL SEI which is emitted as 0,0 when the user gives no
+      `--max-cll`. Small configure()-time change next to the existing DoVi checks.
 - [ ] **Derive `--hdr-scaling-list` from the PQ CSF** instead of the current arbitrary
       convex ramp; compare against HM's default intra lists as a baseline.
 - [ ] **Cross-check wPSNR** against HDRTools/VTM's implementation (VTM checkout exists at
@@ -953,7 +997,9 @@ harness, only penalised by it. Fix the metrics first.
       the slice header, RPS, DPB marking and every `cudata.cpp` MV-scaling POC
       read — miss one and quality silently degrades. Stage 0 (enable the flag
       + drop one frame, prove ffmpeg honours it) costs half a session and
-      de-risks the rest. The slice header carries `pic_output_flag` (gated by the PPS
+      de-risks the rest. **Deferred to a coming session (user, 2026-08-12):
+      it is a general coding-efficiency tool, not HDR-specific — start here
+      when the HDR validation tail (ABR/VBV) is closed.** The slice header carries `pic_output_flag` (gated by the PPS
       `output_flag_present_flag`), so a frame can be coded, used as a reference, and
       **never displayed** — which is precisely AV1's alt-ref/hidden-frame
       mechanism, one of its largest structural advantages. `grep -rn pic_output_flag
