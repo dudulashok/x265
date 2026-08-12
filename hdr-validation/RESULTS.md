@@ -1434,3 +1434,47 @@ tool**. Decision: both are kept as optional, off-by-default features (they
 remain subjective tools — `--hdr-scaling-list` lowers PSNR-family metrics
 by construction, `--hdr-deblock` is wPSNR-neutral). cli.rst notes updated.
 This closes the last open item on both tools.
+
+## ABR / ABR+VBV validation (2026-08-12 late): VBV-safe, rate-accurate,
+## but CRF's free luma lunch does not fully carry over
+
+First non-CRF measurement of the tools (every prior number was CRF).
+anchor vs prodmap, ABR and ABR+VBV (maxrate = bufsize = target, 1-second
+buffer), 4 rate points per clip matched to the anchor CRF bitrates.
+32 encodes, medium preset (`run_abr_sweep.sh`); metrics + report
+`abr_metrics.py`, saved output `abr_report_2026-08-12.txt`.
+
+1. **VBV health: clean.** Zero underflow/emergency warnings across all 16
+   VBV encodes; VBV rate tracking within ±1.8% (whale10) / ±3.6% (sol10)
+   for both arms. `--hdr-scene-qp`'s bias inside `rateEstimateQscale` — the
+   one untested RC path — behaves exactly as designed under the VBV clip.
+   This was the Dolby Vision gate (DoVi mandates VBV): **passed**.
+2. **Rate accuracy: not degraded — improved on sol10.** Single-pass ABR on
+   these short clips has the expected convergence error in BOTH arms
+   (anchor: +7.7..+12.0% overshoot sol10, −4.1..−11.2% undershoot whale10);
+   prodmap roughly HALVES the sol10 overshoot (+2.8..+6.2%) and is slightly
+   better on whale10. The zero-mean AQ-contribution rule holds under ABR.
+3. **Efficiency: under ABR the stack costs luma instead of gaining it.**
+   BD-rates prodmap vs anchor within each mode:
+
+   | clip | mode | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | XPSNR-Y |
+   |---|---|---|---|---|---|---|
+   | sol10 | ABR | +4.55 | +1.86 | −1.04 | −2.62 | +3.69 |
+   | sol10 | VBV | +2.58 | −0.13 | +0.43 | −4.20 | +1.05 |
+   | whale10 | ABR | +3.20 | +1.47 | −15.30 | −23.70 | +3.56 |
+   | whale10 | VBV | +3.87 | +2.00 | −18.47 | −19.53 | +3.59 |
+
+   Against CRF's −0.35/−0.58% wPSNR-Y: under ABR/VBV prodmap is a
+   luma-for-chroma trade (+1.5..+2.0% wPSNR-Y for whale10's −15..−24%
+   chroma), with sol10 VBV the one neutral cell (−0.13%). XPSNR-Y agrees
+   with the direction everywhere.
+4. **Reading and recommendation.** The tools are SAFE under ABR/VBV (no RC
+   misbehaviour, no conformance risk) — the difference is allocational: CRF
+   lets the chroma offsets grow the frame slightly, ABR forces the budget,
+   so luma pays the chroma bill inside a fixed rate. prodmap remains the
+   recommendation for CRF/VOD; for strict ABR/VBV workflows it buys its
+   chroma gains at ~+1.5-2% luma BD-rate rather than free. Open follow-up
+   (small): decompose WHICH component carries the ABR luma cost — the
+   suspect is the luma-QP tools' interaction with ABR's complexity
+   feedback (cplxr), testable with hdrpq-only and lumaq-only ABR arms
+   (8 encodes) before any tuning is attempted.

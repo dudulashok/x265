@@ -2510,7 +2510,11 @@ VUI fields must be manually specified.
 	--hdr-luma-qp 0.5 --hdr-scene-qp 1.0``
 	(wPSNR-Y-positive vs a plain VUI anchor on both natural and animated 4K
 	PQ test content while retaining the chroma gains of the offsets where
-	they are cheap, and HDR-VDP-3-neutral at equal bitrate). Default
+	they are cheap, and HDR-VDP-3-neutral at equal bitrate). That
+	recommendation is measured under CRF; under ABR and ABR+VBV the same
+	stack is rate-accurate and VBV-safe but buys its chroma gains at a
+	small luma cost (~+1.5-2% wPSNR-Y BD-rate) instead of free, since the
+	fixed budget makes luma pay for the chroma offsets. Default
 	disabled.
 
 .. option:: --hdr-luma-qp <float>

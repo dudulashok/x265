@@ -709,18 +709,18 @@ for moving to coding-efficiency levers rather than allocation tuning.
    param uses the linear-light definition.
 5. **ARF (`pic_output_flag`) scoped, then deferred** (user directive): full
    plan in `hdr-validation/ARF-SCOPING.md`; start there next time.
-6. **ABR / ABR+VBV validation sweep LAUNCHED (detached, `run_abr_sweep.sh`)**
-   — the first non-CRF measurement of the tools. anchor vs prodmap, ABR and
-   ABR+VBV (maxrate=bufsize=target, 1-second buffer), 4 rate points per clip
-   matched to the anchor CRF bitrates so BD-rates are comparable to the CRF
-   numbers (−0.35/−0.58 wPSNR-Y). 32 encodes, medium preset. When done, run
-   `python abr_metrics.py` — it computes wPSNR+XPSNR into results.json and
-   prints the three deciding views: rate accuracy (zero-mean rule predicts
-   no degradation), VBV-health warnings from the logs (the `--hdr-scene-qp`
-   VBV interaction is THE untested path — its bias applies inside
-   `rateEstimateQscale` before the VBV clip by design), and per-mode
-   BD-rates. Progress: `tail hdr-validation/abr_sweep_progress.out`; done
-   marker `abr_sweep_done.marker`.
+6. **ABR / ABR+VBV validation DONE (same day — sweep + metrics + verdict in
+   RESULTS.md "2026-08-12 late").** The one-line verdict: **VBV-safe and
+   rate-accurate, but CRF's free luma lunch does not carry over** — under
+   ABR/VBV prodmap trades +1.5..+2.0% wPSNR-Y BD for whale10's −15..−24%
+   chroma (sol10 VBV the one neutral cell, −0.13%). Zero VBV warnings in 16
+   VBV encodes (`--hdr-scene-qp`'s rateEstimateQscale path behaves — the
+   DoVi VBV gate is passed) and prodmap HALVES sol10's single-pass ABR
+   overshoot (+2.8..+6.2% vs anchor's +7.7..+12.0%). prodmap stays the CRF
+   recommendation; ABR/VBV users buy chroma at a small luma price. Open
+   follow-up (8 encodes): decompose which component carries the ABR luma
+   cost (suspect: luma-QP tools vs ABR's cplxr feedback) with hdrpq-only
+   and lumaq-only ABR arms.
 7. **HDR10+ / Dolby Vision compatibility assessed (user question), code
    verified at `6a9905161`:**
    - **HDR10+: no changes required.** `--dhdr10-info` SEI pass-through is

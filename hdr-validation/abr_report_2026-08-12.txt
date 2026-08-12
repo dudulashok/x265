@@ -1,0 +1,45 @@
+
+RATE ACCURACY (deviation from target; sign = over/undershoot)
+key                               target    actual    dev%
+sol10_anchor_abr11500              11500   12662.4  +10.11
+sol10_anchor_abr20000              20000   21769.3   +8.85
+sol10_anchor_abr33500              33500   36073.4   +7.68
+sol10_anchor_abr6500                6500    7281.7  +12.03
+sol10_prodmap_abr11500             11500   12015.8   +4.49
+sol10_prodmap_abr20000             20000   20653.5   +3.27
+sol10_prodmap_abr33500             33500   34452.6   +2.84
+sol10_prodmap_abr6500               6500    6900.2   +6.16
+whale10_anchor_abr1450              1450    1287.5  -11.20
+whale10_anchor_abr2300              2300    2067.1  -10.13
+whale10_anchor_abr3700              3700    3428.0   -7.35
+whale10_anchor_abr6200              6200    5945.9   -4.10
+whale10_prodmap_abr1450             1450    1303.3  -10.12
+whale10_prodmap_abr2300             2300    2093.1   -9.00
+whale10_prodmap_abr3700             3700    3469.4   -6.23
+whale10_prodmap_abr6200             6200    6010.5   -3.06
+sol10_anchor_vbv11500              11500   11366.4   -1.16
+sol10_anchor_vbv20000              20000   19689.9   -1.55
+sol10_anchor_vbv33500              33500   33822.4   +0.96
+sol10_anchor_vbv6500                6500    6395.3   -1.61
+sol10_prodmap_vbv11500             11500   11449.2   -0.44
+sol10_prodmap_vbv20000             20000   19285.4   -3.57
+sol10_prodmap_vbv33500             33500   33853.7   +1.06
+sol10_prodmap_vbv6500               6500    6422.6   -1.19
+whale10_anchor_vbv1450              1450    1466.0   +1.10
+whale10_anchor_vbv2300              2300    2333.6   +1.46
+whale10_anchor_vbv3700              3700    3764.9   +1.76
+whale10_anchor_vbv6200              6200    6306.3   +1.71
+whale10_prodmap_vbv1450             1450    1467.5   +1.21
+whale10_prodmap_vbv2300             2300    2327.5   +1.20
+whale10_prodmap_vbv3700             3700    3751.1   +1.38
+whale10_prodmap_vbv6200             6200    6288.4   +1.43
+
+VBV HEALTH (warnings in encode logs)
+none
+
+BD-RATE prodmap vs anchor (negative = prodmap saves bits at equal quality)
+clip     mode     psnr_y   wpsnr_y  wpsnr_cb  wpsnr_cr   xpsnr_y
+sol10    abr       +4.55     +1.86     -1.04     -2.62     +3.69
+sol10    vbv       +2.58     -0.13     +0.43     -4.20     +1.05
+whale10  abr       +3.20     +1.47    -15.30    -23.70     +3.56
+whale10  vbv       +3.87     +2.00    -18.47    -19.53     +3.59
