@@ -97,6 +97,53 @@ header for the PowerShell detached-launch line); progress via
 Single-tool ablations at CRF 22 (48 frames, whale) are reported in
 RESULTS.md alongside the sweep.
 
+### 2026-08-12/13 additions — ABR and ABR+VBV (the first non-CRF arms)
+
+`run_abr_sweep.sh` (anchor + prodmap, both modes) and `run_abr_decomp.sh`
+(single-component ABR arms); metrics + report via `python abr_metrics.py`
+(rate accuracy, VBV-health warnings, BD-rates; retry driver
+`run_abr_metrics.sh` for this machine's python-killer). Bitrate targets are
+the anchor CRF-34/30/26/22 bitrates so ABR curves overlap the CRF curves:
+`$KBPS` ∈ {6500, 11500, 20000, 33500} for sol10, {1450, 2300, 3700, 6200}
+for whale10. Exact commands:
+
+```sh
+# anchor, ABR
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --bitrate $KBPS \
+     --colorprim bt2020 --transfer smpte2084 --colormatrix bt2020nc --range limited \
+     -o out.hevc
+
+# anchor, ABR+VBV (1-second buffer, CBR-like: maxrate = bufsize = target)
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --bitrate $KBPS --vbv-maxrate $KBPS --vbv-bufsize $KBPS \
+     --colorprim bt2020 --transfer smpte2084 --colormatrix bt2020nc --range limited \
+     -o out.hevc
+
+# prodmap, ABR (same rate-control part; --hdr-pq supplies the VUI)
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --bitrate $KBPS \
+     --hdr-pq --hdr-chroma-qp-map 0.25 --hdr-chroma-adapt 1.0 \
+     --hdr-luma-qp 0.5 --hdr-scene-qp 1.0 -o out.hevc
+
+# prodmap, ABR+VBV
+x265 --input $CLIP --input-res 3840x2160 --fps $FPS --input-depth 10 \
+     --preset medium --bitrate $KBPS --vbv-maxrate $KBPS --vbv-bufsize $KBPS \
+     --hdr-pq --hdr-chroma-qp-map 0.25 --hdr-chroma-adapt 1.0 \
+     --hdr-luma-qp 0.5 --hdr-scene-qp 1.0 -o out.hevc
+
+# decomposition arms (ABR only; anchor VUI flags where --hdr-pq is absent)
+x265 ... --bitrate $KBPS --hdr-pq -o out.hevc                    # hdrpq
+x265 ... --bitrate $KBPS (anchor flags) --hdr-luma-qp 0.5 ...    # lumaq05
+x265 ... --bitrate $KBPS (anchor flags) --hdr-scene-qp 1.0 ...   # sceneqp10
+```
+
+Verdict (RESULTS.md 2026-08-12 late / 2026-08-13): VBV-safe and
+rate-accurate; the CRF luma gain does not carry over, and the
+decomposition attributes the flip to `--hdr-luma-qp` specifically
+(−1.3…−1.5% CRF → +0.7…+0.8% ABR on both clips), with the chroma-offset
+costs mode-independent and `--hdr-scene-qp` neutral.
+
 ## Exact metric commands
 
 ```sh

@@ -725,10 +725,24 @@ for moving to coding-efficiency levers rather than allocation tuning.
    `--hdr-scene-qp` is exonerated (neutral, the a-priori suspect was
    wrong). Hypothesis for the flip (untested): ABR's complexity feedback
    re-plans against the AQ-redistributed lookahead costs and fights the
-   redistribution. Untested follow-ups: (a) the ABR stack variant —
-   prodmap WITHOUT `--hdr-luma-qp` (should be ~+0.7…+1.2% luma for full
-   chroma gains, 8 encodes); (b) making the dQP redistribution visible to
-   the rate predictor (deeper change, only if (a) motivates it).
+   redistribution.
+   **USER DIRECTIVE (2026-08-13, parked to next session, HIGH priority):
+   FIX `--hdr-luma-qp` under ABR/ABR+VBV — do not just drop it from the
+   stack; the tool is too important to lose in ABR workflows. Plan may
+   include re-tuning ALL tool strengths for ABR & ABR+VBV** (the CRF-tuned
+   0.5/1.0/0.25 operating points were never validated in these modes).
+   Suggested order: (1) verify the mechanism — trace where the per-QG
+   offsets enter ABR's complexity estimate (`invQscaleFactor` →
+   lookahead costs → cplxr) vs where CRF consumes them, since the fix
+   lives at that seam; (2) lumaq strength sweep under ABR
+   (0.25/0.5/0.75/1.0, 32 encodes) to see whether the flip is
+   strength-dependent or structural; (3) the prodmap-minus-lumaq control
+   arm (8 encodes) as the fallback baseline; (4) if structural, make the
+   dQP redistribution visible to the rate predictor (candidate: fold the
+   per-QG offsets into the lookahead's cost estimate the way cu-tree
+   offsets already are, so cplxr plans with them instead of fighting
+   them); (5) once luma-qp is fixed, re-tune the full stack's strengths
+   under ABR/VBV before updating any recommendation.
 7. **HDR10+ / Dolby Vision compatibility assessed (user question), code
    verified at `6a9905161`:**
    - **HDR10+: no changes required.** `--dhdr10-info` SEI pass-through is
