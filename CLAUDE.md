@@ -945,7 +945,15 @@ harness, only penalised by it. Fix the metrics first.
 #### P1 — highest expected value
 
 - [ ] **Alt-ref / hidden frames via `pic_output_flag` — AV1's ARF, and HEVC can do
-      it.** The slice header carries `pic_output_flag` (gated by the PPS
+      it.** **SCOPED 2026-08-12 — read `hdr-validation/ARF-SCOPING.md` before
+      starting.** Four-stage plan (syntax proof → POC-space doubling → ARF
+      injection → tuning), ~3-4 sessions to first BD-rate number. The dominant
+      cost is the POC audit: keep `Frame::m_poc` as the input frame number and
+      add a bitstream-only coded POC (2n displayed / 2n−1 hidden), switching
+      the slice header, RPS, DPB marking and every `cudata.cpp` MV-scaling POC
+      read — miss one and quality silently degrades. Stage 0 (enable the flag
+      + drop one frame, prove ffmpeg honours it) costs half a session and
+      de-risks the rest. The slice header carries `pic_output_flag` (gated by the PPS
       `output_flag_present_flag`), so a frame can be coded, used as a reference, and
       **never displayed** — which is precisely AV1's alt-ref/hidden-frame
       mechanism, one of its largest structural advantages. `grep -rn pic_output_flag
