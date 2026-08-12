@@ -47,6 +47,9 @@ PicYuv::PicYuv()
     m_maxLumaLevel = 0;
     m_avgLumaLevel = 0;
 
+    m_maxCll = 0;
+    m_avgCll = 0;
+
     m_maxChromaULevel = 0;
     m_avgChromaULevel = 0;
 
@@ -553,6 +556,63 @@ void PicYuv::copyFromPicture(const x265_picture& pic, const x265_param& param, i
             m_avgChromaULevel = (double)cbSum / ((height >> m_vChromaShift) * (width >> m_hChromaShift));
             m_avgChromaVLevel = (double)crSum / ((height >> m_vChromaShift) * (width >> m_hChromaShift));
         }
+    }
+    if (param.rc.bHdrMeasuredCll && !param.rc.bStatRead)
+    {
+        /* CTA-861.3 content light level: per-pixel max(R,G,B) in linear light
+         * (nits via the ST.2084 EOTF), which exceeds what the luma code level
+         * suggests on saturated colors. The EOTF is monotonic, so only the
+         * max of the three non-linear components needs transforming, done by
+         * linear interpolation on a 1024-entry LUT. BT.2020 NCL matrix. */
+        const double m1 = 2610.0 / 16384.0, m2 = 2523.0 / 4096.0 * 128.0;
+        const double c1 = 3424.0 / 4096.0, c2 = 2413.0 / 4096.0 * 32.0, c3 = 2392.0 / 4096.0 * 32.0;
+        double eotf[1024];
+        for (int i = 0; i < 1024; i++)
+        {
+            double ep = pow(i / 1023.0, 1.0 / m2);
+            eotf[i] = 10000.0 * pow(X265_MAX(ep - c1, 0.0) / (c2 - c3 * ep), 1.0 / m1);
+        }
+        const bool fullRange = !!param.vui.bEnableVideoFullRangeFlag;
+        const bool hasChroma = param.internalCsp != X265_CSP_I400;
+        const double maxCode = (double)((1 << X265_DEPTH) - 1);
+        const double yOff = fullRange ? 0.0 : (double)(16 << (X265_DEPTH - 8));
+        const double yRng = fullRange ? maxCode : (double)(219 << (X265_DEPTH - 8));
+        const double cOff = (double)(1 << (X265_DEPTH - 1));
+        const double cRng = fullRange ? maxCode : (double)(224 << (X265_DEPTH - 8));
+        pixel* yRow = m_picOrg[0];
+        pixel* uRow = m_picOrg[1];
+        pixel* vRow = m_picOrg[2];
+        double sumNits = 0.0, maxNits = 0.0;
+        for (int r = 0; r < height; r++)
+        {
+            for (int c = 0; c < width; c++)
+            {
+                double yn = (yRow[c] - yOff) / yRng;
+                double cb = 0.0, cr = 0.0;
+                if (hasChroma)
+                {
+                    cb = (uRow[c >> m_hChromaShift] - cOff) / cRng;
+                    cr = (vRow[c >> m_hChromaShift] - cOff) / cRng;
+                }
+                double rp = yn + 1.4746 * cr;
+                double gp = yn - 0.164553 * cb - 0.571353 * cr;
+                double bp = yn + 1.8814 * cb;
+                double m = x265_clip3(0.0, 1.0, X265_MAX(rp, X265_MAX(gp, bp)));
+                double t = m * 1023.0;
+                int i0 = (int)t;
+                double nits = i0 >= 1023 ? eotf[1023] : eotf[i0] + (t - i0) * (eotf[i0 + 1] - eotf[i0]);
+                sumNits += nits;
+                maxNits = X265_MAX(maxNits, nits);
+            }
+            yRow += m_stride;
+            if (hasChroma && ((r + 1) & ((1 << m_vChromaShift) - 1)) == 0)
+            {
+                uRow += m_strideC;
+                vRow += m_strideC;
+            }
+        }
+        m_maxCll = (uint16_t)X265_MIN(65535.0, maxNits + 0.5);
+        m_avgCll = sumNits / ((double)m_picWidth * m_picHeight);
     }
 
 #if HIGH_BIT_DEPTH

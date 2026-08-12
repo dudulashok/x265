@@ -291,6 +291,7 @@ namespace X265_NS {
         H0("   --hdr-qp-cascade <float>      QP-adaptive hierarchical-B QP cascade strength: widens the temporal-layer QP spread as QP rises (0 to 3.0). 0 disables. Default %.2f\n", param->rc.hdrQpCascadeStrength);
         H0("   --hdr-vtm-lambda <float>      Blend x265's QP-to-lambda mapping toward VTM's 0.57*2^((QP-12)/3); 1.0 is exactly VTM. 0 disables. Default %.2f\n", param->rc.hdrVtmLambdaStrength);
         H0("   --hdr-chroma-qp-map <float>   QP-dependent chroma QP offsets reproducing VTM's HDR-PQ chroma QP mapping table. 0 disables. Default %.2f\n", param->rc.hdrChromaQpMapStrength);
+        H0("   --[no-]hdr-measured-cll       Measure MaxCLL/MaxFALL (CTA-861.3 linear-light max(R,G,B)) in pass 1 and emit them in the CLL SEI in pass 2. Default %s\n", OPT(param->rc.bHdrMeasuredCll));
         H0("   --[no-]aq-motion              Block level QP adaptation based on the relative motion between the block and the frame. Default %s\n", OPT(param->bAQMotion));
         H1("   --[no-]sbrc                   Enables the segment based rate control. Default %s\n", OPT(param->bEnableSBRC));
         H0("   --qg-size <int>               Specifies the size of the quantization group (64, 32, 16, 8). Default %d\n", param->rc.qgSize);

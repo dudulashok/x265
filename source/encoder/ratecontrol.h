@@ -253,6 +253,8 @@ public:
     int     m_start;
     int     m_reencode;
     FILE*   m_statFileOut;
+    uint16_t m_measuredMaxCLL;   /* CTA-861.3 values measured in pass 1 (set by Encoder */
+    uint16_t m_measuredMaxFALL;  /* before destroy); written to the stats file trailer  */
     FILE*   m_cutreeStatFileOut;
     FILE*   m_cutreeStatFileIn;
     ///< store the cutree data in memory instead of file

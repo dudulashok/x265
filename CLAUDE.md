@@ -620,7 +620,8 @@ whichever arm wins, per the 2026-08-07 methodology rule.
    the production stack never exercised by the corpus; needs a
    rate-control-tests.txt descriptor and the ABR/VBV paths checked). Still on the
    list, just not next.
-5. Then **measured MaxCLL/MaxFALL → CLL SEI** from the TODO.
+5. **DONE 2026-08-12 — measured MaxCLL/MaxFALL → CLL SEI** implemented as
+   `--hdr-measured-cll` (see the 2026-08-12 session log).
 
 **Decomposition COMPLETE (2026-08-08, 480 evals, 0 failures)** — full table in
 RESULTS.md, "Decomposition result". The `--hdr-chroma-adapt` hypothesis is
@@ -688,6 +689,24 @@ for moving to coding-efficiency levers rather than allocation tuning.
    in `--hdr-deblock` or `--hdr-scaling-list`** — both kept as optional
    off-by-default features; cli.rst notes updated. Closes the last open
    item on both tools.
+4. **Measured MaxCLL/MaxFALL → CLL SEI implemented** as
+   `--hdr-measured-cll` (X265_BUILD 226, full 7-step checklist). Pass 1
+   scans every source frame for the CTA-861.3 definition — per-pixel
+   max(R,G,B) in linear light (BT.2020 NCL matrix; PQ EOTF is monotonic so
+   only the per-pixel max needs it, via a 1024-entry lerp'd LUT in
+   `PicYuv::copyFromPicture`) — and appends a `#cll:CLL,FALL` trailer to
+   the stats file (after the last `;`, invisible to old parsers); pass 2
+   parses it in `RateControl::init` (which runs before headers) and fills
+   `maxCLL/maxFALL` + `bEmitHDR10SEI`; explicit `--max-cll` wins.
+   Single-pass measures and logs only (the SEI precedes frame 0).
+   Verified: measured values match an independent full-precision numpy
+   reference exactly on 48 whale10 frames (MaxCLL 10000 — the clip really
+   has clipped speculars — MaxFALL 52); SEI present in pass-2 stream and
+   absent in pass 1 (ffprobe); `--max-cll 1000,100` precedence honored;
+   default path decodes pixel-identical to the archived pre-rebuild
+   binary. NOTE the luma-code-level `m_analyzeAll` CSV stats path is
+   untouched and still underestimates saturated colors — only the new
+   param uses the linear-light definition.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -748,13 +767,12 @@ for moving to coding-efficiency levers rather than allocation tuning.
       off-hull; whale +1.5/+5.4/+12.1% wPSNR-Y vs floor at 0.5/1.0/1.5 (see the
       validation-established section and RESULTS.md). Kept off-by-default; don't pursue
       as implemented.
-- [ ] **Measured MaxCLL/MaxFALL → CLL SEI**: x265 already measures per-frame max/avg luma
-      (`picyuv.cpp:515`, `planeClipAndMax`) and aggregates `m_maxCLL`/`m_maxFALL`
-      (`encoder.cpp:3216`) but only for CSV; the SEI (`encoder.cpp:3490`) trusts user input.
-      Close the loop via 2-pass (measure in pass 1, emit in pass 2 — SEI precedes frame 0).
-      Fix the definition too: CTA-861.3 wants max over pixels of max(R,G,B) in *linear
-      light* (nits via PQ EOTF), not max luma code level, which underestimates saturated
-      colors. SEI-only, conformant, display-side benefit.
+- [x] **Measured MaxCLL/MaxFALL → CLL SEI** — implemented 2026-08-12 as
+      `--hdr-measured-cll` (X265_BUILD 226): pass 1 measures the CTA-861.3
+      linear-light max(R,G,B) definition per frame and writes a `#cll:` stats-file
+      trailer; pass 2 reads it and emits the CLL SEI; explicit `--max-cll` wins;
+      single-pass measures and logs only. Validated against a full-precision numpy
+      reference (exact match on whale10). See the 2026-08-12 session log.
 - [ ] **VTM HDR lambda tables**: try VTM's PQ-tuned QP-to-lambda and chroma lambda
       weighting in x265's lambda setup, plus the temporal-layer lambda/QP cascade models
       (x265's fixed ipratio/pbratio vs VTM's QP-adaptive ones); cheap to test with the

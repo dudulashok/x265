@@ -2728,6 +2728,26 @@ VUI fields must be manually specified.
 	the option is ignored there. 1.0 is the full VVC table, intermediate
 	values scale the offset toward zero. 0 disables. Default 0.
 
+.. option:: --hdr-measured-cll, --no-hdr-measured-cll
+
+	Measure MaxCLL and MaxFALL from the source pixels and emit them in the
+	Content Light Level SEI via two-pass encoding. CTA-861.3 defines both
+	values over the per-pixel maximum of R, G and B in *linear light*
+	(nits, via the ST.2084 PQ EOTF) -- not the luma code level that
+	:option:`--csv` statistics report, which underestimates saturated
+	colors. In pass 1 (``--pass 1``) every source frame is scanned
+	(BT.2020 non-constant-luminance matrix, PQ EOTF) and the aggregated
+	MaxCLL (maximum over frames of the per-frame maximum) and MaxFALL
+	(maximum over frames of the per-frame average) are appended to the
+	rate-control stats file; in pass 2 (``--pass 2``) they are read back
+	and emitted in the CLL SEI. Two passes are required because the SEI
+	precedes frame 0 in the bitstream. An explicit :option:`--max-cll`
+	always takes precedence. In a single-pass encode the values are
+	measured and logged at the end of the encode but no SEI is emitted.
+	The per-pixel scan costs a few tens of milliseconds per 4K frame in
+	pass 1 only. Assumes 10-bit BT.2020/PQ input (warns otherwise).
+	Default disabled.
+
 .. option:: --dhdr10-info <filename>
 
 	Inserts tone mapping information as an SEI message. It takes as input,

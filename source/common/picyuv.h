@@ -65,6 +65,9 @@ public:
     pixel   m_minLumaLevel;
     double  m_avgLumaLevel;
 
+    uint16_t m_maxCll;      /* frame max of per-pixel linear-light max(R,G,B), nits (CTA-861.3) */
+    double   m_avgCll;      /* frame average of per-pixel linear-light max(R,G,B), nits */
+
     pixel   m_maxChromaULevel;
     pixel   m_minChromaULevel;
     double  m_avgChromaULevel;

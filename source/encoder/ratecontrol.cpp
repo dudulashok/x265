@@ -246,6 +246,8 @@ RateControl::RateControl(x265_param& p, Encoder *top)
     m_isAbrReset = false;
     m_lastAbrResetPoc = -1;
     m_statFileOut = NULL;
+    m_measuredMaxCLL = 0;
+    m_measuredMaxFALL = 0;
     m_cutreeStatFileOut = m_cutreeStatFileIn = NULL;
     m_cutreeShrMem = NULL;
     m_rce2Pass = NULL;
@@ -626,6 +628,25 @@ bool RateControl::init(const SPS& sps)
 
                     if ((p = strstr(opts, "rc-lookahead=")) != 0 && sscanf(p, "rc-lookahead=%d", &i))
                         m_param->lookaheadDepth = i;
+                }
+                if (m_param->rc.bHdrMeasuredCll)
+                {
+                    /* CLL trailer appended by pass 1; must be read before the
+                     * entry parser truncates the buffer at each ';' */
+                    unsigned int mcll = 0, mfall = 0;
+                    if ((p = strstr(statsIn, "#cll:")) != 0 && sscanf(p, "#cll:%u,%u", &mcll, &mfall) == 2)
+                    {
+                        if (!m_param->maxCLL && !m_param->maxFALL)
+                        {
+                            m_param->maxCLL = (uint16_t)mcll;
+                            m_param->maxFALL = (uint16_t)mfall;
+                            m_param->bEmitHDR10SEI = 1; /* the CLL SEI emission gate */
+                            x265_log(m_param, X265_LOG_INFO, "emitting content light level measured in pass 1: MaxCLL=%u nits, MaxFALL=%u nits\n",
+                                     mcll, mfall);
+                        }
+                    }
+                    else
+                        x265_log(m_param, X265_LOG_WARNING, "no measured content light level in stats file (was pass 1 run with --hdr-measured-cll?); no CLL SEI will be emitted\n");
                 }
                 /* find number of pics */
                 p = statsIn;
@@ -3506,6 +3527,10 @@ void RateControl::destroy()
 
     if (m_statFileOut)
     {
+        /* trailer after the last frame record; the pass-2 parser only consumes
+         * text up to the final ';', so old builds simply ignore this line */
+        if (m_param->rc.bHdrMeasuredCll)
+            fprintf(m_statFileOut, "#cll:%u,%u\n", m_measuredMaxCLL, m_measuredMaxFALL);
         fclose(m_statFileOut);
         char *tmpFileName = strcatFilename(fileName, ".temp");
         int bError = 1;

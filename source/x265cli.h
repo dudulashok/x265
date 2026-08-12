@@ -368,6 +368,8 @@ static const struct option long_options[] =
     { "hdr-qp-cascade", required_argument, NULL, 0 },
     { "hdr-vtm-lambda", required_argument, NULL, 0 },
     { "hdr-chroma-qp-map", required_argument, NULL, 0 },
+    { "hdr-measured-cll", no_argument, NULL, 0 },
+    { "no-hdr-measured-cll", no_argument, NULL, 0 },
     { "frame-dup",            no_argument, NULL, 0 },
     { "no-frame-dup", no_argument, NULL, 0 },
     { "dup-threshold", required_argument, NULL, 0 },

@@ -226,6 +226,8 @@ public:
     bool               m_externalFlush;
     /* Collect statistics globally */
     EncStats           m_analyzeAll[MAX_LAYERS];
+    uint16_t           m_measuredMaxCLL;  /* running max of per-frame linear-light max(R,G,B), nits */
+    double             m_measuredMaxFALL; /* running max of per-frame average linear-light max(R,G,B), nits */
     EncStats           m_analyzeI[MAX_LAYERS];
     EncStats           m_analyzeP[MAX_LAYERS];
     EncStats           m_analyzeB[MAX_LAYERS];

@@ -139,6 +139,8 @@ Encoder::Encoder()
     m_dpb = NULL;
     m_numDelayedPic = 0;
     m_outputCount = 0;
+    m_measuredMaxCLL = 0;
+    m_measuredMaxFALL = 0;
     m_param = NULL;
     m_latestParam = NULL;
     m_threadPool = NULL;
@@ -1014,6 +1016,14 @@ void Encoder::destroy()
 
     if (m_rateControl)
     {
+        if (m_param && m_param->rc.bHdrMeasuredCll && !m_param->rc.bStatRead && m_outputCount)
+        {
+            m_rateControl->m_measuredMaxCLL = m_measuredMaxCLL;
+            m_rateControl->m_measuredMaxFALL = (uint16_t)X265_MIN(65535.0, m_measuredMaxFALL + 0.5);
+            x265_log(m_param, X265_LOG_INFO, "measured content light level: MaxCLL=%u nits, MaxFALL=%u nits%s\n",
+                     m_rateControl->m_measuredMaxCLL, m_rateControl->m_measuredMaxFALL,
+                     m_param->rc.bStatWrite ? " (written to stats file for pass 2)" : " (2-pass required to emit the CLL SEI)");
+        }
         m_rateControl->destroy();
         delete m_rateControl;
     }
@@ -3230,6 +3240,12 @@ void Encoder::finishFrameStats(Frame* curFrame, FrameEncoder *curEncoder, x265_f
         m_analyzeAll[layer].m_maxFALL += curFrame->m_fencPic->m_avgLumaLevel;
         m_analyzeAll[layer].m_maxCLL = X265_MAX(m_analyzeAll[layer].m_maxCLL, curFrame->m_fencPic->m_maxLumaLevel);
     }
+    if (m_param->rc.bHdrMeasuredCll && !m_param->rc.bStatRead)
+    {
+        /* both aggregates are maxima, so re-processing a frame (multi-layer) is harmless */
+        m_measuredMaxCLL = X265_MAX(m_measuredMaxCLL, curFrame->m_fencPic->m_maxCll);
+        m_measuredMaxFALL = X265_MAX(m_measuredMaxFALL, curFrame->m_fencPic->m_avgCll);
+    }
     char c = (slice->isIntra() ? (curFrame->m_lowres.sliceType == X265_TYPE_IDR ? 'I' : 'i') : slice->isInterP() ? 'P' : 'B');
     int poc = slice->m_poc;
     if (!IS_REFERENCED(curFrame))
@@ -4987,6 +5003,16 @@ void Encoder::configure(x265_param *p)
         }
         else if (p->internalBitDepth != 10 || p->vui.transferCharacteristics != 16)
             x265_log(p, X265_LOG_WARNING, "hdr-sao-band assumes 10-bit SMPTE ST.2084 (PQ) input; applying anyway, results may be suboptimal.\n");
+    }
+
+    if (p->rc.bHdrMeasuredCll)
+    {
+        if (p->vui.transferCharacteristics != 16)
+            x265_log(p, X265_LOG_WARNING, "hdr-measured-cll assumes SMPTE ST.2084 (PQ) input; the measured nits values are only meaningful for PQ.\n");
+        if (!p->rc.bStatWrite && !p->rc.bStatRead)
+            x265_log(p, X265_LOG_INFO, "hdr-measured-cll in single-pass mode: values will be measured and logged, but the CLL SEI precedes frame 0 and can only be emitted in 2-pass.\n");
+        if (p->rc.bStatRead && (p->maxCLL || p->maxFALL))
+            x265_log(p, X265_LOG_INFO, "hdr-measured-cll: explicit --max-cll takes precedence over measured values.\n");
     }
 
     if (strlen(m_param->toneMapFile) || p->bHDR10Opt || p->bEmitHDR10SEI)

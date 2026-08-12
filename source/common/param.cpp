@@ -324,6 +324,7 @@ void x265_param_default(x265_param* param)
     param->rc.hdrQpCascadeStrength = 0.0;
     param->rc.hdrVtmLambdaStrength = 0.0;
     param->rc.hdrChromaQpMapStrength = 0.0;
+    param->rc.bHdrMeasuredCll = 0;
 
     param->rc.cuTree = 1;
     param->rc.rfConstantMax = 0;
@@ -1480,6 +1481,7 @@ int x265_param_parse(x265_param* p, const char* name, const char* value)
         OPT("hdr-qp-cascade") p->rc.hdrQpCascadeStrength = atof(value);
         OPT("hdr-vtm-lambda") p->rc.hdrVtmLambdaStrength = atof(value);
         OPT("hdr-chroma-qp-map") p->rc.hdrChromaQpMapStrength = atof(value);
+        OPT("hdr-measured-cll") p->rc.bHdrMeasuredCll = atobool(value);
 
 #ifdef SVT_HEVC
         OPT("svt")
@@ -2571,6 +2573,7 @@ char *x265_param2string(x265_param* p, int padx, int pady)
         s += sprintf(s, " hdr-vtm-lambda=%.2f", p->rc.hdrVtmLambdaStrength);
     if (p->rc.hdrChromaQpMapStrength > 0)
         s += sprintf(s, " hdr-chroma-qp-map=%.2f", p->rc.hdrChromaQpMapStrength);
+    BOOL(p->rc.bHdrMeasuredCll, "hdr-measured-cll");
     BOOL(p->bHdrPq, "hdr-pq");
     BOOL(p->bDhdr10opt, "dhdr10-opt");
     BOOL(p->bEmitIDRRecoverySEI, "idr-recovery-sei");
@@ -3097,6 +3100,7 @@ void x265_copy_params(x265_param* dst, x265_param* src)
     dst->rc.hdrQpCascadeStrength = src->rc.hdrQpCascadeStrength;
     dst->rc.hdrVtmLambdaStrength = src->rc.hdrVtmLambdaStrength;
     dst->rc.hdrChromaQpMapStrength = src->rc.hdrChromaQpMapStrength;
+    dst->rc.bHdrMeasuredCll = src->rc.bHdrMeasuredCll;
     dst->vui.aspectRatioIdc = src->vui.aspectRatioIdc;
     dst->vui.sarWidth = src->vui.sarWidth;
     dst->vui.sarHeight = src->vui.sarHeight;

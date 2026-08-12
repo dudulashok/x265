@@ -231,3 +231,4 @@ NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 28 --hdr-vtm-la
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset slow --crf 32 --hdr-vtm-lambda 0.5 --hdr-qp-cascade 1.0 --hdr-pq --frame-threads 2
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --crf 34 --hdr-pq --hdr-chroma-qp-map 1.0 --repeat-headers
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --qp 40 --hdr-chroma-qp-map 1.0 --aq-mode 3
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --bitrate 6000 --hdr-pq --hdr-measured-cll --pass 1::--preset medium --bitrate 6000 --hdr-pq --hdr-measured-cll --pass 2

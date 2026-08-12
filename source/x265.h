@@ -2020,6 +2020,20 @@ typedef struct x265_param
          * (default); 1.0 is the full VVC table and intermediate values scale
          * the offset toward zero. */
         double    hdrChromaQpMapStrength;
+
+        /* Measure MaxCLL/MaxFALL from the source pixels and emit them in the
+         * Content Light Level SEI via two-pass encoding. CTA-861.3 defines
+         * both values over max(R,G,B) per pixel in LINEAR LIGHT (nits via
+         * the PQ EOTF), not the luma code level x265's CSV stats report --
+         * saturated colors carry more light than their luma suggests. In
+         * pass 1 every source frame is scanned (BT.2020 NCL matrix, PQ
+         * EOTF), the aggregates are appended to the stats file; in pass 2
+         * they are read back and emitted in the CLL SEI, which precedes
+         * frame 0 and therefore cannot be filled in a single pass. An
+         * explicitly set maxCLL/maxFALL wins over measured values. In a
+         * single-pass encode the values are measured and logged but no SEI
+         * is emitted. Assumes 10-bit BT.2020/PQ input. Default disabled. */
+        int       bHdrMeasuredCll;
     } rc;
 
     /*== Video Usability Information ==*/
