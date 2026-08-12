@@ -18,11 +18,14 @@ sequence-level number, so it needs no error bar.
 """
 import collections, json
 import math
+import sys
 import numpy as np
 
 CRFS = [22, 26, 30, 34]
-# 2026-08-08: prodmap is the candidate replacement for prodstack
-CFGS = ["hdr10opt", "prodstack", "prodmap"]
+# 2026-08-08: prodmap is the candidate replacement for prodstack.
+# Pass config names as arguments to compare anything else, e.g.
+#   python rate_matched.py hdrpq fixed12 cqpmap025 cqpmap05 cqpmap10
+CFGS = sys.argv[1:] or ["hdr10opt", "prodstack", "prodmap"]
 
 res = json.load(open("results.json"))
 acc = collections.defaultdict(dict)

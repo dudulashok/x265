@@ -613,8 +613,9 @@ whichever arm wins, per the 2026-08-07 methodology rule.
    consistent with the quantizer. Worth confirming the mechanism before writing
    code — a cheap diagnostic is to sweep a pure QP-offset tool and a pure
    lambda-scale tool to the same average rate and compare hull positions.
-3. **User is running the subjective HDR-display pass** for `--hdr-deblock` and
-   `--hdr-scaling-list` in parallel — fold the outcome into the docs when it lands.
+3. **DONE 2026-08-12 — subjective HDR-display pass complete: no artifacts** in
+   `--hdr-deblock` or `--hdr-scaling-list`; both kept as optional features
+   (cli.rst updated).
 4. **Deferred: exercise `--hdr-scene-qp`** (transient-rich segment; the only tool in
    the production stack never exercised by the corpus; needs a
    rate-control-tests.txt descriptor and the ABR/VBV paths checked). Still on the
@@ -663,6 +664,30 @@ for moving to coding-efficiency levers rather than allocation tuning.
 4. Methodology note for whoever reads reports next: `rate_matched.py` now has
    dXP-Y/Cb/Cr columns; `bdrate.py` fits XPSNR BD-rates; metrics.py save() is
    merge-on-write so concurrent metric passes don't clobber results.json.
+
+### 2026-08-12 session log — depth-series Pareto read (prodmap depth confirmed),
+### subjective pass closed
+
+1. **The cqpmap depth series read as a luma-vs-colour Pareto curve
+   (`pareto_deitp.py`, RESULTS.md 2026-08-12): prodmap's 0.25 depth is ON
+   the frontier — no change to the recommendation.** The exchange rate
+   (dDEITP per dB of wPSNR-Y at equal bitrate) is concave in depth on both
+   clips: sol10 ~2.9 → 1.84 (at 0.25) → 0.84 (full ramp); whale10 4.18 at
+   0.25. cqpmap025 buys 94% of the −2/−2 floor's colour gain at 12% less
+   luma cost. Deeper is defensible only to 0.5 and only on chroma-flat
+   content; cqpmap10 and hdr10opt sit in a dominated class (~0.85–0.95
+   dE/dB on sol10). A colour-first user should take `--hdr-chroma-qp-map
+   0.5` over `--hdr10-opt` — same trade, better exchange rate. Also
+   re-confirmed in dE terms: "don't go too deep" beats "go deep and scale
+   back with chroma-adapt" corpus-wide (cqpmap10ca engages only on sol10).
+2. **Absolute rate-quality table regenerated with the new metric columns**
+   (`abs_table.py` now emits kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr
+   | XPSNR-Y | dE-ITP | Q_JOD; saved `abs_table_2026-08-12.txt`, pasted in
+   RESULTS.md). `rate_matched.py` now takes arm names as argv.
+3. **Subjective HDR-display pass closed (user, 2026-08-12): no artifacts
+   in `--hdr-deblock` or `--hdr-scaling-list`** — both kept as optional
+   off-by-default features; cli.rst notes updated. Closes the last open
+   item on both tools.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -780,7 +805,8 @@ for moving to coding-efficiency levers rather than allocation tuning.
       overrides (PPS flag was hard-coded 0); the loop filter now reads per-slice fields.
       Verified: default path bit-identical, recon byte-equal to ffmpeg decode with
       overrides engaged. Measured 2026-08-05: wPSNR-neutral-to-slightly-positive
-      (+0.2 sol / −0.7 whale vs floor). **Remaining: subjective dark-frame pass.**
+      (+0.2 sol / −0.7 whale vs floor). Subjective dark-frame pass done
+      2026-08-12: no artifacts — tool closed, kept optional.
 - [ ] **Linear-light weighted-prediction analysis**: weightp fits gain/offset on PQ code
       values, but real light fades are linear in nits — PQ non-linearity gives HDR fades
       poor weights and expensive residuals. Fit weights in linear light via LUT, map

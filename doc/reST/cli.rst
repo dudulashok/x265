@@ -2535,7 +2535,9 @@ VUI fields must be manually specified.
 	highest frequencies; 4x4 lists stay flat. Equivalent to
 	``--scaling-list hdr-pq``. Standard HEVC SPS/PPS syntax, safe for any
 	decoder. Note this is a subjective-quality tool: it typically reduces
-	PSNR-family metrics at a given bitrate. Default disabled.
+	PSNR-family metrics at a given bitrate. A subjective pass on an HDR
+	display found no artifacts; kept as an optional tool for content where
+	texture retention matters more than metric scores. Default disabled.
 
 .. option:: --hdr-chroma-qp <float>
 
@@ -2644,8 +2646,10 @@ VUI fields must be manually specified.
 	(``deblocking_filter_override_enabled_flag``), so streams remain fully
 	conformant. Requires deblocking to be enabled and AQ or weighted
 	prediction (for the frame-level luma analysis; both are on by
-	default). Assumes 10-bit BT.2020/PQ input. 0 disables. Typical range
-	0.5 to 2.0. Default 0.
+	default). Assumes 10-bit BT.2020/PQ input. Measured wPSNR-neutral at
+	strength 1.0, and a subjective pass on an HDR display found no
+	artifacts; kept as an optional tool for dark-graded content. 0
+	disables. Typical range 0.5 to 2.0. Default 0.
 
 .. option:: --hdr-qp-cascade <float>
 

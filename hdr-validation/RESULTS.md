@@ -1306,3 +1306,131 @@ elsewhere.**
    read on the cqpmap depth series (0.25/0.5/1.0, already encoded and
    dE-measured) will say whether spending some of that freedom on deeper
    colour offsets is worth it in dE terms.
+
+# 2026-08-12: the chroma-offset depth series as a Pareto curve (DeltaE-ITP),
+# and the subjective pass closes
+
+## The question
+
+The 2026-08-11 DeltaE-ITP backfill gave the chroma tools a metric that sees
+them directly. This session asks the question that read left open: does
+prodmap's depth choice (`--hdr-chroma-qp-map 0.25`) sit on the
+luma-vs-colour Pareto frontier, or would a deeper offset buy colour error
+cheaply enough to justify its luma cost?
+
+Method: every arm of the depth series read at EQUAL BITRATE against the
+anchor curve (the 2026-08-07 methodology rule), per-frame DeltaE-ITP paired
+on the Q_JOD grid and sign-flipped so positive = less colour error per bit.
+The exchange rate `dE/dB` is dDEITP gained per dB of wPSNR-Y given up.
+Extrapolated points (config bitrate outside the anchor range) are excluded
+from the means. Scripts: `pareto_deitp.py` (summary),
+`rate_matched.py <arms>` (per-CRF detail, now parameterised); saved outputs
+`pareto_deitp_2026-08-12.txt`, `rate_matched_depth_2026-08-12.txt`.
+
+## The Pareto read (equal-bitrate means, non-extrapolated CRFs)
+
+### sol10 (chroma-heavy: the expensive clip for chroma offsets)
+
+| arm | dwPSNR-Y | dXPSNR-Y | dDEITP | dE/dB |
+|---|---|---|---|---|
+| chromaadapt | -0.049 | -0.046 | +0.144 | 2.92 |
+| fixed12     | -0.166 | -0.161 | +0.330 | 1.99 |
+| cqpmap025   | -0.249 | -0.249 | +0.458 | 1.84 |
+| hdrpq       | -0.284 | -0.284 | +0.489 | 1.72 |
+| cqpmap10ca  | -0.271 | -0.260 | +0.518 | 1.91 |
+| cqpmap05    | -0.566 | -0.581 | +0.806 | 1.42 |
+| cqpmap10    | -1.552 | -1.614 | +1.310 | 0.84 |
+| hdr10opt    | -1.375 | -1.484 | +1.296 | 0.94 |
+
+### whale10 (chroma-flat: offsets nearly free; cqpmap025 n=2)
+
+| arm | dwPSNR-Y | dXPSNR-Y | dDEITP | dE/dB |
+|---|---|---|---|---|
+| chromaadapt | -0.062 | -0.061 | +0.230 | 3.70 |
+| fixed12     | -0.048 | -0.047 | +0.111 | 2.29 |
+| cqpmap025   | -0.057 | -0.045 | +0.239 | 4.18 |
+| hdrpq       | -0.062 | -0.061 | +0.230 | 3.73 |
+| cqpmap10ca  | -0.508 | -0.354 | +0.806 | 1.59 |
+| cqpmap05    | -0.128 | -0.097 | +0.458 | 3.58 |
+| cqpmap10    | -0.508 | -0.354 | +0.806 | 1.59 |
+| hdr10opt    | -0.290 | -0.385 | +0.619 | 2.13 |
+
+(Sanity checks that fell out: whale10 `chromaadapt` is numerically identical
+to `hdrpq` and `cqpmap10ca` to `cqpmap10` — chroma-adapt holds factor 1.0 on
+whale10, share below the 0.10 knee, exactly as designed.)
+
+## Verdict
+
+1. **The frontier is concave in depth, on both clips.** Every step deeper
+   buys colour error at a worse exchange rate: sol10 falls from ~2.9 dE/dB
+   (first increment) through ~1.8 (0.25 depth) to ~0.85 at the full ramp;
+   whale10 from ~4.2 to ~1.6. Diminishing returns start immediately — the
+   first quarter of the ramp is the cheap part.
+2. **prodmap's 0.25 depth is ON the frontier — confirmed, keep it.** On
+   sol10 `cqpmap025` buys 94% of the floor's dDEITP (+0.458 vs +0.489) at
+   12% less luma cost and a better rate (1.84 vs 1.72); on whale10 it has
+   the best exchange rate of any arm (4.18). The 2026-08-08 wPSNR-only
+   choice survives its first colour-metric audit unchanged.
+3. **Deeper is defensible only to ~0.5, and only on chroma-flat content.**
+   `cqpmap05` still trades at 3.58 on whale10 but drops to 1.42 on sol10.
+   Past that, `cqpmap10` and `hdr10opt` sit in the same dominated class
+   (~0.85-0.95 on sol10): a full dB of luma for less than one unit of dE.
+   A colour-first use case is better served by `--hdr-chroma-qp-map 0.5`
+   than by `--hdr10-opt` — same trade, measurably better exchange rate.
+4. **`cqpmap10ca` (deep map moderated by chroma-adapt) is competitive only
+   where chroma-adapt engages** (sol10: 1.91, marginally above cqpmap025)
+   and inherits the full deep-map damage where it does not (whale10: 1.59).
+   Corpus-wide, "don't go too deep" still beats "go deep and scale back" —
+   the 2026-08-08 conclusion, now confirmed in dE terms.
+5. **No change to the recommended stack.** prodmap stands.
+
+## Absolute rate-quality table (all metrics, 2026-08-12)
+
+Cell format: kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | XPSNR-Y | dE-ITP | Q_JOD
+(dE-ITP lower = better; Q_JOD only where measured — reserved for winning
+arms per the 2026-08-07 rule. Full table: `abs_table_2026-08-12.txt`,
+regenerable with `python abs_table.py anchor hdrpq chromaadapt fixed12
+cqpmap025 cqpmap05 cqpmap10 cqpmap10ca prodstack prodmap hdr10opt`.)
+
+
+### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 33493 \| 43.70 \| 42.71 \| 44.03 \| 45.42 \| 40.33 \| 7.083 \| 9.13 | 20121 \| 41.27 \| 40.28 \| 41.78 \| 43.92 \| 38.14 \| 8.779 \| 8.86 | 11466 \| 39.00 \| 38.00 \| 39.70 \| 42.69 \| 35.90 \| 10.748 \| 8.54 | 6487 \| 37.02 \| 35.99 \| 38.35 \| 41.76 \| 33.65 \| 12.687 \| 8.17 |
+| hdrpq | 36027 \| 43.71 \| 42.72 \| 45.48 \| 46.39 \| 40.33 \| 6.477 \| 9.18 | 21490 \| 41.28 \| 40.28 \| 42.86 \| 44.67 \| 38.14 \| 8.122 \| 8.91 | 12393 \| 39.01 \| 38.01 \| 40.73 \| 43.30 \| 35.91 \| 9.909 \| 8.60 | 6966 \| 37.03 \| 36.00 \| 39.05 \| 42.24 \| 33.65 \| 11.983 \| 8.22 |
+| chromaadapt | 33922 \| 43.71 \| 42.71 \| 44.22 \| 45.62 \| 40.34 \| 6.927 \| - | 20351 \| 41.27 \| 40.28 \| 41.93 \| 44.09 \| 38.14 \| 8.603 \| - | 11616 \| 39.00 \| 38.00 \| 39.83 \| 42.84 \| 35.90 \| 10.543 \| - | 6574 \| 37.02 \| 36.00 \| 38.45 \| 41.90 \| 33.65 \| 12.509 \| - |
+| fixed12 | 35132 \| 43.71 \| 42.71 \| 44.75 \| 46.35 \| 40.33 \| 6.673 \| - | 20970 \| 41.28 \| 40.28 \| 42.34 \| 44.64 \| 38.15 \| 8.344 \| - | 11982 \| 39.00 \| 38.00 \| 40.16 \| 43.27 \| 35.90 \| 10.226 \| - | 6755 \| 37.02 \| 36.00 \| 38.69 \| 42.22 \| 33.66 \| 12.223 \| - |
+| cqpmap025 | 34671 \| 43.71 \| 42.71 \| 44.74 \| 45.88 \| 40.33 \| 6.764 \| - | 20881 \| 41.28 \| 40.28 \| 42.33 \| 44.48 \| 38.15 \| 8.403 \| - | 12421 \| 39.01 \| 38.01 \| 40.72 \| 43.39 \| 35.91 \| 9.886 \| - | 7017 \| 37.03 \| 36.00 \| 39.05 \| 42.46 \| 33.66 \| 11.879 \| - |
+| cqpmap05 | 35558 \| 43.71 \| 42.72 \| 45.17 \| 46.34 \| 40.34 \| 6.600 \| - | 22102 \| 41.28 \| 40.29 \| 43.19 \| 45.13 \| 38.15 \| 7.924 \| - | 13468 \| 39.02 \| 38.02 \| 41.71 \| 44.08 \| 35.92 \| 9.332 \| - | 7821 \| 37.04 \| 36.02 \| 40.04 \| 43.07 \| 33.65 \| 11.028 \| - |
+| cqpmap10 | 38721 \| 43.72 \| 42.73 \| 46.55 \| 47.54 \| 40.35 \| 6.061 \| - | 25976 \| 41.30 \| 40.31 \| 45.26 \| 46.85 \| 38.16 \| 6.951 \| - | 17614 \| 39.05 \| 38.05 \| 44.34 \| 46.25 \| 35.92 \| 7.914 \| - | 10958 \| 37.08 \| 36.06 \| 42.71 \| 45.10 \| 33.64 \| 9.280 \| - |
+| cqpmap10ca | 34428 \| 43.71 \| 42.71 \| 44.35 \| 45.83 \| 40.34 \| 6.844 \| - | 21041 \| 41.28 \| 40.28 \| 42.22 \| 44.49 \| 38.16 \| 8.299 \| - | 12390 \| 39.01 \| 38.01 \| 40.28 \| 43.48 \| 35.92 \| 9.928 \| - | 7098 \| 37.03 \| 36.01 \| 38.88 \| 42.58 \| 33.68 \| 11.706 \| - |
+| prodstack | 34219 \| 43.65 \| 42.84 \| 44.32 \| 45.54 \| 40.31 \| 6.874 \| 9.16 | 20453 \| 41.18 \| 40.37 \| 41.95 \| 44.00 \| 38.14 \| 8.575 \| 8.89 | 11660 \| 38.90 \| 38.05 \| 39.86 \| 42.78 \| 35.92 \| 10.490 \| 8.57 | 6551 \| 36.93 \| 36.01 \| 38.44 \| 41.84 \| 33.68 \| 12.533 \| 8.19 |
+| prodmap | 34061 \| 43.64 \| 42.84 \| 44.24 \| 45.47 \| 40.31 \| 6.947 \| 9.15 | 20378 \| 41.18 \| 40.37 \| 41.88 \| 44.00 \| 38.14 \| 8.632 \| 8.88 | 11665 \| 38.90 \| 38.05 \| 39.85 \| 42.79 \| 35.92 \| 10.493 \| 8.55 | 6555 \| 36.93 \| 36.02 \| 38.44 \| 41.93 \| 33.69 \| 12.446 \| 8.20 |
+| hdr10opt | 44035 \| 44.00 \| 43.39 \| 47.56 \| 47.65 \| 40.68 \| 5.660 \| 9.28 | 28219 \| 41.49 \| 40.86 \| 45.75 \| 46.33 \| 38.52 \| 6.712 \| 9.08 | 18342 \| 39.19 \| 38.50 \| 44.54 \| 45.41 \| 36.33 \| 7.773 \| 8.71 | 11834 \| 37.23 \| 36.43 \| 43.31 \| 44.60 \| 34.09 \| 9.021 \| 8.69 |
+
+### whale (3840x2160p60, frames 100-399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 6159 \| 49.96 \| 51.79 \| 53.11 \| 57.41 \| 42.98 \| 3.235 \| 8.49 | 3744 \| 47.77 \| 49.45 \| 51.64 \| 55.76 \| 41.30 \| 3.735 \| 8.35 | 2292 \| 45.41 \| 46.92 \| 50.02 \| 53.93 \| 39.24 \| 4.755 \| 8.22 | 1435 \| 42.95 \| 44.31 \| 48.66 \| 53.32 \| 36.82 \| 5.329 \| 8.02 |
+| hdrpq | 6295 \| 49.96 \| 51.79 \| 53.72 \| 58.21 \| 42.98 \| 3.111 \| 8.51 | 3805 \| 47.78 \| 49.46 \| 52.26 \| 56.49 \| 41.32 \| 3.642 \| 8.35 | 2323 \| 45.41 \| 46.93 \| 50.72 \| 55.03 \| 39.25 \| 4.309 \| 8.21 | 1445 \| 42.93 \| 44.29 \| 49.16 \| 53.59 \| 36.76 \| 5.126 \| 8.03 |
+| chromaadapt | 6295 \| 49.96 \| 51.79 \| 53.72 \| 58.21 \| 42.98 \| 3.111 \| - | 3805 \| 47.78 \| 49.46 \| 52.26 \| 56.49 \| 41.32 \| 3.642 \| - | 2323 \| 45.41 \| 46.93 \| 50.72 \| 55.03 \| 39.25 \| 4.309 \| - | 1445 \| 42.93 \| 44.29 \| 49.16 \| 53.59 \| 36.76 \| 5.126 \| - |
+| fixed12 | 6237 \| 49.96 \| 51.80 \| 53.42 \| 58.16 \| 42.98 \| 3.162 \| - | 3770 \| 47.77 \| 49.44 \| 51.92 \| 56.48 \| 41.30 \| 3.697 \| - | 2307 \| 45.40 \| 46.92 \| 50.47 \| 54.81 \| 39.24 \| 4.372 \| - | 1447 \| 42.93 \| 44.29 \| 48.87 \| 52.78 \| 36.78 \| 5.388 \| - |
+| cqpmap025 | 6222 \| 49.96 \| 51.79 \| 53.42 \| 57.81 \| 42.98 \| 3.175 \| - | 3786 \| 47.77 \| 49.45 \| 52.01 \| 56.47 \| 41.30 \| 3.685 \| - | 2320 \| 45.40 \| 46.92 \| 50.74 \| 55.22 \| 39.24 \| 4.292 \| - | 1433 \| 42.96 \| 44.31 \| 49.33 \| 53.08 \| 36.85 \| 5.032 \| - |
+| cqpmap05 | 6319 \| 49.96 \| 51.80 \| 53.77 \| 58.29 \| 42.98 \| 3.101 \| - | 3872 \| 47.78 \| 49.45 \| 52.71 \| 57.24 \| 41.31 \| 3.486 \| - | 2361 \| 45.41 \| 46.93 \| 51.47 \| 55.94 \| 39.25 \| 4.144 \| - | 1452 \| 42.95 \| 44.30 \| 50.24 \| 54.41 \| 36.81 \| 4.706 \| - |
+| cqpmap10 | 6691 \| 49.98 \| 51.80 \| 54.53 \| 59.52 \| 43.01 \| 2.939 \| - | 4166 \| 47.81 \| 49.48 \| 53.80 \| 58.91 \| 41.35 \| 3.187 \| - | 2601 \| 45.47 \| 46.97 \| 53.19 \| 58.24 \| 39.35 \| 3.539 \| - | 1570 \| 43.03 \| 44.36 \| 51.94 \| 56.49 \| 36.96 \| 4.196 \| - |
+| cqpmap10ca | 6691 \| 49.98 \| 51.80 \| 54.53 \| 59.52 \| 43.01 \| 2.939 \| - | 4166 \| 47.81 \| 49.48 \| 53.80 \| 58.91 \| 41.35 \| 3.187 \| - | 2601 \| 45.47 \| 46.97 \| 53.19 \| 58.24 \| 39.35 \| 3.539 \| - | 1570 \| 43.03 \| 44.36 \| 51.94 \| 56.49 \| 36.96 \| 4.196 \| - |
+| prodstack | 5420 \| 49.33 \| 51.19 \| 53.36 \| 57.66 \| 42.49 \| 3.239 \| 8.47 | 3282 \| 47.08 \| 48.77 \| 51.82 \| 56.09 \| 40.69 \| 3.802 \| 8.33 | 1987 \| 44.66 \| 46.18 \| 50.37 \| 54.32 \| 38.53 \| 4.463 \| 8.11 | 1205 \| 42.18 \| 43.52 \| 48.69 \| 53.01 \| 35.93 \| 5.513 \| 7.95 |
+| prodmap | 5371 \| 49.33 \| 51.19 \| 53.05 \| 57.27 \| 42.47 \| 3.274 \| 8.45 | 3268 \| 47.08 \| 48.78 \| 51.57 \| 55.85 \| 40.69 \| 3.880 \| 8.32 | 1988 \| 44.66 \| 46.18 \| 50.39 \| 54.72 \| 38.53 \| 4.386 \| 8.12 | 1212 \| 42.18 \| 43.53 \| 48.71 \| 53.15 \| 35.91 \| 5.542 \| 7.95 |
+| hdr10opt | 5032 \| 48.69 \| 50.59 \| 54.00 \| 58.34 \| 41.93 \| 3.131 \| 8.47 | 3071 \| 46.38 \| 48.10 \| 52.96 \| 57.02 \| 40.03 \| 3.537 \| 8.34 | 1860 \| 43.95 \| 45.47 \| 52.05 \| 55.96 \| 37.81 \| 4.071 \| 8.17 | 1099 \| 41.52 \| 42.81 \| 50.98 \| 55.19 \| 35.26 \| 4.758 \| 7.98 |
+
+
+## Subjective HDR-display pass: closed (2026-08-12)
+
+The user completed the subjective check for `--hdr-deblock` and
+`--hdr-scaling-list` on an HDR display: **no artifacts found in either
+tool**. Decision: both are kept as optional, off-by-default features (they
+remain subjective tools — `--hdr-scaling-list` lowers PSNR-family metrics
+by construction, `--hdr-deblock` is wPSNR-neutral). cli.rst notes updated.
+This closes the last open item on both tools.
