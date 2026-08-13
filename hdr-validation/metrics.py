@@ -21,7 +21,10 @@ COMMON = ["anchor", "hdr10opt", "hdrluma", "hdrpq", "wsse05", "wsse10", "wsse15"
           # 2026-08-08: VTM-derived tools (X265_BUILD 225, commit 96275df9c)
           "cascade05", "cascade10", "cascade15", "vtmlam05", "vtmlam10",
           "cqpmap10", "cqpmap10ca", "cqpmap05", "cqpmap025",
-          "fixed12", "prodmap"]
+          "fixed12", "prodmap",
+          # 2026-08-13: hdr-luma-qp ABR fix (zero-mean per-QG + frame bias);
+          # CRF arm re-encoded to quantify the cu-tree interplay shift
+          "lumaq05fix"]
 # 2026-08-07: vdp_frames deepened 4 -> 12 per clip (supersets of the original
 # grids sol10 24/72/120/168, whale10 37/112/187/262) so the config-to-config
 # Q_JOD deltas clear the sampling noise that made the first round unusable.
