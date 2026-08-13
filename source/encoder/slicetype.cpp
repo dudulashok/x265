@@ -754,6 +754,44 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                 else
                     strength = param->rc.aqStrength * 1.0397f;
 
+                /* hdr-luma-qp: pre-compute the frame mean of the JVET dQP
+                 * term so the per-QG contribution below can be re-centered
+                 * to zero mean. The raw term is one-sided per frame (a
+                 * uniformly dark frame gets ~+3*strength on every QG), and
+                 * one-sided AQ contributions bias the AQ-weighted SATD
+                 * complexity estimate AND diverge the actual coded QP from
+                 * the base QP (qpaRc) that the ABR/VBV feedback, size
+                 * predictors and I/P/B QP bookkeeping are written in --
+                 * measured 2026-08-13: under ABR the invisible mean shifts
+                 * the I/P/B QP cascade and flips the tool's CRF gain into a
+                 * +0.7..0.8% wPSNR-Y BD loss. The removed mean is carried in
+                 * m_lowres.hdrLumaQpBias and re-applied as a frame-level QP
+                 * bias inside RateControl::rateEstimateQscale(), so the
+                 * inter-frame allocation the model intends survives while
+                 * the rate-control books stay unbiased. lumaSumCu() is
+                 * side-effect-free, so this pre-pass does not disturb the
+                 * weightp statistics gathered by acEnergyCu(). */
+                double hdrLumaMeanTerm = 0.0;
+                if (param->rc.hdrLumaQpStrength > 0 && !param->bHDR10Opt)
+                {
+                    int nHdrBlocks = 0;
+                    for (int blockY = 0; blockY < maxRow; blockY += loopIncr)
+                    {
+                        for (int blockX = 0; blockX < maxCol; blockX += loopIncr)
+                        {
+                            uint32_t sum = lumaSumCu(curFrame, blockX, blockY, param->rc.qgSize);
+                            double lumaAvg = (double)sum / (loopIncr * loopIncr);
+                            double dqp = 0.015 * lumaAvg - 7.5;
+                            dqp = X265_MIN(6.0, X265_MAX(-3.0, dqp));
+                            hdrLumaMeanTerm += param->rc.hdrLumaQpStrength * (-dqp);
+                            nHdrBlocks++;
+                        }
+                    }
+                    if (nHdrBlocks)
+                        hdrLumaMeanTerm /= nHdrBlocks;
+                    curFrame->m_lowres.hdrLumaQpBias = hdrLumaMeanTerm;
+                }
+
                 blockXY = 0;
                 for (int blockY = 0; blockY < maxRow; blockY += loopIncr)
                 {
@@ -822,7 +860,10 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                             double lumaAvg = (double)sum / (loopIncr * loopIncr);
                             double dqp = 0.015 * lumaAvg - 7.5;
                             dqp = X265_MIN(6.0, X265_MAX(-3.0, dqp));
-                            qp_adj += param->rc.hdrLumaQpStrength * (-dqp);
+                            /* zero-mean: the frame mean of this term was
+                             * removed above and is re-applied as a frame-
+                             * level bias in rateEstimateQscale() */
+                            qp_adj += param->rc.hdrLumaQpStrength * (-dqp) - hdrLumaMeanTerm;
                         }
 
                         if (param->rc.hdrBandingStrength > 0 && bandProtectBuf != NULL)

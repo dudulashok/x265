@@ -52,3 +52,8 @@ sintel_trailer_2k_1920x1080_24.yuv,--preset medium --bitrate 6000 --no-cutree --
 ducks_take_off_1080p50.y4m,--bitrate 6000 --pass 1  --multi-pass-opt-analysis  --hash 1 --ssim --psnr:: --bitrate 6000 --pass 2  --multi-pass-opt-analysis  --hash 1 --ssim --psnr
 big_buck_bunny_360p24.y4m,--preset veryslow --bitrate 600 --pass 1  --multi-pass-opt-analysis  --multi-pass-opt-distortion --hash 1 --ssim --psnr:: --preset veryslow --bitrate 600 --pass 2  --multi-pass-opt-analysis  --multi-pass-opt-distortion --hash 1 --ssim --psnr
 parkrun_ter_720p50.y4m, --bitrate 3500 --pass 1 --multi-pass-opt-distortion --hash 1 --ssim --psnr:: --bitrate 3500 --pass 3 --multi-pass-opt-distortion --hash 1 --ssim --psnr:: --bitrate 3500 --pass 2 --multi-pass-opt-distortion --hash 1 --ssim --psnr
+
+# HDR tools under rate-targeted modes (single-pass ABR / ABR+VBV): the
+# hdr-luma-qp per-QG offsets are zero-mean with an EMA-relative frame bias
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --bitrate 6000 --hdr-pq --hdr-luma-qp 0.5 --hdr-scene-qp 1.0
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --bitrate 6000 --vbv-maxrate 6000 --vbv-bufsize 6000 --hdr-pq --hdr-luma-qp 0.5

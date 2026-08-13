@@ -187,6 +187,17 @@ struct Lowres : public ReferencePlanes
      * or hdr-scene-qp is enabled. -1.0 means not computed for this frame. */
     double hdrFrameAvgLuma;
 
+    /* Frame-mean of the hdr-luma-qp per-QG term (QP units, strength already
+     * applied), computed in LookaheadTLD::calcAdaptiveQuantFrame(). The
+     * per-QG contribution stored in qpAqOffset/qpCuTreeOffset is re-centered
+     * to zero mean (the invariant every AQ contribution must satisfy so the
+     * frame-level complexity estimate and the ABR/VBV base-QP bookkeeping,
+     * which exclude AQ offsets, stay unbiased); this field carries the
+     * removed mean so RateControl::rateEstimateQscale() can re-apply it as
+     * a frame-level QP bias that qpNoVbv, the size predictors and the VBV
+     * clip all plan with. 0.0 when the tool is off or AQ was skipped. */
+    double hdrLumaQpBias;
+
     /* Frame-level AC-energy statistics, computed once per frame in
      * LookaheadTLD::calcAdaptiveQuantFrame() when hdr-chroma-adapt is
      * enabled. -1.0 means not computed for this frame.

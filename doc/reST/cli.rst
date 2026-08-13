@@ -2530,6 +2530,20 @@ VUI fields must be manually specified.
 	Strengths 0.5 to 0.75 measured BD-optimal in wPSNR-Y on 4K PQ content
 	(recommend 0.5); above 1.0 the gain reverses. Default 0.
 
+	The per-quantization-group contribution is applied zero-mean within
+	each frame; the removed frame mean (positive on dark frames, negative
+	on bright ones) is re-applied as a frame-level QP bias inside the rate
+	control's QP estimation, so base-QP planning, the frame-size predictors
+	and the VBV clip all account for it. Under CRF (with or without VBV)
+	the absolute mean is re-applied, reproducing the model's validated CRF
+	allocation. Under rate-targeted modes (ABR/CBR) only the deviation of
+	the frame mean from a rolling average of recent frames is applied --
+	a persistent QP shift cannot change allocation at a fixed total rate,
+	so re-injecting it would only degrade rate accuracy; the deviation
+	form plans brightness transitions while leaving the rate contract to
+	the feedback loop. In 2-pass the frame-level bias is disabled (the
+	allocator plans from measured pass-1 bits).
+
 .. option:: --hdr-scaling-list, --no-hdr-scaling-list
 
 	Use built-in quantization scaling lists tuned for 10-bit PQ HDR

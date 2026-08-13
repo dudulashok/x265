@@ -352,6 +352,7 @@ void Lowres::init(PicYuv* origPic, int poc, bool bEnableTemporalFilter)
     leadingBframes = 0;
     indB = 0;
     hdrFrameAvgLuma = -1.0;
+    hdrLumaQpBias = 0.0;
     hdrFrameLumaAct = -1.0;
     hdrFrameChromaAct = -1.0;
     hdrFrameChromaDev = -1.0;

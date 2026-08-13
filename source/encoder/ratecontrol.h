@@ -180,6 +180,20 @@ public:
      * frame by updateHdrSceneQpBias() before rateEstimateQscale() and applied
      * inside the estimation so qpNoVbv/VBV/size predictors plan with it. */
     double m_hdrSceneQpBias;
+    /* hdr-luma-qp frame-mean dQP bias applied to the current frame inside
+     * rateEstimateQscale() (the mean removed from the per-QG AQ offsets in
+     * calcAdaptiveQuantFrame). Kept so accumPQpUpdate() can accumulate the
+     * P-QP history in UNBIASED QP space -- the I-frame branch re-applies the
+     * current frame's own bias, and the B-frame interpolation likewise undoes
+     * the reference frames' biases -- otherwise a persistent bias would be
+     * inherited through the QP bookkeeping AND added again, distorting the
+     * I/P/B cascade exactly the way the invisible offset did. */
+    double m_hdrLumaQpBias;
+    /* Rolling average (EMA, alpha=0.1) of the per-frame hdr-luma-qp mean dQP
+     * term, used under rate-targeted modes (ABR/CBR) to apply only the
+     * deviation from the recent past as the frame-level bias. < -1e8 means
+     * not yet initialized; re-baselined at scene cuts. */
+    double m_hdrLumaMeanEma;
     int64_t m_leadingNoBSatd;
     int     m_predType;       /* Type of slice predictors to be used - depends on the slice type */
     double  m_ipOffset;
