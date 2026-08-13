@@ -1616,3 +1616,31 @@ partly an artifact of the invisible offsets deflating the bits·qscale books;
 with honest books prodmapfix converges anchor-like (+6.0..+9.6% vs anchor's
 +7.7..+12.0%). Overall: under ABR/ABR+VBV the stack now buys whale-class
 chroma (−15..−24%) for ≈+0.5..+0.9% luma instead of +1.5..+2.0%.
+
+### Strength re-tune under ABR/ABR+VBV (2026-08-13 late, fixed binary): keep 0.5
+
+48 encodes (`run_lumaq_retune_sweep.sh`: 0.25/0.75/1.0 both modes; 0.5 =
+lumaq05fix). wPSNR-Y BD vs anchor:
+
+| strength | sol10 ABR | whale10 ABR | sol10 VBV (mean dB*) | whale10 VBV |
+|---|---|---|---|---|
+| 0.25 | −0.51 | **−0.45** | −0.06 | −0.66 |
+| 0.5 | **−0.74** | −0.32 | −0.06 | **−0.78** |
+| 0.75 | −0.71 | −0.02 | −0.02 | −0.57 |
+| 1.0 | −0.36 | +0.80 | −0.04 | −0.32 |
+
+*sol10 VBV BD fits are scatter (per-point deltas ±0.1–0.3 dB, non-monotone);
+the paired per-point mean is the honest read, and it is ≈−0.02..−0.06 dB at
+EVERY strength — the "EMA bias vs VBV clip" concern resolves as a tiny,
+strength-independent VBV interaction, not a tuning problem. whale10 VBV
+per-point means are +0.02..+0.04 dB positive at all strengths.
+
+**Verdict: keep 0.5 as the single strength across all modes.** Same
+0.5–0.75 plateau under sol10 ABR as CRF had; whale10 ABR degrades
+monotonically with strength (the zero-mean redistribution has less headroom
+on uniformly dark content) making 0.25 its best point, but the cross-clip
+means at 0.25 and 0.5 are equivalent (−0.48 vs −0.53) and 0.5 keeps one
+number across CRF and rate-targeted modes. A conservative ABR-only profile
+could use 0.25 — it is also the gentlest on XPSNR-Y (whale10 +0.95 vs
++2.23 at 0.5). Zero VBV warnings in all 24 new VBV encodes. No cli.rst
+strength change needed; the recommendation stays `--hdr-luma-qp 0.5`.
