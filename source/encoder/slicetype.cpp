@@ -754,25 +754,31 @@ void LookaheadTLD::calcAdaptiveQuantFrame(Frame *curFrame, x265_param* param)
                 else
                     strength = param->rc.aqStrength * 1.0397f;
 
-                /* hdr-luma-qp: pre-compute the frame mean of the JVET dQP
-                 * term so the per-QG contribution below can be re-centered
-                 * to zero mean. The raw term is one-sided per frame (a
-                 * uniformly dark frame gets ~+3*strength on every QG), and
-                 * one-sided AQ contributions bias the AQ-weighted SATD
-                 * complexity estimate AND diverge the actual coded QP from
-                 * the base QP (qpaRc) that the ABR/VBV feedback, size
-                 * predictors and I/P/B QP bookkeeping are written in --
-                 * measured 2026-08-13: under ABR the invisible mean shifts
-                 * the I/P/B QP cascade and flips the tool's CRF gain into a
-                 * +0.7..0.8% wPSNR-Y BD loss. The removed mean is carried in
-                 * m_lowres.hdrLumaQpBias and re-applied as a frame-level QP
-                 * bias inside RateControl::rateEstimateQscale(), so the
-                 * inter-frame allocation the model intends survives while
-                 * the rate-control books stay unbiased. lumaSumCu() is
-                 * side-effect-free, so this pre-pass does not disturb the
+                /* hdr-luma-qp: under rate-targeted modes (ABR/CBR),
+                 * pre-compute the frame mean of the JVET dQP term so the
+                 * per-QG contribution below can be re-centered to zero mean.
+                 * The raw term is one-sided per frame (a uniformly dark
+                 * frame gets ~+3*strength on every QG), and one-sided AQ
+                 * contributions diverge the actual coded QP from the base QP
+                 * (qpaRc) that the ABR feedback, size predictors and I/P/B
+                 * QP bookkeeping are written in -- measured 2026-08-13:
+                 * under ABR the invisible mean shifts the I/P/B QP cascade
+                 * and flips the tool's CRF gain into a +0.7..0.8% wPSNR-Y BD
+                 * loss. The removed mean is carried in m_lowres.hdrLumaQpBias
+                 * and re-applied (as its deviation from a rolling average)
+                 * inside RateControl::rateEstimateQscale(), so brightness
+                 * transitions are planned while the rate-control books stay
+                 * unbiased. Deliberately NOT applied under CRF/CQP: with no
+                 * rate feedback the one-sided offsets are harmless there,
+                 * and the type-dependent way cu-tree absorbs the raw mean on
+                 * referenced frames is part of the tool's validated CRF gain
+                 * (zero-meaning under CRF measured +2.1% wPSNR-Y BD on
+                 * uniformly dark content, sol10 within +-0.1%). lumaSumCu()
+                 * is side-effect-free, so this pre-pass does not disturb the
                  * weightp statistics gathered by acEnergyCu(). */
                 double hdrLumaMeanTerm = 0.0;
-                if (param->rc.hdrLumaQpStrength > 0 && !param->bHDR10Opt)
+                if (param->rc.hdrLumaQpStrength > 0 && !param->bHDR10Opt &&
+                    param->rc.rateControlMode == X265_RC_ABR)
                 {
                     int nHdrBlocks = 0;
                     for (int blockY = 0; blockY < maxRow; blockY += loopIncr)

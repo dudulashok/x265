@@ -1632,31 +1632,30 @@ int RateControl::rateControlStart(Frame* curFrame, RateControlEntry* rce, Encode
          * qpNoVbv/clipQscale so the rate-control model plans with it. */
         updateHdrSceneQpBias(curFrame);
 
-        /* hdr-luma-qp: decide the frame-level QP bias standing in for the
-         * frame-mean dQP that calcAdaptiveQuantFrame() removed from the
-         * per-QG AQ offsets. CRF (with or without VBV) has no rate contract,
-         * so the absolute mean is re-applied -- net per-QG QP is unchanged
-         * from the tool's validated CRF behavior, the mean simply moves from
-         * the (RC-invisible) offsets into the base QP where qpNoVbv, the
-         * size predictors and the VBV clip can plan with it. Under ABR/CBR
-         * a persistent visible bias is self-defeating: the feedback's
-         * bits*qscale bookkeeping reproduces a constant bias instead of
-         * absorbing it (measured 2026-08-13: an absolute +1.4 bias made
-         * whale10 ABR undershoot -18.6% vs the anchor's -10.4%), and a
-         * constant QP shift cannot change allocation at a fixed total rate
-         * anyway. So under a rate target only the deviation of the frame
-         * mean from a rolling average of recent frame means is applied --
-         * the across-time component ABR's slow feedback cannot follow (APL
-         * transitions) -- re-baselined at scene cuts exactly like the
+        /* hdr-luma-qp under rate-targeted modes: calcAdaptiveQuantFrame()
+         * re-centered the per-QG dQP term to zero mean (only when
+         * rateControlMode is ABR/CBR; under CRF/CQP the raw one-sided
+         * offsets are kept and m_lowres.hdrLumaQpBias is 0, preserving the
+         * tool's validated CRF behavior). The removed frame mean is applied
+         * here as a frame-level QP bias so qpNoVbv, the size predictors,
+         * the VBV clip and the cplxrSum books plan with the QP the frame is
+         * actually coded at. Only the DEVIATION of the mean from a rolling
+         * average of recent frames is applied: a visible persistent bias is
+         * self-defeating under a rate target -- the feedback's bits*qscale
+         * bookkeeping reproduces a constant bias instead of absorbing it
+         * (measured 2026-08-13: an absolute +1.4 bias made whale10 ABR
+         * undershoot -18.6% vs the anchor's -10.4%), and a constant QP
+         * shift cannot change allocation at a fixed total rate anyway. The
+         * deviation form plans the APL transitions ABR's slow feedback
+         * cannot follow, re-baselined at scene cuts exactly like the
          * scene-qp bias. Single-pass only (in 2-pass the allocator plans
          * from measured pass-1 bits). */
         m_hdrLumaQpBias = 0.0;
-        if (!m_2pass && m_param->rc.hdrLumaQpStrength > 0)
+        if (!m_2pass && m_param->rc.hdrLumaQpStrength > 0 &&
+            m_param->rc.rateControlMode == X265_RC_ABR)
         {
             double meanTerm = curFrame->m_lowres.hdrLumaQpBias;
-            if (m_param->rc.rateControlMode == X265_RC_CRF)
-                m_hdrLumaQpBias = meanTerm;
-            else if (m_hdrLumaMeanEma < -1e8 || curFrame->m_lowres.bScenecut)
+            if (m_hdrLumaMeanEma < -1e8 || curFrame->m_lowres.bScenecut)
                 m_hdrLumaMeanEma = meanTerm;
             else
             {
@@ -1691,11 +1690,6 @@ int RateControl::rateControlStart(Frame* curFrame, RateControlEntry* rce, Encode
             m_qp = (m_qpConstant[B_SLICE] + m_qpConstant[P_SLICE]) / 2;
         else
             m_qp = m_qpConstant[m_sliceType];
-        /* hdr-luma-qp: re-apply the frame-mean dQP removed from the per-QG
-         * AQ offsets so CQP encodes keep the model's inter-frame allocation */
-        if (m_param->rc.hdrLumaQpStrength > 0)
-            m_qp = x265_clip3(m_param->rc.qpMin, m_param->rc.qpMax,
-                              (int)(m_qp + curFrame->m_lowres.hdrLumaQpBias + 0.5));
         curEncData.m_avgQpAq = curEncData.m_avgQpRc = m_qp;
         
         x265_zone* zone = getZone();
