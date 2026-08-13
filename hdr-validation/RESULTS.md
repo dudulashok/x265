@@ -1592,3 +1592,27 @@ single-pass ABR on both clips (−0.74/−0.32% wPSNR-Y) instead of costing
 +0.7/+0.8%, is neutral-to-positive under ABR+VBV, and CRF behavior is
 bit-preserved. prodmap under ABR should be re-measured with the fixed
 binary (its +1.5..+2.0% luma cost was carried by the pre-fix lumaq).
+
+### prodmap re-measured on the fixed binary (2026-08-13, `prodmapfix`)
+
+The recommended stack under the practical rate-targeted modes, wPSNR-Y BD vs
+anchor (pre-fix prodmap in parentheses):
+
+| cell | psnr_y | wpsnr_y | wpsnr_cb | wpsnr_cr | xpsnr_y |
+|---|---|---|---|---|---|
+| sol10 ABR | +1.87 (+4.55) | **+0.47 (+1.86)** | −1.64 | −5.77 | +2.12 (+3.69) |
+| whale10 ABR | +1.97 (+3.20) | **+0.79 (+1.47)** | −17.88 | −24.00 | +3.26 (+3.56) |
+| sol10 ABR+VBV | +5.28 (+2.58) | +3.60 (−0.13)* | +6.16 | −5.79 | +2.20 (+1.05) |
+| whale10 ABR+VBV | +1.98 (+3.87) | **+0.94 (+2.00)** | −14.58 | −22.20 | +3.34 (+3.59) |
+
+The fix roughly halves the stack's ABR luma price on three of four cells
+while keeping whale10's full chroma gains. *sol10 VBV per-point deltas are
+−0.18/−0.13/−0.14/+0.08 dB — a real but small ≈−0.1 dB mean cost (the
+pre-fix number in that cell was ≈+0.05 dB); it is also the clip whose EMA
+bias actively fires under the VBV clip, worth a look during the strength
+re-tune. Zero VBV warnings in all 16 encodes. Rate accuracy note: pre-fix
+prodmap's celebrated halving of sol10's ABR overshoot (+2.8..+6.2%) was
+partly an artifact of the invisible offsets deflating the bits·qscale books;
+with honest books prodmapfix converges anchor-like (+6.0..+9.6% vs anchor's
++7.7..+12.0%). Overall: under ABR/ABR+VBV the stack now buys whale-class
+chroma (−15..−24%) for ≈+0.5..+0.9% luma instead of +1.5..+2.0%.
