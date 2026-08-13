@@ -790,11 +790,19 @@ Commits `cedc6485e` (fix) + `4a85f0835` (mode gate) + `c00793a0e` (harness).
 4. **Verification pattern that did the work**: per-frame qpRc-vs-qpAq traces
    (dAQ per slice type) — the fixed arm's dAQ matches anchor within 0.08 QP
    per type. Trace line is a permanent debug-level log in rateControlEnd.
-5. **Open next (directive step 5)**: re-measure prodmap under ABR/ABR+VBV on
-   the fixed binary (pre-fix prodmap ABR rows carried the lumaq flip), then
-   re-tune stack strengths for ABR/VBV; design the CRF+VBV harness arm
-   (capped-CRF; never measured in any mode); lumaq strength re-tune under
-   ABR now that 0.5 gains.
+5. **prodmap re-measured on the fixed binary same session (`prodmapfix`,
+   RESULTS.md): the stack's ABR luma price roughly halves** — sol10 ABR
+   +1.86 → +0.47, whale10 ABR +1.47 → +0.79, whale10 ABR+VBV +2.00 → +0.94
+   % wPSNR-Y vs anchor, full chroma gains kept; sol10 ABR+VBV is a small
+   real ≈−0.1 dB cost (the one cell to watch in the re-tune — sol10 is
+   where the EMA bias actively fires under the VBV clip). Zero VBV
+   warnings. Also: pre-fix prodmap's sol10 overshoot halving was partly
+   the invisible offsets deflating the bits·qscale books — honest books
+   converge anchor-like (+6.0..+9.6% vs anchor +7.7..+12.0%).
+6. **Open next (directive step 5, remaining half)**: re-tune stack/tool
+   strengths for ABR/VBV (lumaq 0.25–1.0 sweep under ABR now that 0.5
+   gains; look at sol10 VBV's −0.1 dB); design the CRF+VBV harness arm
+   (capped-CRF; never measured in any mode).
 
 ### TODO — HDR quality / efficiency investigation
 
