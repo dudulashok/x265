@@ -799,10 +799,18 @@ Commits `cedc6485e` (fix) + `4a85f0835` (mode gate) + `c00793a0e` (harness).
    warnings. Also: pre-fix prodmap's sol10 overshoot halving was partly
    the invisible offsets deflating the bits·qscale books — honest books
    converge anchor-like (+6.0..+9.6% vs anchor +7.7..+12.0%).
-6. **Open next (directive step 5, remaining half)**: re-tune stack/tool
-   strengths for ABR/VBV (lumaq 0.25–1.0 sweep under ABR now that 0.5
-   gains; look at sol10 VBV's −0.1 dB); design the CRF+VBV harness arm
-   (capped-CRF; never measured in any mode).
+6. **Strength re-tune DONE same day (48 encodes, RESULTS.md late): keep
+   0.5 as the single strength across all modes.** sol10 ABR keeps the
+   CRF-style 0.5–0.75 plateau (−0.74/−0.71); whale10 ABR degrades
+   monotonically with strength (0.25 best, 1.0 +0.80); VBV is
+   strength-independent within ±0.06 dB per-point on both clips — the
+   sol10-VBV concern resolved as a tiny constant interaction, not a
+   tuning problem. 0.25 noted as a conservative ABR-only point (best
+   whale10 ABR, gentlest on XPSNR). No cli.rst change needed.
+7. **Open next**: design + measure the CRF+VBV harness arm (capped-CRF,
+   never measured in any mode; proposal: CRF 22–34 with vbv-maxrate ≈
+   1.1× the anchor bitrate at each CRF). The directive's re-tune half is
+   otherwise closed — tool strengths hold at 0.5/1.0/0.25 in all modes.
 
 ### TODO — HDR quality / efficiency investigation
 
