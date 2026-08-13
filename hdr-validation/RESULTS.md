@@ -1517,3 +1517,78 @@ Three single-component arms under plain ABR, same 4 rate points
    Fixing the luma model itself for ABR (making the redistribution
    visible to the rate predictor) is a deeper change; measure the
    simple variant first.
+
+## `--hdr-luma-qp` ABR fix (2026-08-13): mechanism found, fixed, gated by mode
+
+**The 2026-08-13 decomposition's working hypothesis was half wrong**: the
+per-QG offsets were NOT zero-mean by design — the JVET dQP term is one-sided
+per frame (a uniformly dark frame gets ~+3·strength on every QG; the mean
+also flips sign across sol10's bright→dark transition). A new per-frame
+`rc-end` debug trace (qpRc = base QP the RC model plans/accounts in, qpAq =
+actual coded QP; `abr_qp_trace.py`) showed what the invisible mean does under
+ABR on whale10 @2.3M:
+
+| arm | I dAQ | P dAQ | B dAQ | I−P / P−B coded gaps |
+|---|---|---|---|---|
+| anchor | −5.54 | −2.48 | −0.50 | 5.21 / 4.05 |
+| lumaq05 pre-fix | −3.96 | −1.82 | −0.27 | **3.73 / 3.62** |
+| lumaq05 fixed | −5.55 | −2.40 | −0.52 | 5.43 / 3.95 |
+
+(dAQ = coded − base QP; anchor's −2.5 on P is cu-tree's own one-sided
+negative offset, which the RC design absorbs by calibration.) The hdr mean
+reaches the coded stream **type-dependently** — cu-tree recomputes its
+offsets from AQ-weighted intra costs and eats most of the mean on
+referenced frames (realized shift: I +1.6, P +0.66, B +0.23) — so under
+ABR's type-specific QP bookkeeping (P from the cplxr feedback, I from the
+accumPQp P-history, B interpolated from reference QPs) the I/P/B cascade
+compresses and the allocation degrades. On sol10 the mean flips sign
+mid-clip and the bits-driven integrator chases it with a lag.
+
+**Fix (commits `cedc6485e` + gate `4a85f0835`), rate-targeted modes only:**
+re-center the per-QG term to zero mean in `calcAdaptiveQuantFrame()`, carry
+the removed mean to RateControl, and apply it inside `rateEstimateQscale()`
+as the **deviation from an EMA of recent frame means** (re-baselined at
+scene cuts). The B interpolation undoes the references' applied biases and
+`accumPQpUpdate()` keeps the P-QP history unbiased, so a persistent bias is
+never double-counted. Two dead ends measured on the way:
+
+- **Absolute bias under ABR fails**: a visible persistent +1.4 bias
+  reproduces itself through the bits·qscale feedback instead of being
+  absorbed — whale10 undershot −18.6% vs anchor's −10.4%. (Pre-fix, the
+  *invisible* offset deflated bits·qscale and the feedback restored rate —
+  the invisibility was doing the rate work, at the cost of the cascade.)
+- **Zero-meaning under CRF fails**: whale10 zero-meaned under CRF measured
+  **+2.11% wPSNR-Y BD vs the raw form** (+2.17 PSNR, +2.72 XPSNR; sol10
+  ±0.1%) — the cu-tree type-asymmetry of the raw mean is itself a large
+  part of the tool's CRF gain on uniformly dark content. Hence the mode
+  gate: CRF/CQP keep the raw offsets (verified decoded-pixel identical to
+  the pre-fix binary on both clips; all standing CRF results unchanged),
+  ABR/CBR get the zero-mean + EMA-bias form. The `lumaq05fix_crf*` rows in
+  results.json are this rejected zero-mean-under-CRF experiment, kept as
+  the evidence.
+
+**Verdict (lumaq05fix vs anchor, BD-rate %, `report_lumaq_fix.py`):**
+
+| cell | psnr_y | wpsnr_y | wpsnr_cb | wpsnr_cr | xpsnr_y |
+|---|---|---|---|---|---|
+| sol10 ABR pre-fix | +2.98 | +0.68 | +1.74 | +2.63 | +2.04 |
+| **sol10 ABR fixed** | +0.26 | **−0.74** | +0.82 | −0.92 | +0.26 |
+| whale10 ABR pre-fix | +2.61 | +0.83 | +6.71 | +8.09 | +2.87 |
+| **whale10 ABR fixed** | +0.93 | **−0.32** | +0.13 | +1.58 | +2.23 |
+| whale10 ABR+VBV fixed | +0.30 | **−0.78** | −0.83 | +0.18 | +1.34 |
+| sol10 ABR+VBV fixed | +8.40* | +4.94* | +24.14* | −0.86 | +1.26 |
+
+*sol10 VBV: per-point deltas are small and non-monotone (−0.17/+0.07/−0.29/
++0.14 dB wPSNR-Y); the 4-point cubic BD fit amplifies the scatter — the
+honest read is neutral (mean −0.06 dB), not +4.9%. Zero VBV warnings in all
+16 VBV encodes; single-pass ABR rate accuracy unchanged (sol10 fixed
+overshoots +7.0..+10.8 vs anchor's +7.7..+12.0; whale10 −2.6..−10.0 vs
+−4.1..−11.2). Residual caveat: whale10 ABR XPSNR-Y stays positive (+2.23,
+improved from +2.87) while wPSNR-Y and PSNR-Y flip negative — XPSNR only
+narrows on this clip.
+
+**The user directive is met**: `--hdr-luma-qp 0.5` now *gains* luma under
+single-pass ABR on both clips (−0.74/−0.32% wPSNR-Y) instead of costing
++0.7/+0.8%, is neutral-to-positive under ABR+VBV, and CRF behavior is
+bit-preserved. prodmap under ABR should be re-measured with the fixed
+binary (its +1.5..+2.0% luma cost was carried by the pre-fix lumaq).

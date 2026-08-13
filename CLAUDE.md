@@ -726,23 +726,12 @@ for moving to coding-efficiency levers rather than allocation tuning.
    wrong). Hypothesis for the flip (untested): ABR's complexity feedback
    re-plans against the AQ-redistributed lookahead costs and fights the
    redistribution.
-   **USER DIRECTIVE (2026-08-13, parked to next session, HIGH priority):
-   FIX `--hdr-luma-qp` under ABR/ABR+VBV — do not just drop it from the
-   stack; the tool is too important to lose in ABR workflows. Plan may
-   include re-tuning ALL tool strengths for ABR & ABR+VBV** (the CRF-tuned
-   0.5/1.0/0.25 operating points were never validated in these modes).
-   Suggested order: (1) verify the mechanism — trace where the per-QG
-   offsets enter ABR's complexity estimate (`invQscaleFactor` →
-   lookahead costs → cplxr) vs where CRF consumes them, since the fix
-   lives at that seam; (2) lumaq strength sweep under ABR
-   (0.25/0.5/0.75/1.0, 32 encodes) to see whether the flip is
-   strength-dependent or structural; (3) the prodmap-minus-lumaq control
-   arm (8 encodes) as the fallback baseline; (4) if structural, make the
-   dQP redistribution visible to the rate predictor (candidate: fold the
-   per-QG offsets into the lookahead's cost estimate the way cu-tree
-   offsets already are, so cplxr plans with them instead of fighting
-   them); (5) once luma-qp is fixed, re-tune the full stack's strengths
-   under ABR/VBV before updating any recommendation.
+   **USER DIRECTIVE (2026-08-13, HIGH priority): FIX `--hdr-luma-qp` under
+   ABR/ABR+VBV — RESOLVED same day, see the 2026-08-13 session log below**
+   (mechanism traced, fixed and validated: sol10 ABR +0.68 → −0.74, whale10
+   ABR +0.83 → −0.32% wPSNR-Y vs anchor; CRF decoded-pixel-preserved). The
+   re-tune-the-stack half (step 5) remains open: re-measure prodmap under
+   ABR/ABR+VBV with the fixed binary, then re-tune strengths.
 7. **HDR10+ / Dolby Vision compatibility assessed (user question), code
    verified at `6a9905161`:**
    - **HDR10+: no changes required.** `--dhdr10-info` SEI pass-through is
@@ -763,6 +752,49 @@ for moving to coding-efficiency levers rather than allocation tuning.
      `crQpOffset=3` (`encoder.cpp:4063`) which `--hdr-chroma-qp-map` would
      overwrite (it assigns the total offset). 8.4 is HLG, not PQ. → new
      TODO: a configure()-time guard.
+
+### 2026-08-13 session log — `--hdr-luma-qp` ABR flip FIXED (user directive),
+### mode-gated; full story in RESULTS.md "2026-08-13"
+
+Commits `cedc6485e` (fix) + `4a85f0835` (mode gate) + `c00793a0e` (harness).
+
+1. **Mechanism (decomposition hypothesis corrected)**: the per-QG JVET dQP
+   term was NOT zero-mean — it is one-sided per frame (~+1.5 QP whole-frame
+   on dark content at 0.5, sign flips at sol10's transition), violating the
+   project's own zero-mean AQ invariant. A new `rc-end` debug trace
+   (`--log-level debug`, parsed by `hdr-validation/abr_qp_trace.py`) showed
+   the mean reaches the coded stream type-dependently — **cu-tree recomputes
+   from AQ-weighted intra costs and eats most of it on referenced frames**
+   (realized: I +1.6 / P +0.66 / B +0.23) — so ABR's type-specific QP
+   bookkeeping (P from cplxr, I from accumPQp, B interpolated from refs)
+   lands on a compressed I/P/B cascade (whale10 I−P coded gap 5.2 → 3.7).
+   CRF has no feedback, so the raw form is harmless there.
+2. **Fix, rate-targeted modes only** (`X265_RC_ABR`, single-pass): zero-mean
+   the per-QG term in `calcAdaptiveQuantFrame`, apply the removed mean in
+   `rateEstimateQscale` as its **deviation from an EMA** of recent frame
+   means (re-baselined at scene cuts); B interpolation undoes refs' applied
+   biases (`m_lowres.hdrLumaQpBias` stores the applied value), `accumPQp`
+   kept in unbiased space. Two dead ends measured, don't re-derive: an
+   ABSOLUTE visible bias re-creates itself through the bits·qscale feedback
+   (whale10 undershot −18.6%); zero-meaning UNDER CRF costs +2.11% wPSNR-Y
+   on whale10 because the cu-tree type-asymmetry of the raw mean IS part of
+   the CRF gain (the `lumaq05fix_crf*` rows in results.json are that
+   rejected experiment).
+3. **Verdict (lumaq05fix vs anchor, wPSNR-Y BD)**: sol10 ABR **−0.74** (was
+   +0.68), whale10 ABR **−0.32** (was +0.83), whale10 ABR+VBV **−0.78**,
+   sol10 ABR+VBV neutral (mean −0.06 dB; its 4-point BD fit is scatter, do
+   not quote +4.9%). PSNR-Y moves the same way; whale10 XPSNR-Y improves
+   +2.87 → +2.23 but stays positive (only metric not flipping). Zero VBV
+   warnings in 16 VBV encodes; rate accuracy unchanged. CRF verified
+   decoded-pixel identical to pre-fix on both clips; anchor byte-identical.
+4. **Verification pattern that did the work**: per-frame qpRc-vs-qpAq traces
+   (dAQ per slice type) — the fixed arm's dAQ matches anchor within 0.08 QP
+   per type. Trace line is a permanent debug-level log in rateControlEnd.
+5. **Open next (directive step 5)**: re-measure prodmap under ABR/ABR+VBV on
+   the fixed binary (pre-fix prodmap ABR rows carried the lumaq flip), then
+   re-tune stack strengths for ABR/VBV; design the CRF+VBV harness arm
+   (capped-CRF; never measured in any mode); lumaq strength re-tune under
+   ABR now that 0.5 gains.
 
 ### TODO — HDR quality / efficiency investigation
 
