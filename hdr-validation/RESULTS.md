@@ -1644,3 +1644,111 @@ number across CRF and rate-targeted modes. A conservative ABR-only profile
 could use 0.25 — it is also the gentlest on XPSNR-Y (whale10 +0.95 vs
 +2.23 at 0.5). Zero VBV warnings in all 24 new VBV encodes. No cli.rst
 strength change needed; the recommendation stays `--hdr-luma-qp 0.5`.
+
+## Capped-CRF (CRF+VBV) validation (2026-08-14): behaves like CRF, not ABR —
+## prodmap's free lunch carries over; the raw luma-QP bias is safe under the VBV clip
+
+The last unmeasured RC mode (proposed 2026-08-13): CRF 22/26/30/34 with
+`--vbv-maxrate` = 1.1x the anchor's bitrate at that CRF (per clip, from the
+anchor CRF rows), `--vbv-bufsize` = maxrate — same buffer rule as the
+ABR+VBV arms. 24 encodes (`run_ccrf_sweep.sh`), arms anchor / lumaq05fix /
+prodmapfix on the fixed binary; metrics `ccrf_metrics.py`
+(`ccrf_metrics.out`). Key context: the 2026-08-13 ABR fix is mode-gated to
+`X265_RC_ABR`, so under capped-CRF the RAW one-sided per-QG bias is live
+*while* the VBV clip engages — this sweep is the direct test of that
+combination.
+
+BD-rate vs anchor within capped-CRF (negative = config saves bits):
+
+| clip | config | psnr_y | wpsnr_y | wpsnr_cb | wpsnr_cr | xpsnr_y |
+|---|---|---|---|---|---|---|
+| sol10 | lumaq05fix | +1.58 | **−0.89** | +0.36 | +2.47 | −0.01 |
+| sol10 | prodmapfix | +2.90 | **−0.06** | −2.75 | −2.53 | +1.36 |
+| whale10 | lumaq05fix | −0.37 | **−1.44** | −3.10 | +17.66* | +0.12 |
+| whale10 | prodmapfix | +0.43 | **−0.64** | **−17.47** | **−20.47** | +0.63 |
+
+1. **The mode-gate boundary is correctly placed.** `--hdr-luma-qp 0.5`
+   (raw form + VBV clip) gains −0.89/−1.44% wPSNR-Y — inside its CRF band
+   (−1.3..−1.5), nothing like the pre-fix ABR flip (+0.7..+0.8). No fix is
+   needed for capped-CRF.
+2. **prodmap mirrors its CRF result** (−0.06/−0.64 vs CRF's −0.35/−0.58
+   wPSNR-Y) with whale10's full chroma gains — the recommendation extends
+   to capped-CRF without the ABR-mode luma-price caveat.
+3. **VBV-safe and cap-compliant**: zero VBV warnings in 24 encodes; every
+   encode under its cap (anchor 82–90% of cap; whale10 tool arms 76–80%
+   because they save 13–14% bitrate at equal CRF, as in plain CRF mode).
+
+*whale10 lumaq05fix wPSNR-Cr +17.66 is a BD fit over a 53–57 dB
+near-saturated Cr curve — tiny absolute differences; the production stack
+shows −20.5 in the same cell.
+
+## Rate-mode Q_JOD pass + absolute tables for ABR / ABR+VBV / capped-CRF (2026-08-14)
+
+HDR-VDP-3 run over all 72 rate-mode encodes (`vdp_evals_modes.sh`,
+per-key prep→eval→cleanup so the f32 scratch stays bounded; 864 evals,
+12-frame grid, 0 failures) so the absolute tables carry a Q_JOD column.
+Q_JOD read: same story as CRF mode — every config-to-config delta is
+≤ ~0.05 JOD (prodmapfix consistently +0.02..+0.05 on whale10 ABR/VBV, the
+chroma-mediated NCL effect; sol10 within noise; fixed-CRF ccrf cells are
+rate-confounded since the tool arms spend 12–14% fewer bits at equal
+Q_JOD). Perceptually the three arms remain the same picture in every RC
+mode.
+
+Tables (`abs_table_modes.py`, saved `abs_table_modes_2026-08-14.txt`):
+
+kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | XPSNR-Y | Q_JOD
+
+## ABR (single-pass --bitrate)
+
+### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | 6500 kbps | 11500 kbps | 20000 kbps | 33500 kbps |
+|---|---|---|---|---|
+| anchor | 7282 \| 36.91 \| 36.05 \| 38.57 \| 41.63 \| 34.06 \| 8.21 | 12662 \| 38.87 \| 38.03 \| 39.99 \| 42.47 \| 36.21 \| 8.60 | 21769 \| 41.15 \| 40.30 \| 41.91 \| 43.55 \| 38.37 \| 8.90 | 36073 \| 43.57 \| 42.72 \| 44.26 \| 45.00 \| 40.50 \| 9.17 |
+| lumaq05fix | 7203 \| 36.87 \| 36.03 \| 38.53 \| 41.63 \| 34.02 \| 8.23 | 12549 \| 38.82 \| 38.02 \| 39.93 \| 42.47 \| 36.16 \| 8.59 | 21586 \| 41.10 \| 40.30 \| 41.84 \| 43.56 \| 38.32 \| 8.90 | 35847 \| 43.54 \| 42.74 \| 44.19 \| 45.01 \| 40.46 \| 9.17 |
+| prodmapfix | 7122 \| 36.78 \| 35.94 \| 38.60 \| 41.77 \| 33.90 \| 8.21 | 12410 \| 38.71 \| 37.92 \| 39.99 \| 42.58 \| 36.04 \| 8.58 | 21359 \| 40.98 \| 40.20 \| 41.89 \| 43.62 \| 38.21 \| 8.90 | 35503 \| 43.42 \| 42.63 \| 44.19 \| 45.02 \| 40.35 \| 9.16 |
+
+### whale (3840x2160p60, frames 100-399)
+
+| Config | 1450 kbps | 2300 kbps | 3700 kbps | 6200 kbps |
+|---|---|---|---|---|
+| anchor | 1288 \| 42.50 \| 43.84 \| 48.73 \| 52.99 \| 36.45 \| 7.96 | 2067 \| 44.69 \| 46.25 \| 49.97 \| 53.83 \| 38.69 \| 8.17 | 3428 \| 46.96 \| 48.72 \| 51.31 \| 55.30 \| 40.72 \| 8.30 | 5946 \| 49.11 \| 51.08 \| 52.84 \| 56.98 \| 42.50 \| 8.47 |
+| lumaq05fix | 1305 \| 42.53 \| 43.93 \| 48.75 \| 53.02 \| 36.43 \| 7.94 | 2101 \| 44.71 \| 46.33 \| 49.99 \| 53.85 \| 38.65 \| 8.15 | 3484 \| 47.00 \| 48.83 \| 51.36 \| 55.27 \| 40.72 \| 8.28 | 6038 \| 49.13 \| 51.18 \| 52.88 \| 56.98 \| 42.47 \| 8.46 |
+| prodmapfix | 1306 \| 42.47 \| 43.85 \| 49.23 \| 53.32 \| 36.36 \| 7.99 | 2105 \| 44.69 \| 46.30 \| 50.54 \| 54.83 \| 38.63 \| 8.21 | 3488 \| 46.95 \| 48.77 \| 51.93 \| 56.06 \| 40.68 \| 8.35 | 6025 \| 49.10 \| 51.14 \| 53.17 \| 57.59 \| 42.45 \| 8.49 |
+
+## ABR+VBV (--bitrate + vbv-maxrate/bufsize = target)
+
+### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | 6500 kbps | 11500 kbps | 20000 kbps | 33500 kbps |
+|---|---|---|---|---|
+| anchor | 6395 \| 36.39 \| 35.40 \| 38.16 \| 41.57 \| 33.72 \| 8.11 | 11366 \| 37.91 \| 37.03 \| 39.53 \| 42.48 \| 35.82 \| 8.50 | 19690 \| 39.84 \| 39.07 \| 41.25 \| 43.50 \| 37.91 \| 8.77 | 33822 \| 42.68 \| 41.79 \| 43.43 \| 44.89 \| 40.31 \| 9.08 |
+| lumaq05fix | 6334 \| 36.20 \| 35.23 \| 37.77 \| 41.57 \| 33.58 \| 8.12 | 11447 \| 37.96 \| 37.11 \| 39.49 \| 42.52 \| 35.84 \| 8.47 | 19731 \| 39.45 \| 38.77 \| 40.47 \| 43.52 \| 37.84 \| 8.77 | 34004 \| 42.82 \| 41.93 \| 43.45 \| 44.92 \| 40.33 \| 9.11 |
+| prodmapfix | 6342 \| 36.19 \| 35.21 \| 37.95 \| 41.73 \| 33.52 \| 8.14 | 11311 \| 37.74 \| 36.91 \| 39.25 \| 42.60 \| 35.67 \| 8.51 | 19850 \| 39.63 \| 38.92 \| 41.08 \| 43.63 \| 37.90 \| 8.80 | 33917 \| 42.74 \| 41.87 \| 43.43 \| 44.94 \| 40.28 \| 9.10 |
+
+### whale (3840x2160p60, frames 100-399)
+
+| Config | 1450 kbps | 2300 kbps | 3700 kbps | 6200 kbps |
+|---|---|---|---|---|
+| anchor | 1466 \| 42.49 \| 43.97 \| 48.48 \| 51.07 \| 36.52 \| 8.00 | 2334 \| 44.82 \| 46.49 \| 50.09 \| 53.91 \| 38.84 \| 8.19 | 3765 \| 47.13 \| 48.94 \| 51.36 \| 55.67 \| 40.90 \| 8.39 | 6306 \| 49.51 \| 51.44 \| 53.05 \| 57.34 \| 42.77 \| 8.51 |
+| lumaq05fix | 1467 \| 42.47 \| 44.00 \| 48.53 \| 51.04 \| 36.38 \| 7.95 | 2334 \| 44.81 \| 46.53 \| 50.11 \| 53.92 \| 38.80 \| 8.20 | 3765 \| 47.12 \| 48.99 \| 51.40 \| 55.65 \| 40.84 \| 8.36 | 6305 \| 49.49 \| 51.49 \| 53.07 \| 57.31 \| 42.72 \| 8.49 |
+| prodmapfix | 1471 \| 42.49 \| 44.00 \| 49.19 \| 53.30 \| 36.42 \| 7.98 | 2344 \| 44.70 \| 46.41 \| 50.42 \| 55.00 \| 38.67 \| 8.23 | 3772 \| 47.05 \| 48.91 \| 51.96 \| 56.33 \| 40.79 \| 8.38 | 6316 \| 49.48 \| 51.46 \| 53.35 \| 57.73 \| 42.70 \| 8.50 |
+
+## Capped-CRF (--crf + vbv-maxrate = 1.1x anchor bitrate at that CRF)
+
+### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 31888 \| 43.34 \| 42.36 \| 43.77 \| 45.12 \| 40.18 \| 9.11 | 18816 \| 40.84 \| 39.87 \| 41.47 \| 43.64 \| 37.97 \| 8.83 | 10568 \| 38.54 \| 37.54 \| 39.52 \| 42.51 \| 35.69 \| 8.47 | 5816 \| 36.58 \| 35.54 \| 38.17 \| 41.55 \| 33.34 \| 8.07 |
+| lumaq05fix | 32312 \| 43.32 \| 42.46 \| 43.86 \| 45.07 \| 40.22 \| 9.12 | 19298 \| 40.89 \| 40.03 \| 41.56 \| 43.64 \| 38.05 \| 8.85 | 10857 \| 38.58 \| 37.67 \| 39.58 \| 42.50 \| 35.80 \| 8.51 | 5969 \| 36.62 \| 35.63 \| 38.20 \| 41.58 \| 33.50 \| 8.12 |
+| prodmapfix | 32088 \| 43.25 \| 42.41 \| 43.90 \| 45.10 \| 40.14 \| 9.12 | 19148 \| 40.80 \| 39.96 \| 41.64 \| 43.71 \| 37.97 \| 8.86 | 10776 \| 38.50 \| 37.61 \| 39.67 \| 42.60 \| 35.71 \| 8.51 | 5955 \| 36.56 \| 35.59 \| 38.28 \| 41.75 \| 33.43 \| 8.14 |
+
+### whale (3840x2160p60, frames 100-399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 6130 \| 49.92 \| 51.75 \| 53.11 \| 57.40 \| 42.96 \| 8.48 | 3708 \| 47.72 \| 49.40 \| 51.65 \| 55.70 \| 41.26 \| 8.32 | 2255 \| 45.33 \| 46.85 \| 49.93 \| 54.03 \| 39.16 \| 8.23 | 1418 \| 42.85 \| 44.22 \| 48.42 \| 53.04 \| 36.66 \| 7.96 |
+| lumaq05fix | 5310 \| 49.32 \| 51.18 \| 52.68 \| 56.81 \| 42.47 \| 8.43 | 3227 \| 47.06 \| 48.76 \| 51.21 \| 55.28 \| 40.68 \| 8.32 | 1953 \| 44.61 \| 46.14 \| 49.69 \| 53.17 \| 38.46 \| 8.11 | 1195 \| 42.14 \| 43.49 \| 47.88 \| 52.93 \| 35.88 \| 7.92 |
+| prodmapfix | 5385 \| 49.33 \| 51.19 \| 53.05 \| 57.32 \| 42.48 \| 8.46 | 3278 \| 47.09 \| 48.79 \| 51.61 \| 55.88 \| 40.71 \| 8.31 | 1986 \| 44.67 \| 46.19 \| 50.39 \| 54.68 \| 38.54 \| 8.14 | 1212 \| 42.17 \| 43.52 \| 48.73 \| 52.99 \| 35.93 \| 7.96 |
+

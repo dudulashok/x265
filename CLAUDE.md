@@ -811,6 +811,51 @@ Commits `cedc6485e` (fix) + `4a85f0835` (mode gate) + `c00793a0e` (harness).
    never measured in any mode; proposal: CRF 22–34 with vbv-maxrate ≈
    1.1× the anchor bitrate at each CRF). The directive's re-tune half is
    otherwise closed — tool strengths hold at 0.5/1.0/0.25 in all modes.
+   **DONE 2026-08-14 — see the session log below.**
+
+### 2026-08-14 session log — capped-CRF (CRF+VBV) validated (RC-mode matrix
+### complete), Q_JOD extended to every rate mode, absolute tables per mode
+
+Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
+`run_ccrf_sweep.sh`, `ccrf_metrics.py`, `vdp_evals_modes.sh`,
+`abs_table_modes.py` (+ saved `abs_table_modes_2026-08-14.txt`).
+
+1. **Capped-CRF verdict: behaves like CRF, not like ABR.** 24 encodes
+   (anchor / lumaq05fix / prodmapfix, CRF 22–34, vbv-maxrate = 1.1× the
+   anchor bitrate at that CRF, bufsize = maxrate). prodmap wPSNR-Y BD vs
+   anchor **−0.06 (sol10) / −0.64 (whale10)** with whale10's full chroma
+   gains (−17.5/−20.5) — the CRF recommendation extends to capped-CRF
+   without the ABR luma-price caveat. Zero VBV warnings; all encodes under
+   cap (whale10 tool arms at 76–80% of cap — they save 13–14% bitrate at
+   equal CRF, same as plain CRF mode).
+2. **The 2026-08-13 mode gate is correctly bounded**: under capped-CRF the
+   RAW one-sided per-QG bias runs (gate is `X265_RC_ABR` only) while the
+   VBV clip engages, and `--hdr-luma-qp 0.5` still lands in its CRF band
+   (−0.89/−1.44% wPSNR-Y) — no ABR-style flip, no fix needed. The RC-mode
+   matrix (CRF / ABR / ABR+VBV / capped-CRF) is now fully measured.
+3. **Q_JOD now covers every rate mode** (user directive: Q_JOD column in
+   the tables): `vdp_evals_modes.sh` ran HDR-VDP-3 over all 72 rate-mode
+   encodes (864 evals, 12-frame grids, 0 failures; per-key prep→eval→delete
+   keeps the f32 scratch ~300 MB — the disk cannot hold 72 keys' dumps).
+   Read: all deltas ≤ ~0.05 JOD; prodmapfix is +0.02..+0.05 on whale10
+   ABR/VBV (the chroma-mediated NCL effect), sol10 noise — perceptually the
+   arms are the same picture in every RC mode, consistent with the CRF-mode
+   decomposition.
+4. **Absolute rate-quality tables per mode** (`abs_table_modes.py`; layout
+   of abs_table.py with kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr |
+   XPSNR-Y | Q_JOD): ABR, ABR+VBV and capped-CRF, pasted into RESULTS.md.
+5. Ops note for detached runs on this machine (harness background tasks
+   were repeatedly killed this session; Start-Process survivors are the
+   reliable pattern): PowerShell 5.1 `Start-Process -ArgumentList` does NOT
+   quote args containing spaces — `bash -c 'PAR=4 script.sh'` reaches bash
+   as two tokens and silently runs only the assignment. Pass a single
+   space-free script path (wrap env in the script) and check for surviving
+   orphan children before relaunching, or two instances race on the same
+   output files.
+6. **Open next**: the HDR validation tail is closed — per the 2026-08-12
+   user directive, start ARF (`pic_output_flag`) from
+   `hdr-validation/ARF-SCOPING.md` stage 0; small items still open: DoVi
+   profile-5/8.4 guard, `--hdr-scene-qp` transient segment.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -867,8 +912,11 @@ Commits `cedc6485e` (fix) + `4a85f0835` (mode gate) + `c00793a0e` (harness).
       non-integral for 16-bit 4:2:0 at that resolution — format unknown), pull more
       Netflix Open Content / CableLabs 4K HDR clips; at least one natural-dark and one
       graded-bright clip per class.
-- [ ] **ABR + VBV sweep** mirroring the CRF one (the RC paths differ; `hdr-scene-qp`
-      applies in both B-slice and P/I branches of `rateEstimateQscale`).
+- [x] **ABR + VBV sweep** mirroring the CRF one — done across 2026-08-12/13/14:
+      ABR + ABR+VBV sweep and verdict (2026-08-12 late), luma-qp flip fix + re-tune
+      (2026-08-13), capped-CRF arm + per-mode absolute tables with Q_JOD
+      (2026-08-14). The RC-mode matrix is fully measured; prodmap holds everywhere,
+      with a small luma price only under ABR/ABR+VBV.
 - [ ] **Subjective pass on an HDR display** for the two subjective tools before any
       further metric-driven tuning of them.
 - [x] **wSSE-weighted RDO** — implemented 2026-08-04 as `--hdr-wsse-rd <float>`
