@@ -430,6 +430,13 @@ provenance and the equal-bitrate verdict); report scripts `report_3way.py`,
    both been deleted before this session and cost ~500 MB of re-download; restore
    commands are now in the harness README. `vdp/*.f32` frame dumps are regenerable
    scratch and may be deleted; those two trees may not.
+   **BROADENED 2026-08-14 (user directive): keep ALL test setups — the whole
+   `hdr-validation/` tree (source .yuv segments, encodes, logs, refs, results),
+   Octave, hdrvdp-3.0.7 — the project may return for new implementation/testing
+   at any time. Do not delete anything as "cleanup"; under disk pressure the
+   only pre-approved deletion is `vdp/t_*.f32` test-frame dumps (regenerable,
+   and the per-key drivers clean them automatically) — for anything else, ask
+   the user first.**
 7. **Baseline arms are measured once (user directive)**: `anchor` and `hdr10opt`
    depend on no HDR-branch code — reuse their rows, re-measure only after an upstream
    rebase or a metric-sampling change. Both drivers already skip completed keys.
