@@ -2633,6 +2633,17 @@ VUI fields must be manually specified.
 	2-pass and constant-QP modes). 0 disables. Typical range 0.5 to 1.5.
 	Default 0.
 
+	Exercised on synthetic transient content (lightning, hard cuts, a fade
+	and fireworks): the bias engages and recovers as designed, is bounded
+	(max 2x strength in QP), deterministic across rate-control modes, and
+	VBV/ABR-safe (no VBV violations, rate accuracy unchanged). Note it is
+	a temporal-masking tool: on flash-heavy content it costs ~0.5 dB
+	wPSNR-Y at strength 1.0 under ABR, since static per-frame metrics do
+	not credit the masking it exploits — judge it subjectively. Full-frame
+	flashes are usually caught by scene-cut detection (re-baseline) rather
+	than the bias itself; the bias carries the fade and partial-frame
+	transient cases.
+
 .. option:: --hdr-wsse-rd <float>
 
 	Strength of wSSE-weighted rate-distortion optimization for 10-bit PQ

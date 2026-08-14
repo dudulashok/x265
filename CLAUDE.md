@@ -871,6 +871,14 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
    strengths in the version SEI; 8.4 → 0/0; 8.1 keeps −2/−2 and all stack
    tools active with no warnings. cli.rst `--dolby-vision-profile` section
    documents the interaction. No X265_BUILD bump (no API change).
+8. **`--hdr-scene-qp` exercised same session** (the last open HDR small item
+   — see the [x] TODO entry and RESULTS.md 2026-08-14): `gen_flash10.py`
+   transient segment + permanent `hdr-scene-qp:` debug trace. Mechanism
+   verified sane in all modes; wPSNR-negative by construction on flash
+   content (temporal masking); two upstream findings recorded (scenecut
+   fires on full-frame flashes; fade-adjacent cut re-baselines one frame
+   early → PQ-aware-scenecut TODO evidence). **Both HDR small items are now
+   closed — next session starts the general-efficiency branch (item 6).**
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -894,10 +902,17 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
       (CRF12 control scores WORSE CAMBI than CRF34). Tool marked not-recommended in
       cli.rst; any redesign needs a coarse-gradient segment that isolates the
       QP-domain banding mode first.
-- [ ] **Exercise `--hdr-scene-qp`**: acquire or synthesize a transient-rich HDR segment
-      (fireworks, flash cuts); verify the bias interacts sanely with VBV and ABR, and add
-      a `rate-control-tests.txt` descriptor. (The ABR/VBV half is covered by the
-      2026-08-12 sweep — the transient-rich segment remains.)
+- [x] **Exercise `--hdr-scene-qp`** — done 2026-08-14 (`gen_flash10.py` transient
+      segment: lightning, hard cuts, fade, fireworks; permanent debug trace in
+      `updateHdrSceneQpBias`; RESULTS.md 2026-08-14 scene-qp section). Mechanism
+      sane: fade tracked, fireworks get the full designed bias cycle, VBV/ABR
+      safe, deterministic across modes. Three findings: full-frame flashes fire
+      the scenecut re-baseline rather than the bias; a fade-adjacent cut
+      re-baselined one frame early (direct evidence for the PQ-aware-scenecut
+      TODO); the APL EMA updates in coding order (bounded jitter, known
+      behavior). wPSNR-Y −0.56 dB at strength 1.0 under ABR on flash content —
+      the expected static-metric penalty for a temporal-masking tool; keep
+      default-off, judge subjectively. VBV descriptor now carries it.
 - [x] **Dolby Vision guard for the HDR tools** — implemented 2026-08-14 (see the
       session log): profiles 5 (IPTPQc2), **8.2 (SDR — added beyond the original
       scope, same mismatch)** and 8.4 (HLG) warn-and-disable every HDR tool and

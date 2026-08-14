@@ -56,4 +56,4 @@ parkrun_ter_720p50.y4m, --bitrate 3500 --pass 1 --multi-pass-opt-distortion --ha
 # HDR tools under rate-targeted modes (single-pass ABR / ABR+VBV): the
 # hdr-luma-qp per-QG offsets are zero-mean with an EMA-relative frame bias
 NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --bitrate 6000 --hdr-pq --hdr-luma-qp 0.5 --hdr-scene-qp 1.0
-NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --bitrate 6000 --vbv-maxrate 6000 --vbv-bufsize 6000 --hdr-pq --hdr-luma-qp 0.5
+NebutaFestival_2560x1600_60_10bit_crop.yuv,--preset medium --bitrate 6000 --vbv-maxrate 6000 --vbv-bufsize 6000 --hdr-pq --hdr-luma-qp 0.5 --hdr-scene-qp 1.0

@@ -1752,3 +1752,49 @@ kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | XPSNR-Y | Q_JOD
 | lumaq05fix | 5310 \| 49.32 \| 51.18 \| 52.68 \| 56.81 \| 42.47 \| 8.43 | 3227 \| 47.06 \| 48.76 \| 51.21 \| 55.28 \| 40.68 \| 8.32 | 1953 \| 44.61 \| 46.14 \| 49.69 \| 53.17 \| 38.46 \| 8.11 | 1195 \| 42.14 \| 43.49 \| 47.88 \| 52.93 \| 35.88 \| 7.92 |
 | prodmapfix | 5385 \| 49.33 \| 51.19 \| 53.05 \| 57.32 \| 42.48 \| 8.46 | 3278 \| 47.09 \| 48.79 \| 51.61 \| 55.88 \| 40.71 \| 8.31 | 1986 \| 44.67 \| 46.19 \| 50.39 \| 54.68 \| 38.54 \| 8.14 | 1212 \| 42.17 \| 43.52 \| 48.73 \| 52.99 \| 35.93 \| 7.96 |
 
+
+## `--hdr-scene-qp` exercised on transient content (2026-08-14): mechanism
+## verified sane; wPSNR-negative by construction (temporal-masking tool)
+
+The tool had never seen non-steady content (both corpus clips are
+temporally steady). `gen_flash10.py` generates flash10.yuv — 1920x1080p24
+10-bit PQ, 192 frames, deterministic: night scene with a 3-frame full-frame
+lightning flash (f30-32), hard cut to a bright day scene (f64), a 32-frame
+fade-out (f96-127), hard cut back to night (f128), three expanding
+fireworks bursts (f140/158/176). A new permanent debug trace
+(`hdr-scene-qp: poc N apl A avg R bias B` in `updateHdrSceneQpBias`) makes
+the bias observable; encodes anchor vs `--hdr-scene-qp 1.0` under CRF 26,
+ABR 4000 and ABR+VBV 4000.
+
+Mechanism findings (trace, identical rebaseline pocs in CRF and ABR):
+1. **Works as designed where it can**: the fade is tracked with growing
+   positive biases (+0.01 → +0.37), fireworks bursts get the full designed
+   cycle (bias −0.11 while the burst grows, +0.1 as it dies, EMA recovering
+   between bursts), everything bounded and deterministic.
+2. **Full-frame flashes fire the lookahead scenecut, not the bias**: the
+   lightning frames re-baseline (bias 0 on the flash itself); the bias's
+   own contribution is the post-flash tail — dark frames after the flash
+   carry +0.9..+1.9 QP for ~8 frames while the flash-polluted EMA decays
+   (temporal masking says that is the right direction).
+3. **Fade-adjacent cut re-baselined one frame early** (poc 127, the fade's
+   last frame, instead of 128), leaving the new dark scene +0.5..+0.9 QP
+   for ~15 frames — direct evidence for the "PQ-aware scenecut detection"
+   TODO item (SDR-tuned thresholds misplace cuts around dark PQ fades).
+4. **The APL EMA updates in coding order, not display order** (it lives in
+   rateEstimateQscale): after transients the running average is visibly
+   non-monotone across POCs. Bounded jitter (EMA gain 0.1, bias clip
+   ±2×strength); a display-order EMA would need lookahead-side state —
+   noted as known behavior, not fixed.
+
+Safety: zero VBV warnings; ABR rate accuracy unchanged (anchor +5.4% vs
+tool +6.8% overshoot on an 8 s clip); avg QP moves +0.3.
+
+Metric verdict: **wPSNR-Y −0.56 dB at +1.4% bitrate under ABR at strength
+1.0** (anchor 51.82 @ 4216 kbps vs 51.26 @ 4271; the `--hdr-pq`-stacked and
+pure arms are numerically identical, so the cost is scene-qp itself, not
+the chroma offsets — this synthetic segment is chroma-neutral). Under the
+tight VBV the effect vanishes entirely (51.012 vs 51.012 — the VBV clip
+dominates). Expected shape for a temporal-masking tool judged by a static
+per-frame metric; the P0 metric note applies. Keep default-off; value is
+subjective. cli.rst updated; `--hdr-scene-qp 1.0` added to the ABR+VBV
+rate-control-tests.txt descriptor (the ABR descriptor already carried it).

@@ -2037,11 +2037,14 @@ void RateControl::updateHdrSceneQpBias(Frame* curFrame)
     if (m_hdrAplRunningAvg < 0.0 || curFrame->m_lowres.bScenecut)
     {
         m_hdrAplRunningAvg = apl;
+        x265_log(m_param, X265_LOG_DEBUG, "hdr-scene-qp: poc %d apl %.1f rebaseline\n", curFrame->m_poc, apl);
         return;
     }
     double delta = apl - m_hdrAplRunningAvg;
     double deltaNorm = x265_clip3(-1.0, 1.0, delta / 512.0);
     m_hdrSceneQpBias = -m_param->rc.hdrSceneQpStrength * 2.0 * deltaNorm;
+    x265_log(m_param, X265_LOG_DEBUG, "hdr-scene-qp: poc %d apl %.1f avg %.1f bias %+.2f\n",
+             curFrame->m_poc, apl, m_hdrAplRunningAvg, m_hdrSceneQpBias);
     m_hdrAplRunningAvg = 0.9 * m_hdrAplRunningAvg + 0.1 * apl;
 }
 
