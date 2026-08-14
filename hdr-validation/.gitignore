@@ -36,3 +36,12 @@ vtm_sweep.out
 vtm_sweep_done.marker
 decompose_jod.out
 decompose_jod_done.marker
+
+# per-experiment done markers / progress logs (generalized 2026-08-14)
+*_done.marker
+*_progress.out
+ccrf_metrics.out
+abr_metrics_run2.out
+retry_vdp.out
+cqpmap_followup.out
+cqpmap_sweep.out
