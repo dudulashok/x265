@@ -852,10 +852,25 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
    space-free script path (wrap env in the script) and check for surviving
    orphan children before relaunching, or two instances race on the same
    output files.
-6. **Open next**: the HDR validation tail is closed — per the 2026-08-12
-   user directive, start ARF (`pic_output_flag`) from
-   `hdr-validation/ARF-SCOPING.md` stage 0; small items still open: DoVi
-   profile-5/8.4 guard, `--hdr-scene-qp` transient segment.
+6. **Plan agreed with user (2026-08-14)**: finish the small HDR items first
+   — DoVi guard (**DONE same session, item 7 below**), `--hdr-scene-qp`
+   transient segment — then **general (non-HDR) efficiency tools move to a
+   separate new branch off master** (ARF first, per ARF-SCOPING.md stage 0).
+   Branch setup checklist for that session: branch from the upstream master
+   tip the HDR branch is rebased on; cherry-pick a slimmed metric harness
+   (PSNR/XPSNR/bdrate/abs-table machinery — not the HDR-specific parts);
+   move `ARF-SCOPING.md` over; own CLAUDE.md section; decide X265_BUILD
+   policy (HDR branch is at 226 on upstream's 217 — parallel param
+   additions will collide at merge time).
+7. **DoVi guard implemented same session** (encoder.cpp, right after
+   `configureDolbyVisionParams` so profile 5's `crQpOffset=3` survives):
+   profiles 5/8.2/8.4 disable all HDR tools with a warning and take back
+   `--hdr-pq`'s −2/−2 (8.2 added beyond the TODO's 5/8.4 scope — SDR BT.709
+   base, same mismatch). Verified on 10-frame encodes: profile 5 stream
+   signals ipt-c2/full-range with cbqpoffs=0 crqpoffs=3 and zero HDR tool
+   strengths in the version SEI; 8.4 → 0/0; 8.1 keeps −2/−2 and all stack
+   tools active with no warnings. cli.rst `--dolby-vision-profile` section
+   documents the interaction. No X265_BUILD bump (no API change).
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -883,15 +898,13 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
       (fireworks, flash cuts); verify the bias interacts sanely with VBV and ABR, and add
       a `rate-control-tests.txt` descriptor. (The ABR/VBV half is covered by the
       2026-08-12 sweep — the transient-rich segment remains.)
-- [ ] **Dolby Vision guard for the HDR tools** (found 2026-08-12): with
-      `--dolby-vision-profile 5` (IPTPQc2) or `8.4` (HLG), warn-and-disable the
-      chroma tools (`--hdr-pq` offsets, `--hdr-chroma-qp-map`, `--hdr-chroma-adapt`,
-      `--hdr-chroma-qp`), `--hdr-measured-cll` (BT.2020 NCL matrix invalid) and the
-      PQ-model tools; profile 5 additionally sets its own `crQpOffset=3` that
-      `--hdr-chroma-qp-map` would silently overwrite. Profile 8.1 needs no guard
-      (HDR10 base layer) — and pairs well with `--hdr-measured-cll`, since 8.1
-      force-enables the CLL SEI which is emitted as 0,0 when the user gives no
-      `--max-cll`. Small configure()-time change next to the existing DoVi checks.
+- [x] **Dolby Vision guard for the HDR tools** — implemented 2026-08-14 (see the
+      session log): profiles 5 (IPTPQc2), **8.2 (SDR — added beyond the original
+      scope, same mismatch)** and 8.4 (HLG) warn-and-disable every HDR tool and
+      take back `--hdr-pq`'s −2/−2 offsets (profile 5's mandated `crQpOffset=3`
+      preserved — the guard runs AFTER `configureDolbyVisionParams`). Profile 8.1
+      untouched and verified fully working with the prodmap stack. No X265_BUILD
+      bump (configure()-time behavior, no API change).
 - [ ] **Derive `--hdr-scaling-list` from the PQ CSF** instead of the current arbitrary
       convex ramp; compare against HM's default intra lists as a baseline.
 - [ ] **Cross-check wPSNR** against HDRTools/VTM's implementation (VTM checkout exists at

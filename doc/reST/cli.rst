@@ -2950,6 +2950,17 @@ Bitstream options
     
     Currently only profile 5, profile 8.1, profile 8.2 and profile 8.4  enabled, Default 0 (disabled)
 
+    Interaction with the HDR tools (:option:`--hdr-pq`, :option:`--hdr-luma-qp`,
+    :option:`--hdr-scene-qp`, :option:`--hdr-chroma-qp-map`, :option:`--hdr-chroma-adapt`,
+    :option:`--hdr-chroma-qp`, :option:`--hdr-deblock`, :option:`--hdr-banding-protect`,
+    :option:`--hdr-sao-band`, :option:`--hdr-wsse-rd`, :option:`--hdr-scaling-list`,
+    :option:`--hdr-measured-cll`): these tools assume a 10-bit BT.2020/PQ YCbCr
+    base layer, which only profile 8.1 provides — the combination works and is
+    recommended (in 2-pass, :option:`--hdr-measured-cll` fills the CLL SEI that
+    profile 8.1 otherwise emits as 0,0). Under profile 5 (IPTPQc2), 8.2 (SDR)
+    and 8.4 (HLG) the tools are automatically disabled with a warning, and
+    profile 5's mandated Cr QP offset is preserved.
+
 .. option:: --dolby-vision-rpu <filename>
 
     File containing Dolby Vision RPU metadata. If given, x265's Dolby Vision 

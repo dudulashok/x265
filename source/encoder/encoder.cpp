@@ -5050,6 +5050,42 @@ void Encoder::configure(x265_param *p)
     if (p->dolbyProfile)     // Default disabled.
         configureDolbyVisionParams(p);
 
+    if (p->dolbyProfile == 50 || p->dolbyProfile == 82 || p->dolbyProfile == 84)
+    {
+        /* The HDR tools assume 10-bit BT.2020 YCbCr with the PQ transfer.
+         * Dolby Vision profile 5 carries IPTPQc2 (not YCbCr, and it mandates
+         * its own crQpOffset=3, set above), profile 8.2 an SDR BT.709 base
+         * layer and profile 8.4 an HLG one — the PQ luma models, the BT.2020
+         * chroma statistics, the VVC chroma-QP table and measured-CLL's
+         * BT.2020 NCL matrix are all invalid there. Profile 8.1 (HDR10 base
+         * layer) needs no guard. Must run AFTER configureDolbyVisionParams
+         * so profile 5's crQpOffset survives. */
+        if (p->rc.hdrLumaQpStrength > 0 || p->rc.hdrSceneQpStrength > 0 || p->rc.hdrBandingStrength > 0 ||
+            p->rc.hdrWsseRdStrength > 0 || p->rc.hdrDeblockStrength > 0 || p->rc.hdrSaoBandStrength > 0 ||
+            p->rc.bHdrScalingList || p->rc.hdrChromaQpStrength > 0 || p->rc.hdrChromaQpMapStrength > 0 ||
+            p->rc.hdrChromaAdaptStrength > 0 || p->rc.bHdrMeasuredCll)
+        {
+            x265_log(p, X265_LOG_WARNING, "the HDR tools assume a 10-bit BT.2020/PQ YCbCr base layer; "
+                     "disabling them for dolby-vision-profile %d.%d (use profile 8.1 to combine them with Dolby Vision).\n",
+                     p->dolbyProfile / 10, p->dolbyProfile % 10);
+            p->rc.hdrLumaQpStrength = p->rc.hdrSceneQpStrength = p->rc.hdrBandingStrength = 0;
+            p->rc.hdrWsseRdStrength = p->rc.hdrDeblockStrength = p->rc.hdrSaoBandStrength = 0;
+            p->rc.hdrChromaQpStrength = p->rc.hdrChromaQpMapStrength = p->rc.hdrChromaAdaptStrength = 0;
+            p->rc.bHdrScalingList = p->rc.bHdrMeasuredCll = 0;
+        }
+        if (p->bHdrPq)
+        {
+            /* the VUI hdr-pq set has already been overwritten from the DoVi
+             * profile table; take back its -2/-2 WCG chroma offsets too
+             * (profile 5's mandated crQpOffset=3 is preserved) */
+            if (p->cbQpOffset == -2) p->cbQpOffset = 0;
+            if (p->crQpOffset == -2) p->crQpOffset = 0;
+            x265_log(p, X265_LOG_WARNING, "hdr-pq's BT.2020/PQ VUI and chroma offsets do not apply to "
+                     "dolby-vision-profile %d.%d; the DoVi profile's signalling is used.\n",
+                     p->dolbyProfile / 10, p->dolbyProfile % 10);
+        }
+    }
+
     if (p->rc.zonefileCount && p->rc.zoneCount)
     {
         p->rc.zoneCount = 0;
