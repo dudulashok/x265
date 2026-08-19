@@ -887,6 +887,27 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
    early → PQ-aware-scenecut TODO evidence). **Both HDR small items are now
    closed — next session starts the general-efficiency branch (item 6).**
 
+### 2026-08-19 session log — HDR work paused (user decision), efficiency branch started
+
+1. **`RESULTS_SUMMARY.md` added** (`e2526edd7`): per-RC-mode absolute
+   rate-quality tables (CRF / ABR / ABR+VBV / capped-CRF) with the vs-anchor
+   verdict under each — the condensed companion to RESULTS.md.
+2. **Encoder-only LMCS emulation analyzed and rejected** (user proposal; see
+   the entry in "Evaluated and rejected" — the projection of LMCS onto
+   encoder-only choices is exactly the dQP + weighted-distortion + chroma
+   offset tool set already built/planned).
+3. **User decision: HDR-specific work is at a dead end for now — paused.**
+   The diagnosis (agreed): all tools are QP-allocation on top of x265's own
+   AQ + cu-tree, which (a) already covers most of what the JVET tools got
+   credit for against flat-QP anchors, (b) actively absorbs injected per-QG
+   offsets (cu-tree recomputation), and (c) leaves only second-order
+   zero-mean-redistribution gains. This branch stays as-is; return later.
+4. **General-efficiency branch created per the 2026-08-14 plan** — branch
+   `efficiency` off master (`5ab552e62`, = the merge-base HDR is rebased on),
+   carrying ARF-SCOPING.md, a slimmed metric harness and its own CLAUDE.md
+   section. ARF (pic_output_flag hidden frames) is the first work item,
+   stage 0 first. Continue that work THERE, not here.
+
 ### TODO — HDR quality / efficiency investigation
 
 - [x] **Strength sweeps** for `--hdr-luma-qp` — measured 2026-08-05: BD-optimal
@@ -1305,6 +1326,23 @@ quantization on the VVC side.
 - **VMAF-in-the-loop RDO**: frame-level metric with temporal features; cannot decompose
   to a per-block cost at RDO call rates. (Mode-decision metrics are encoder-side and
   decoder-safe in general — the objection is cost, not conformance.)
+- **Encoder-only LMCS emulation** (2026-08-19, user proposal analyzed): reshape luma
+  at the encoder, inverse-reshape the MC prediction internally — no signalling. Fails
+  on one hard point: the HEVC decoder's reconstruction rule is fixed at
+  `recon = pred + resid` in the ORIGINAL domain; a residual coded in the reshaped
+  domain gets added to an un-reshaped prediction (`pred + ê ≠ inv(fwd(pred) + ê)`
+  for nonlinear fwd) — mismatch on the first inter block, compounding, and not drift
+  toward anything (the decoder runs a different loop, not an approximation of ours).
+  Transmitting the corrected original-domain residual instead forces quantization
+  back into the original domain, which collapses LMCS's codeword-redistribution
+  benefit into exactly: block-level luma dQP (= `--hdr-luma-qp`, historically the
+  JVET encoder-only alternative to the reshaper), per-pixel weighted-distortion RDO
+  (the P3 item), and slice chroma offsets (= `--hdr-chroma-qp-map`). What stays
+  unreachable without normative support: prediction in the reshaped domain and the
+  changed transform statistics. MPEG's 2015 HDR CfE reached the same endpoint
+  (HDR10 + dQP + chroma offsets). Out-of-loop reshaping via the CRI SEI is
+  conformant syntax but relies on the display honoring the SEI — breaks plain
+  HDR10 playback, out of scope.
 
 ## Further reading
 
