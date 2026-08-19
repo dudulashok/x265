@@ -645,7 +645,10 @@ void Entropy::codePPS( const PPS& pps, bool filerAcross, int iPPSInitQpMinus26, 
     WRITE_UVLC(layer,                          "pps_pic_parameter_set_id");
     WRITE_UVLC(layer,                          "pps_seq_parameter_set_id");
     WRITE_FLAG(0,                          "dependent_slice_segments_enabled_flag");
-    WRITE_FLAG(0,                          "output_flag_present_flag");
+    /* ARF stage-0 probe (TEMPORARY, env-gated; see ARF-SCOPING.md): setting
+     * X265_ARF_STAGE0 enables per-slice pic_output_flag signalling. With the
+     * variable unset the written bit is 0, byte-identical to before. */
+    WRITE_FLAG(getenv("X265_ARF_STAGE0") ? 1 : 0, "output_flag_present_flag");
     WRITE_CODE(pps.maxViews > 1 ? 2 : 0, 3,"num_extra_slice_header_bits");
     WRITE_FLAG(pps.bSignHideEnabled,       "sign_data_hiding_flag");
     WRITE_FLAG(0,                          "cabac_init_present_flag");
@@ -990,6 +993,22 @@ void Entropy::codeSliceHeader(const Slice& slice, FrameData& encData, uint32_t s
 #endif
 
     WRITE_UVLC(slice.m_sliceType, "slice_type");
+
+    if (const char* arfProbe = getenv("X265_ARF_STAGE0"))
+    {
+        /* ARF stage-0 probe (TEMPORARY): "all" writes pic_output_flag=1 on
+         * every slice — decoder output must be unchanged, measuring pure
+         * syntax overhead. A positive integer N suppresses output of the
+         * non-reference (TRAIL_N) picture with POC N; a negative integer -N
+         * suppresses the picture with POC N regardless of reference status
+         * (the real ARF case: decoded and referenced but never output). A
+         * conformant decoder must emit exactly one frame fewer either way. */
+        int hidePoc = atoi(arfProbe);
+        int outFlag = !((hidePoc > 0 && slice.m_poc == hidePoc &&
+                         slice.m_nalUnitType == NAL_UNIT_CODED_SLICE_TRAIL_N) ||
+                        (hidePoc < 0 && slice.m_poc == -hidePoc));
+        WRITE_FLAG(outFlag, "pic_output_flag");
+    }
 
     if ((slice.m_param->numViews > 1 && layer > 0) || !slice.getIdrPicFlag())
     {

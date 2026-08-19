@@ -259,6 +259,16 @@ are single-shot, always-moving — LTR/shot-level tools need corpus expansion fi
   from `hdr-validation/` (metrics/bdrate/abs_table/rate_matched + wpsnr/xpsnr verbatim);
   `ARF-SCOPING.md` moved to repo root; X265_BUILD policy decided (jump to 240);
   root `.gitignore` shields the untracked HDR test trees. Next: ARF stage 0.
+- **2026-08-20** — **ARF stage 0 DONE, all three probes pass** (results in
+  ARF-SCOPING.md's staging section): all-1 `pic_output_flag` signalling is
+  per-frame-hash-identical to baseline at 1 bit/slice; hiding a non-ref b drops
+  exactly one frame from ffmpeg's output with zero decode errors; hiding a
+  **referenced** B (the real ARF case) also works — the frames predicting from it
+  decode pixel-identical while it never appears in the output. The temporary
+  env-gated probe (`X265_ARF_STAGE0` in entropy.cpp) stays until stage 1's param
+  replaces it; default path writes identical bits. The displaced HDR-branch binary
+  is archived at `hdr-validation/bin-archive/x265-4.2+156-4a85f0835-hdrbranch.exe`.
+  Next: stage 1 — POC-space doubling behind the new param (the `m_poc` audit).
 
 ## Further reading
 

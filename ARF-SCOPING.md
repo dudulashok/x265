@@ -112,13 +112,25 @@ from a per-Slice flag. Cost: 1 bit/slice on every frame while enabled.
 
 ## Staging (each stage independently verifiable)
 
-- **Stage 0 — syntax proof, no POC changes (cheap, do first).**
-  (a) Enable `output_flag_present_flag` with `pic_output_flag=1` on all
-  frames: decoder output unchanged, measures pure syntax overhead.
-  (b) Probe: mark one real coded non-reference frame `pic_output_flag=0`:
-  ffmpeg must output exactly one frame fewer, stream still decodes clean.
-  This proves the end-to-end mechanism (encoder syntax + decoder behaviour)
-  in a day, before any structural work.
+- **Stage 0 — syntax proof, no POC changes — DONE 2026-08-20, all three
+  probes pass.** Temporary env-gated probe (`X265_ARF_STAGE0` in
+  `entropy.cpp` `codePPS`/`codeSliceHeader`; default path writes the same
+  bits as before — `base.hevc` is unaffected with the variable unset).
+  48-frame whale10 encodes, veryfast CRF30, ffmpeg 8.1 `framemd5`:
+  (a) *all-1 signalling*: 48 frames out, every per-frame hash identical to
+  baseline; overhead exactly 1 bit/slice + the PPS flag (+8 bytes on a
+  301,635-byte stream, ~0.003% at 3 Mbps — negligible even at low rate).
+  (b) *hide a non-reference b* (`pic_output_flag=0` on TRAIL_N POC 2):
+  ffmpeg outputs exactly 47 frames, zero decode errors, remaining 47
+  hashes identical to baseline.
+  (c) *hide a REFERENCED B* (POC 3, TRAIL_R — the real ARF case, beyond
+  the original stage-0 scope): 47 frames out, zero errors, and the b's at
+  POC 1/2/4 that predict FROM the hidden picture decode pixel-identical
+  to baseline — decoded + referenced + never output, end to end.
+  Lesson for later stages: at veryfast the mini-GOP is 5 (P5, B3
+  referenced, b1/b2/b4 non-ref) — POC 3 is NOT a TRAIL_N; the probe's
+  NAL-type guard caught the wrong first guess. The probe stays in the
+  tree until stage 1's real param replaces it.
 - **Stage 1 — POC-space doubling** behind the new param, byte-identity when
   off, decode-identity vs pre-change binary when on-but-no-hidden-frames.
 - **Stage 2 — ARF injection**: MCSTF-filtered hidden frame at each
