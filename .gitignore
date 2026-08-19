@@ -35,3 +35,10 @@
 build/
 
 /.*/
+
+# HDR-branch test setups left on disk (untracked here; tracked on branch HDR).
+# KEEP THEM -- user directive 2026-08-14: the HDR project may resume at any
+# time; do not delete hdr-validation/ or the Octave/HDR-VDP-3 toolchain.
+hdr-validation/
+octave-11.3.0-w64/
+octave-*.7z

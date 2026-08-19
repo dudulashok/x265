@@ -1,0 +1,9 @@
+# test segments and encode products -- regenerate via README
+*.yuv
+*.hevc
+*.log
+__pycache__/
+*_done.marker
+*_progress.out
+*.out
+results.json.tmp
