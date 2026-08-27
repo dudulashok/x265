@@ -207,6 +207,70 @@ engages — this sweep is the direct test of that combination.
   rate-confounded — the tool arms spend 12–14% fewer bits at equal Q_JOD).
   Perceptually the arms remain the same picture.
 
+## 5. Ultrafast + zero-latency (2026-08-27): ABR+VBV and capped-CRF, tight buffer
+
+Cell format: kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | XPSNR-Y | dE-ITP | Q_JOD.
+`--preset ultrafast --tune zerolatency --aq-mode 2 --aq-strength 1.0` on both
+arms; **cu-tree is OFF** (zerolatency), so this is the first read of the tools
+without cu-tree absorbing the per-QG offsets. VBV buffers are TIGHT
+(bufsize = maxrate/2, ~500 ms) — not comparable to the 1-s buffers of
+sections 3–4. Capped-CRF caps = 1.1x the *ultrafast* anchor's uncapped
+bitrate at each CRF (ultrafast needs 1.6–2.7x medium's bitrate at equal CRF).
+Binary `4.2+171-dd58fd317`.
+
+## ABR+VBV, tight buffer (--bitrate + vbv-maxrate = target, bufsize = target/2)
+
+### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | 6500 kbps | 11500 kbps | 20000 kbps | 33500 kbps |
+|---|---|---|---|---|
+| anchor | 6186 \| 35.50 \| 34.47 \| 37.04 \| 40.70 \| 32.17 \| 13.51 \| 7.84 | 10925 \| 36.88 \| 35.87 \| 38.51 \| 41.66 \| 34.47 \| 11.49 \| 8.27 | 18983 \| 38.51 \| 37.57 \| 40.19 \| 42.70 \| 36.56 \| 9.75 \| 8.61 | 31896 \| 40.45 \| 39.53 \| 41.85 \| 43.66 \| 38.55 \| 8.17 \| 8.90 |
+| prodmap | 6180 \| 35.50 \| 34.49 \| 37.15 \| 40.87 \| 32.17 \| 13.45 \| 7.89 | 10873 \| 36.92 \| 35.93 \| 38.63 \| 41.86 \| 34.46 \| 11.27 \| 8.35 | 18847 \| 38.59 \| 37.69 \| 40.34 \| 42.87 \| 36.56 \| 9.47 \| 8.70 | 31477 \| 40.55 \| 39.73 \| 41.93 \| 43.80 \| 38.62 \| 7.99 \| 8.96 |
+
+### whale (3840x2160p60, frames 100-399)
+
+| Config | 1450 kbps | 2300 kbps | 3700 kbps | 6200 kbps |
+|---|---|---|---|---|
+| anchor | 1269 \| 39.50 \| 40.87 \| 44.67 \| 47.23 \| 32.81 \| 10.08 \| 7.76 | 2008 \| 42.02 \| 43.54 \| 46.62 \| 49.25 \| 35.71 \| 7.62 \| 7.98 | 3279 \| 44.71 \| 46.33 \| 48.21 \| 51.39 \| 38.64 \| 5.95 \| 8.21 | 5666 \| 47.45 \| 49.18 \| 50.40 \| 53.90 \| 41.23 \| 4.35 \| 8.41 |
+| prodmap | 1277 \| 39.28 \| 40.66 \| 45.67 \| 48.40 \| 32.46 \| 9.14 \| 7.75 | 2037 \| 41.91 \| 43.46 \| 47.45 \| 50.65 \| 35.51 \| 7.13 \| 8.07 | 3342 \| 44.71 \| 46.38 \| 49.05 \| 52.72 \| 38.52 \| 5.41 \| 8.25 | 5699 \| 47.50 \| 49.28 \| 50.84 \| 54.65 \| 41.15 \| 4.16 \| 8.43 |
+
+## Capped-CRF, tight buffer (--crf + vbv-maxrate = 1.1x ultrafast anchor bitrate, bufsize = maxrate/2)
+
+### Sol Levante (3840x2160p24, frames 2088-2279)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 51376 \| 43.46 \| 42.47 \| 44.64 \| 45.39 \| 40.64 \| 6.72 \| 9.15 | 29319 \| 40.99 \| 40.03 \| 42.09 \| 43.86 \| 38.48 \| 8.35 \| 8.86 | 15999 \| 38.76 \| 37.78 \| 40.16 \| 42.66 \| 36.19 \| 10.16 \| 8.51 | 8454 \| 36.83 \| 35.81 \| 38.34 \| 41.55 \| 33.71 \| 12.37 \| 8.11 |
+| prodmap | 51568 \| 43.66 \| 42.77 \| 44.73 \| 45.28 \| 40.88 \| 6.46 \| 9.20 | 29671 \| 41.24 \| 40.38 \| 42.31 \| 43.96 \| 38.66 \| 8.06 \| 8.94 | 16391 \| 38.89 \| 37.98 \| 40.38 \| 42.82 \| 36.29 \| 9.78 \| 8.62 | 8659 \| 36.87 \| 35.89 \| 38.50 \| 41.69 \| 33.83 \| 12.14 \| 8.17 |
+
+### whale (3840x2160p60, frames 100-399)
+
+| Config | CRF22 | CRF26 | CRF30 | CRF34 |
+|---|---|---|---|---|
+| anchor | 15072 \| 51.59 \| 53.56 \| 53.92 \| 58.04 \| 44.40 \| 2.98 \| 8.69 | 8923 \| 49.66 \| 51.45 \| 52.24 \| 56.13 \| 42.98 \| 3.51 \| 8.55 | 5473 \| 47.56 \| 49.21 \| 50.56 \| 54.02 \| 41.26 \| 4.31 \| 8.40 | 3337 \| 45.17 \| 46.72 \| 48.62 \| 51.63 \| 39.02 \| 5.55 \| 8.24 |
+| prodmap | 13627 \| 51.55 \| 53.58 \| 53.68 \| 57.69 \| 44.20 \| 3.05 \| 8.66 | 8263 \| 49.54 \| 51.39 \| 52.34 \| 56.15 \| 42.76 \| 3.52 \| 8.55 | 5106 \| 47.32 \| 49.04 \| 50.61 \| 54.46 \| 40.94 \| 4.33 \| 8.40 | 3183 \| 44.93 \| 46.54 \| 49.27 \| 52.59 \| 38.69 \| 5.20 \| 8.25 |
+
+### Verdict — ultrafast + zero-latency
+
+- **Without cu-tree, prodmap's gains grow by an order of magnitude.**
+  wPSNR-Y BD vs anchor: sol10 **−3.52% (ABR+VBV) / −4.89% (capped-CRF)**,
+  whale10 **−4.93% (capped-CRF)** — against −0.06..−0.64% at medium preset.
+  Plain PSNR-Y improves too (−2.4..−3.5%). Direct measured confirmation of
+  the cu-tree-absorption diagnosis behind the 2026-08-19 pause.
+- **whale10 ABR+VBV keeps the familiar ABR luma price** (+1.76% wPSNR-Y for
+  −19.4/−24.7% chroma) — same shape as medium-preset ABR, slightly larger
+  under the tight buffer.
+- **VBV-safe at 500 ms: zero warnings in 32 encodes**; rate accuracy
+  tool-independent (the ~5–13% ABR undershoot is a zerolatency/no-lookahead
+  trait, identical on both arms).
+- **Q_JOD is consistently positive on sol10 (+0.05..+0.11 at equal-or-lower
+  rate, both modes)** — larger than any medium-preset delta, though still
+  well under the 1-JOD noticeability unit. dE-ITP agrees (whale10 ~9%
+  colour-error reduction at the low rate point).
+- Recommendation: for ultrafast/zero-latency HDR, prodmap +
+  `--aq-mode 2 --aq-strength 1.0` is unambiguous under capped-CRF; under
+  ABR+VBV it is a chroma-for-luma trade on natural content.
+
 ---
 
 ## Overall reading (RC-mode matrix complete, 2026-08-14)

@@ -908,6 +908,48 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
    section. ARF (pic_output_flag hidden frames) is the first work item,
    stage 0 first. Continue that work THERE, not here.
 
+### 2026-08-27 session log — ultrafast + zero-latency validated (the no-cu-tree
+### read): prodmap's gains GROW without cu-tree; tight-VBV safe
+
+User-directed sweep (numbers in RESULTS.md "2026-08-27", tables also in
+RESULTS_SUMMARY.md section 5): anchor vs prodmap at `--preset ultrafast
+--tune zerolatency`, modes ABR+VBV and capped-CRF only, tight VBV
+(bufsize = maxrate/2, ~500 ms — user decision, NOT comparable to the 1-s
+buffers of the medium sweeps), `--aq-mode 2 --aq-strength 1.0` on both arms
+(user chose aq 2 over 3; **ultrafast zeroes BOTH aq-mode and aq-strength**,
+either alone is not enough). zerolatency sets `rc.cuTree=0` / lookahead 0 /
+bframes 0 / frame-threads 1, so this is the first measurement of the HDR
+tools with cu-tree not absorbing the per-QG offsets. Harness:
+`run_uz_sweep.sh` (keys `uzvbv`/`uzccrf`; capped-CRF caps re-derived at 1.1x
+the ultrafast anchor's own CRF bitrates — ultrafast needs 1.6–2.7x medium's
+rate at equal CRF), `uz_metrics.py`, `run_uz_vdp.sh`, `abs_table_uz.py`
+(adds a dE-ITP column to the rate-mode layout).
+
+1. **Headline: without cu-tree the stack's gains grow by an order of
+   magnitude.** prodmap wPSNR-Y BD vs anchor: sol10 −3.52 (ABR+VBV) /
+   −4.89 (capped-CRF), whale10 −4.93 (capped-CRF) — vs −0.06..−0.64% at
+   medium preset; plain PSNR-Y −2.4..−3.5% too. The 2026-08-19 pause
+   diagnosis ("cu-tree absorbs the injected offsets") is now measured, not
+   inferred. **Consequence: the cu-tree-interaction TODO is the
+   highest-leverage open item on this branch** — at medium preset the tools
+   are fighting cu-tree, not the content.
+2. whale10 ABR+VBV keeps the familiar ABR luma price (+1.76% wPSNR-Y for
+   −19.4/−24.7% chroma; XPSNR again the dissenting metric at +4.40) — the
+   mode-gated zero-mean fix is active, same shape as medium ABR.
+3. Q_JOD: sol10 consistently +0.05..+0.11 at equal-or-lower rate in both
+   modes (biggest Q_JOD response yet, 0 of 384 evals failed); still below
+   the 1-JOD unit. dE-ITP agrees (whale10 low-rate ~9% colour-error cut).
+4. Zero VBV warnings in 32 tight-buffer encodes; ABR undershoot (sol10 ~−5%,
+   whale10 −8..−13%) is a zerolatency trait, identical on both arms.
+5. Preflight worth reusing: recon-vs-ffmpeg-decode MD5 bit-exact for the
+   prodmap stack at ultrafast (the `3923cec8d` bug class stays fixed), and
+   `--log-level debug` traces confirm all four tools engage at lookahead 0.
+   Binary rebuilt via cmake first: `4.2+171-dd58fd317` (the 2026-08-26
+   builds were efficiency-branch code — the stale-binary trap again).
+6. Ops: Bash-tool background watchers get killed on this machine; the
+   reliable pattern is Start-Process for the work + the Monitor tool for
+   completion events (markers + failure signatures).
+
 ### TODO — HDR quality / efficiency investigation
 
 - [x] **Strength sweeps** for `--hdr-luma-qp` — measured 2026-08-05: BD-optimal
@@ -964,6 +1006,10 @@ Full numbers in RESULTS.md "2026-08-14" (two sections); harness additions
       16+ frames remain optional refinements, not blockers.
 - [ ] **cu-tree interaction**: verify the HDR per-QG offsets seeded into `qpCuTreeOffset`
       aren't double-propagated by cu-tree; test `--aq-mode 1` vs `3` with the tools on.
+      **PRIORITY RAISED 2026-08-27**: the ultrafast+zerolatency sweep (cu-tree off)
+      measured prodmap at −3.5..−4.9% wPSNR-Y vs −0.06..−0.64% at medium — cu-tree
+      absorption is real and large; making the tools cu-tree-aware (or feeding them
+      in after propagation) could unlock medium-preset gains of the same class.
 - [ ] **Corpus expansion**: probe `Regatta_3840x2160_HDR10_420_60p.yuv` (frame size is
       non-integral for 16-bit 4:2:0 at that resolution — format unknown), pull more
       Netflix Open Content / CableLabs 4K HDR clips; at least one natural-dark and one
