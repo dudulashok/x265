@@ -1,0 +1,6 @@
+BD-RATE prodmap vs anchorsao (HDR tools only, SAO equalized)
+clip     mode        psnr_y   wpsnr_y  wpsnr_cb  wpsnr_cr   xpsnr_y
+sol10    uzvbv        +0.33     -0.57     -2.37     -9.05     +1.00
+sol10    uzccrf       +2.04     +0.34     -1.00     -2.85     +1.01
+whale10  uzvbv        +2.66     +2.00    -20.22    -24.09     +3.87
+whale10  uzccrf       +1.10     -0.29     -9.64    -12.28     +2.25

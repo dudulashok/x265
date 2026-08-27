@@ -252,11 +252,17 @@ Binary `4.2+171-dd58fd317`.
 
 ### Verdict — ultrafast + zero-latency
 
-- **Without cu-tree, prodmap's gains grow by an order of magnitude.**
-  wPSNR-Y BD vs anchor: sol10 **−3.52% (ABR+VBV) / −4.89% (capped-CRF)**,
-  whale10 **−4.93% (capped-CRF)** — against −0.06..−0.64% at medium preset.
-  Plain PSNR-Y improves too (−2.4..−3.5%). Direct measured confirmation of
-  the cu-tree-absorption diagnosis behind the 2026-08-19 pause.
+- **prodmap vs the ultrafast default: sol10 −3.52% (ABR+VBV) / −4.89%
+  (capped-CRF), whale10 −4.93% (capped-CRF) wPSNR-Y — but the credit is
+  mostly SAO, not the HDR tools** (CORRECTED same day; full study in
+  RESULTS.md "cu-tree interaction study 2026-08-27 late"). ultrafast
+  disables SAO and `--hdr-pq` force-enables it; an anchor+`--sao` control
+  arm prices SAO at −2.97/−5.14 (sol10) and −0.24/−4.71 (whale10), and
+  prodmap-vs-anchorsao lands back in the medium-preset band (−0.6..+0.3
+  wPSNR-Y, whale10 ABR+VBV +2.0, chroma −10..−24). cu-tree itself was
+  exonerated by a single-variable test at medium and by offset-field
+  traces (pass-through ~1.0, zero overlap); the cu-tree TODO is closed
+  measured-negative.
 - **whale10 ABR+VBV keeps the familiar ABR luma price** (+1.76% wPSNR-Y for
   −19.4/−24.7% chroma) — same shape as medium-preset ABR, slightly larger
   under the tight buffer.
@@ -267,9 +273,10 @@ Binary `4.2+171-dd58fd317`.
   rate, both modes)** — larger than any medium-preset delta, though still
   well under the 1-JOD noticeability unit. dE-ITP agrees (whale10 ~9%
   colour-error reduction at the low rate point).
-- Recommendation: for ultrafast/zero-latency HDR, prodmap +
-  `--aq-mode 2 --aq-strength 1.0` is unambiguous under capped-CRF; under
-  ABR+VBV it is a chroma-for-luma trade on natural content.
+- Recommendation (post-correction): for ultrafast/zero-latency HDR, the
+  first move is `--sao` (most of the luma win); the prodmap stack +
+  `--aq-mode 2 --aq-strength 1.0` then adds the usual chroma-for-luma
+  trade on top (and brings SAO along anyway via `--hdr-pq`).
 
 ---
 

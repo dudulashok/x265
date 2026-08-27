@@ -925,14 +925,13 @@ the ultrafast anchor's own CRF bitrates — ultrafast needs 1.6–2.7x medium's
 rate at equal CRF), `uz_metrics.py`, `run_uz_vdp.sh`, `abs_table_uz.py`
 (adds a dE-ITP column to the rate-mode layout).
 
-1. **Headline: without cu-tree the stack's gains grow by an order of
-   magnitude.** prodmap wPSNR-Y BD vs anchor: sol10 −3.52 (ABR+VBV) /
-   −4.89 (capped-CRF), whale10 −4.93 (capped-CRF) — vs −0.06..−0.64% at
-   medium preset; plain PSNR-Y −2.4..−3.5% too. The 2026-08-19 pause
-   diagnosis ("cu-tree absorbs the injected offsets") is now measured, not
-   inferred. **Consequence: the cu-tree-interaction TODO is the
-   highest-leverage open item on this branch** — at medium preset the tools
-   are fighting cu-tree, not the content.
+1. **Headline (CORRECTED same day — see the late session log below): the
+   big uz numbers were the SAO confound, not cu-tree.** prodmap wPSNR-Y BD
+   vs the ultrafast default: sol10 −3.52 (ABR+VBV) / −4.89 (capped-CRF),
+   whale10 −4.93 (capped-CRF) — valid as a package comparison, but
+   ultrafast disables SAO while `--hdr-pq` force-enables it, and an
+   anchor+`--sao` control arm showed SAO carries most of it. The original
+   "cu-tree absorption confirmed" reading here is RETRACTED.
 2. whale10 ABR+VBV keeps the familiar ABR luma price (+1.76% wPSNR-Y for
    −19.4/−24.7% chroma; XPSNR again the dissenting metric at +4.40) — the
    mode-gated zero-mean fix is active, same shape as medium ABR.
@@ -949,6 +948,44 @@ rate at equal CRF), `uz_metrics.py`, `run_uz_vdp.sh`, `abs_table_uz.py`
 6. Ops: Bash-tool background watchers get killed on this machine; the
    reliable pattern is Start-Process for the work + the Monitor tool for
    completion events (markers + failure signatures).
+
+### 2026-08-27 (late) session log — cu-tree interaction pursued (user directive)
+### and CLOSED: attribution corrected, the uz gains were SAO
+
+Full write-up in RESULTS.md "cu-tree interaction study (2026-08-27 late)";
+this corrects the morning session's headline. Three experiments, same day:
+
+1. **Stage 0, single-variable** (`run_nct_sweep.sh`/`nct_metrics.py`, 16
+   encodes): medium CRF ± `--no-cutree` — prodmap's value is the SAME with
+   and without cu-tree (sol10 −0.35→−0.72, whale10 −0.58→+0.14 wPSNR-Y). No
+   unlock. Side-finding: cu-tree itself is +3.1% on sol10 but −1.45% on
+   whale10 luma (helps chroma +8.5/+10.1 there).
+2. **Stage 1, offset-field traces**: permanent env-gated diagnostic
+   `X265_DUMP_QPOFFS=<dir>` in `compressFrame()` (frameencoder.cpp) dumps the
+   final per-QG qpAqOffset/qpCuTreeOffset per frame — verified byte-neutral
+   (env-off re-encode byte-identical) and 8-bit-build clean. NOTE the array
+   granularity trap: at qgSize>8 the arrays are maxBlocksInRow×maxBlocksInCol
+   (16-px grid); the FullRes fields apply only at qgSize 8. Analysis
+   (`qpoffs_absorb.py`, `qpoffs_overlap.py` on anchor vs `--hdr-luma-qp 0.5`
+   pairs): pass-through ~1.0 in mean AND spatial components, absorption slope
+   ≤0.04, cu-tree-field-vs-HDR-term |corr| ≤ 0.1 — cu-tree neither absorbs
+   nor duplicates the offsets. The 2026-08-13 mean-eating is thereby
+   localized to RC frame-QP bookkeeping (where its fix already lives).
+3. **SAO confound found and priced** (`run_uzsao_sweep.sh`, `uz_decomp.py`):
+   ultrafast disables SAO, `--hdr-pq` re-enables it, so the morning's uz BDs
+   compared tools+SAO against no-SAO. anchor+`--sao` control: SAO alone is
+   −2.97/−5.14 (sol10 vbv/ccrf), −0.24/−4.71 (whale10). prodmap vs anchorsao
+   (tools only): sol10 −0.57/+0.34, whale10 +2.00/−0.29 wPSNR-Y with chroma
+   −2..−24 — i.e. exactly the medium-preset profile, at ultrafast too.
+4. **Consequences**: the cu-tree TODO is closed (measured-negative, don't
+   re-derive); the 2026-08-19 pause verdict is *strengthened* (allocation
+   headroom is genuinely small — cu-tree was not hiding gains); uz HDR
+   deployments should enable `--sao` first, the stack second (chroma trade);
+   stage-2 "cu-tree transparency" was designed but correctly NOT implemented
+   — the traces show there is nothing to make transparent.
+5. Methodology lesson recorded: when an arm toggles a feature with
+   preset-dependent defaults (`--hdr-pq` → SAO), every cross-preset sweep
+   needs a control arm for that feature before attributing gains.
 
 ### TODO — HDR quality / efficiency investigation
 
@@ -1004,12 +1041,19 @@ rate at equal CRF), `uz_metrics.py`, `run_uz_vdp.sh`, `abs_table_uz.py`
       so content variance cancels): sem drops 0.07–0.21 → 0.01–0.05 and differences
       become significant. Use `paired_jod.py` + `bootstrap_jod_bd.py`; full-frame and
       16+ frames remain optional refinements, not blockers.
-- [ ] **cu-tree interaction**: verify the HDR per-QG offsets seeded into `qpCuTreeOffset`
-      aren't double-propagated by cu-tree; test `--aq-mode 1` vs `3` with the tools on.
-      **PRIORITY RAISED 2026-08-27**: the ultrafast+zerolatency sweep (cu-tree off)
-      measured prodmap at −3.5..−4.9% wPSNR-Y vs −0.06..−0.64% at medium — cu-tree
-      absorption is real and large; making the tools cu-tree-aware (or feeding them
-      in after propagation) could unlock medium-preset gains of the same class.
+- [x] **cu-tree interaction** — CLOSED 2026-08-27, measured negative on three
+      independent experiments (RESULTS.md "cu-tree interaction study"): (a) the
+      per-QG offsets pass through cu-tree essentially untouched (offset-field
+      traces via the `X265_DUMP_QPOFFS` dump hook: mean component realized
+      0.999–1.001, spatial pass-through 0.96–1.00, absorption slope ≤0.04);
+      (b) cu-tree's own field is orthogonal to the JVET dQP pattern (|corr| ≤
+      0.1); (c) single-variable `--no-cutree` at medium leaves the tools' BD in
+      the same band (sol10 −0.35→−0.72, whale10 −0.58→+0.14 wPSNR-Y). The
+      apparent uz-mode unlock was the SAO confound (`--hdr-pq` forces SAO on,
+      ultrafast default is off). The 2026-08-13 I/P/B mean-eating lives in RC's
+      frame-QP bookkeeping (already fixed there), never in the offset arrays.
+      No cu-tree-aware redesign is warranted; the `--aq-mode 1 vs 3` sub-item
+      is moot at this evidence level.
 - [ ] **Corpus expansion**: probe `Regatta_3840x2160_HDR10_420_60p.yuv` (frame size is
       non-integral for 16-bit 4:2:0 at that resolution — format unknown), pull more
       Netflix Open Content / CableLabs 4K HDR clips; at least one natural-dark and one

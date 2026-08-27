@@ -1833,12 +1833,14 @@ BD-rate prodmap vs anchor (negative = saves bits at equal quality):
 | whale10 | ABR+VBV | +2.51 | **+1.76** | **−19.42** | **−24.65** | +4.40 |
 | whale10 | capped-CRF | −3.47 | **−4.93** | −9.44 | −12.16 | +0.32 |
 
-1. **The cu-tree-absorption diagnosis is confirmed by measurement.** At
-   medium preset prodmap was −0.06..−0.64% wPSNR-Y (CRF/capped-CRF); without
-   cu-tree it is **−3.5..−4.9%** on three of four cells, and even plain
-   PSNR-Y improves (−2.4..−3.5%). The tools do substantially more when
-   cu-tree is not recomputing over their offsets — consistent with the
-   2026-08-19 pause diagnosis, now with numbers.
+1. **RETRACTED SAME DAY — see the "cu-tree interaction study (2026-08-27
+   late)" section below.** The original text claimed the −3.5..−4.9% proved
+   cu-tree absorption; the same-day follow-up (single-variable cu-tree test
+   at medium, offset-field traces, and an anchor+SAO control arm) showed the
+   gain was almost entirely the **SAO confound** (ultrafast disables SAO,
+   `--hdr-pq` force-enables it) and that cu-tree neither absorbs nor
+   duplicates the per-QG offsets. The package-level numbers in this section
+   stay valid as measured; only the attribution was wrong.
 2. **The one soft cell is whale10 ABR+VBV** (+1.76% wPSNR-Y for −19/−25%
    chroma): the familiar ABR luma price, here despite the mode-gated
    zero-mean fix being active (bitrate mode is X265_RC_ABR). Same shape as
@@ -1862,11 +1864,10 @@ BD-rate prodmap vs anchor (negative = saves bits at equal quality):
    (live, low-latency), the prodmap stack + `--aq-mode 2 --aq-strength 1.0`
    is an unambiguous recommendation under capped-CRF (both clips gain on
    every luminance metric AND chroma), and a chroma-for-luma trade under
-   ABR+VBV on natural content. It also reopens a question for the paused
-   allocation work: the medium-preset "allocation is exhausted" verdict is
-   partly a cu-tree interaction, not a ceiling of the tools themselves —
-   the cu-tree TODO item (verify offsets aren't double-propagated /
-   absorbed) is now the highest-leverage open item on the HDR branch.
+   ABR+VBV on natural content. [The rest of this item claimed the result
+   reopened the cu-tree question — RETRACTED same day, see the late
+   section: the gain was the SAO confound and the cu-tree item is closed
+   as measured-negative.]
 
 Absolute rate-quality tables (`abs_table_uz_2026-08-27.txt`, also appended
 to RESULTS_SUMMARY.md as section 5):
@@ -1907,3 +1908,75 @@ kbps | PSNR-Y | wPSNR-Y | wPSNR-Cb | wPSNR-Cr | XPSNR-Y | dE-ITP | Q_JOD
 | anchor | 15072 \| 51.59 \| 53.56 \| 53.92 \| 58.04 \| 44.40 \| 2.98 \| 8.69 | 8923 \| 49.66 \| 51.45 \| 52.24 \| 56.13 \| 42.98 \| 3.51 \| 8.55 | 5473 \| 47.56 \| 49.21 \| 50.56 \| 54.02 \| 41.26 \| 4.31 \| 8.40 | 3337 \| 45.17 \| 46.72 \| 48.62 \| 51.63 \| 39.02 \| 5.55 \| 8.24 |
 | prodmap | 13627 \| 51.55 \| 53.58 \| 53.68 \| 57.69 \| 44.20 \| 3.05 \| 8.66 | 8263 \| 49.54 \| 51.39 \| 52.34 \| 56.15 \| 42.76 \| 3.52 \| 8.55 | 5106 \| 47.32 \| 49.04 \| 50.61 \| 54.46 \| 40.94 \| 4.33 \| 8.40 | 3183 \| 44.93 \| 46.54 \| 49.27 \| 52.59 \| 38.69 \| 5.20 \| 8.25 |
 
+
+## cu-tree interaction study (2026-08-27 late): attribution CORRECTED —
+## the ultrafast gains were SAO; cu-tree is exonerated on three measurements
+
+The morning section's item 1 ("cu-tree absorption confirmed") was wrong and
+is retracted; this section replaces it. The user directive to pursue the
+cu-tree item produced three experiments the same day, and all three point
+the same way.
+
+**1. Stage 0 — single-variable cu-tree test at medium (`run_nct_sweep.sh`,
+`nct_metrics.py`): the tools' value is the SAME with and without cu-tree.**
+16 new encodes (anchor/prodmap, `--no-cutree`, plain CRF 22–34) against the
+existing cu-tree-on rows:
+
+| comparison (medium CRF) | psnr_y | wpsnr_y | wpsnr_cb | wpsnr_cr | xpsnr_y |
+|---|---|---|---|---|---|
+| sol10 prodmap vs anchor, CT ON | +3.68 | −0.35 | −2.09 | −2.89 | +1.22 |
+| sol10 prodmap vs anchor, CT OFF | +2.14 | −0.72 | −1.73 | −1.44 | +1.34 |
+| whale10 prodmap vs anchor, CT ON | +0.66 | −0.58 | −16.74 | −21.90 | +1.23 |
+| whale10 prodmap vs anchor, CT OFF | +1.72 | +0.14 | −9.73 | −11.72 | +2.91 |
+
+No cu-tree-off unlock exists at medium (−0.35→−0.72 / −0.58→+0.14 is the
+same small band). Side-findings: cu-tree itself is +3.13% wPSNR-Y on sol10
+but −1.45% on whale10 (turning it off *helps* whale10 luma while costing
++8.5/+10.1 chroma); prodmap's whale10 chroma gains roughly halve without
+cu-tree.
+
+**2. Stage 1 — direct offset-field measurement (`X265_DUMP_QPOFFS` env-gated
+dump in `compressFrame()`, byte-neutral — verified byte-identical with the
+env unset; `qpoffs_absorb.py`, `qpoffs_overlap.py`): cu-tree neither absorbs
+nor duplicates the injected per-QG term.** Paired anchor vs `--hdr-luma-qp
+0.5` traces (medium CRF 30, cu-tree on, full clips): the injected term's
+frame-mean component reaches the applied offsets at 0.999–1.001 and the
+spatial component at 0.96–1.00 (absorption slope ≤ 0.04) on both clips, all
+slice types; cu-tree's own subtraction field is orthogonal to the JVET dQP
+pattern (|corr| ≤ 0.1 at comparable magnitude, sd 0.5–1.0 QP). The
+2026-08-13 I/P/B mean-eating therefore lives in RC's frame-QP bookkeeping
+(AQ-weighted lookahead costs), never in the offset arrays — consistent with
+that session's fix operating in rateEstimateQscale.
+
+**3. The uz sweep's headline was a SAO confound (`run_uzsao_sweep.sh`,
+`uz_decomp.py`, saved `uz_decomp_2026-08-27.txt`).** ultrafast disables SAO;
+`--hdr-pq` force-enables it — so the morning's prodmap-vs-anchor BD
+conflated the tools with SAO. The anchorsao control arm (anchor + `--sao`,
+same 16 uzvbv/uzccrf points) prices SAO at −2.97/−5.14 (sol10 vbv/ccrf) and
+−0.24/−4.71 (whale10) wPSNR-Y — i.e. most of the headline. The honest
+tools-only read, prodmap vs anchorsao:
+
+| clip | mode | psnr_y | wpsnr_y | wpsnr_cb | wpsnr_cr | xpsnr_y |
+|---|---|---|---|---|---|---|
+| sol10 | uzvbv | +0.33 | **−0.57** | −2.37 | −9.05 | +1.00 |
+| sol10 | uzccrf | +2.04 | **+0.34** | −1.00 | −2.85 | +1.01 |
+| whale10 | uzvbv | +2.66 | **+2.00** | −20.22 | −24.09 | +3.87 |
+| whale10 | uzccrf | +1.10 | **−0.29** | −9.64 | −12.28 | +2.25 |
+
+— exactly the medium-preset profile: luma-neutral-ish under capped-CRF, the
+familiar ABR luma price on whale10, chroma gains intact.
+
+**Consequences.**
+- The 2026-08-19 pause diagnosis loses its "cu-tree actively absorbs
+  injected offsets" clause (falsified) but its conclusion is *strengthened*:
+  the tools' gains are small at every preset because the allocation headroom
+  is genuinely small, not because cu-tree eats them. No cu-tree-aware
+  redesign is warranted; the cu-tree TODO item is closed as measured-negative.
+- The uz absolute tables and prodmap-vs-anchor BDs in the morning section
+  remain valid AS A PACKAGE comparison (a user enabling the stack does get
+  SAO via --hdr-pq and does land −3.5..−4.9% vs the ultrafast default) — but
+  the credit is SAO's, and `--preset ultrafast --tune zerolatency --sao`
+  captures most of it without any HDR tool. Practical note for uz HDR
+  deployments: turn SAO on; add the stack for the chroma trade.
+- The dump hook stays in the tree (env-gated, byte-neutral) as a permanent
+  diagnostic for any future per-QG offset work.

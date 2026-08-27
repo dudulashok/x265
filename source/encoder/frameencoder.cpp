@@ -896,6 +896,36 @@ void FrameEncoder::compressFrame(int layer)
         slice->m_deblockTcOffsetDiv2 = x265_clip3(-6, 6, slice->m_deblockTcOffsetDiv2 + delta);
     }
 
+    /* Diagnostic dump of the final per-block AQ / cu-tree QP offset fields,
+     * as consumed by this frame (analysis of cu-tree's response to injected
+     * per-QG terms — see hdr-validation cu-tree interaction study). Gated by
+     * the X265_DUMP_QPOFFS env var (a directory); one text file per POC, so
+     * concurrent frame encoders never share a handle. Debug-only, no effect
+     * on the bitstream. */
+    if (const char* dumpDir = getenv("X265_DUMP_QPOFFS"))
+    {
+        const Lowres& lowres = m_frame[layer]->m_lowres;
+        if (lowres.qpAqOffset && lowres.qpCuTreeOffset)
+        {
+            char path[1024];
+            snprintf(path, sizeof(path), "%s/qpoffs_%06d.txt", dumpDir, m_frame[layer]->m_poc);
+            if (FILE* f = fopen(path, "w"))
+            {
+                /* array granularity follows qgSize (lowres.cpp cuCountFullRes):
+                 * 16px full-res blocks for qgSize > 8, 8px blocks for qgSize 8 */
+                uint32_t blocksRow = (m_param->rc.qgSize == 8) ? lowres.maxBlocksInRowFullRes : lowres.maxBlocksInRow;
+                uint32_t blocksCol = (m_param->rc.qgSize == 8) ? lowres.maxBlocksInColFullRes : lowres.maxBlocksInCol;
+                uint32_t nblk = blocksRow * blocksCol;
+                fprintf(f, "poc %d type %d ref %d blocksRow %u blocks %u\n",
+                        m_frame[layer]->m_poc, slice->m_sliceType, IS_REFERENCED(m_frame[layer]) ? 1 : 0,
+                        blocksRow, nblk);
+                for (uint32_t i = 0; i < nblk; i++)
+                    fprintf(f, "%.4f %.4f\n", lowres.qpAqOffset[i], lowres.qpCuTreeOffset[i]);
+                fclose(f);
+            }
+        }
+    }
+
     if (m_param->bOptQpPPS && m_param->bRepeatHeaders)
     {
         ScopedLock qpLock(m_top->m_sliceQpLock);
