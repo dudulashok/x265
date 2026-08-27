@@ -987,6 +987,33 @@ this corrects the morning session's headline. Three experiments, same day:
    preset-dependent defaults (`--hdr-pq` → SAO), every cross-preset sweep
    needs a control arm for that feature before attributing gains.
 
+### PLAN AGREED WITH USER (2026-08-27, end of session) — next session starts here
+
+Two tracks, agreed after the cu-tree closure:
+
+1. **General coding efficiency** (branch `efficiency`, X265_BUILD 240 free):
+   cheap probes first, then commit to the big item on their evidence —
+   (a) cu-tree strength / `--qcomp` sweep per clip (today's stage-0 found
+   cu-tree is +3.1% on sol10 but **−1.45% on whale10** — if strength tuning
+   recovers that, an adaptive-strength heuristic is a quick win and
+   calibrates TPL's headroom); (b) **measure upstream MCSTF** (`--mcstf`,
+   in-tree since the v4.3 rebase, never measured on the PQ corpus). Results
+   feed the go/no-go on **TPL dependency-aware RDO** (the staged plan in the
+   P1 TODO; delta-QP and lambda must move together per the 2026-08-08
+   lambda finding). Queued behind: R-λ rate control (JCTVC-K0103) and QPA
+   (now measurable via XPSNR).
+2. **HDR live-streaming scenario** (user focus, this branch): build on the
+   2026-08-27 uz validation and rig (`run_uz_sweep.sh`/`uz_metrics.py`/
+   `abs_table_uz.py`, anchorsao control arm). Standing findings that shape
+   it: `--sao` first at fast presets (most of the luma win, −3..−5%
+   capped-CRF); the tools' value there is the chroma trade; zerolatency ABR
+   undershoots 8–13% on whale10 (R-λ RC is directly relevant to live rate
+   accuracy); tight-VBV (500 ms) is warning-free. Candidate work items:
+   CBR / stricter buffers (single-frame VBV), faster-preset ladder
+   (superfast/veryfast), `--hdr-scene-qp` behavior on live-style transients
+   (gen_flash10.py segment exists), rate-accuracy improvements, and a
+   live-oriented recommendation writeup for cli.rst.
+
 ### TODO — HDR quality / efficiency investigation
 
 - [x] **Strength sweeps** for `--hdr-luma-qp` — measured 2026-08-05: BD-optimal
